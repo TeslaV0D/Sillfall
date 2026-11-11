@@ -8,7 +8,10 @@ using Weatherly.Audio;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Effects;
 using Weatherly.Core.Overlay;
+using Weatherly.Core.Settings;
+using Weatherly.Core.Tray;
 using Weatherly.Platform.Overlay;
+using Weatherly.Platform.Shell;
 using Weatherly.Render;
 using Windows.Graphics;
 
@@ -41,8 +44,14 @@ public partial class App : Application
 
     private const float SmokeSnowIntensity = 1f;
 
+    /// <summary>Settings are written this long after the last change, so dragging a slider does not write a file per step.</summary>
+    private static readonly TimeSpan s_saveDelay = TimeSpan.FromMilliseconds(500);
+
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
+    private TrayIcon? _tray;
+    private SettingsStore? _settings;
+    private DispatcherQueueTimer? _saveTimer;
 
     public App()
     {
@@ -52,17 +61,25 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // Milestones M1 and M2: calibration pattern and surface debug layer, no weather effects yet.
+        // The smoke test starts from a fixed state and never touches the user's settings.
         var options = new OverlayOptions
         {
             Enabled = true,
-            Content = (_smokeTest?.TestPattern ?? true) ? OverlayContent.TestPattern : OverlayContent.None,
+            Content = (_smokeTest?.TestPattern ?? false) ? OverlayContent.TestPattern : OverlayContent.None,
             ExcludeFromCapture = _smokeTest?.ExcludeFromCapture ?? false,
             ShowSurfaces = _smokeTest?.ShowSurfaces ?? false,
             TestDrops = (_smokeTest?.TestDrops ?? false) ? 1f : 0f,
             Rain = new EffectSettings { Intensity = (_smokeTest?.Rain ?? false) ? SmokeRainIntensity : 0f },
             Snow = new EffectSettings { Intensity = (_smokeTest?.Snow ?? false) ? SmokeSnowIntensity : 0f },
         };
+
+        UserSettings settings = new();
+        if (_smokeTest is null)
+        {
+            _settings = new SettingsStore(SettingsStore.DefaultPath);
+            settings = _settings.Load();
+            options = settings.ApplyTo(options);
+        }
 
         // The window owns the overlay from here on and disposes it when it closes.
         var overlay = new OverlayHost(new CompositionOverlayRenderer(), options);
@@ -85,21 +102,114 @@ public partial class App : Application
             CenterOnPrimaryMonitor(_window);
         }
 
+        bool trayShown = ShowTrayIcon(_window);
+
+        // With a tray icon, closing the window keeps the weather running; the tray's Quit ends the app.
+        _window.HideOnClose = trayShown && _smokeTest is null;
+        _window.Closed += (_, _) => _tray?.Dispose();
+        if (_settings is not null)
+        {
+            if (settings.Sound)
+            {
+                _window.SetSound(true);
+            }
+
+            _saveTimer = _window.DispatcherQueue.CreateTimer();
+            _saveTimer.Interval = s_saveDelay;
+            _saveTimer.IsRepeating = false;
+            _saveTimer.Tick += (_, _) => SaveSettings();
+        }
+
+        _window.OptionsChanged += OnOptionsChanged;
         _window.Activate();
 
         if (_smokeTest is not null)
         {
             // Low priority: measure only after the window has gone through layout and its first render.
-            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSmokeTestAsync(_smokeTest, _window));
+            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSmokeTestAsync(_smokeTest, _window, trayShown));
         }
     }
 
-    private static async Task RunSmokeTestAsync(SmokeTest smokeTest, MainWindow window)
+    /// <summary>Adds the tray icon. Returns whether the shell shows it; without it the app behaves like a normal window.</summary>
+    private bool ShowTrayIcon(MainWindow window)
+    {
+        try
+        {
+            _tray = new TrayIcon(
+                Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
+                TrayMenu.Tooltip(window.Options),
+                () => TrayMenu.Build(window.Options, window.SoundOn, new TrayCommands(
+                    Open: window.ShowAndActivate,
+                    SetRain: window.SetRain,
+                    SetSnow: window.SetSnow,
+                    SetSound: window.SetSound,
+                    SetPaused: window.SetPaused,
+                    Quit: Quit)),
+                window.ShowAndActivate);
+            return _tray.Show();
+        }
+#pragma warning disable CA1031 // No tray icon is no reason not to start: the window stays the way to control the app.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            _tray?.Dispose();
+            _tray = null;
+            return false;
+        }
+    }
+
+    private void OnOptionsChanged(object? sender, EventArgs e)
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
+        _tray?.SetTooltip(TrayMenu.Tooltip(_window.Options));
+        if (_saveTimer is not null)
+        {
+            _saveTimer.Stop();
+            _saveTimer.Start();
+        }
+    }
+
+    private void SaveSettings()
+    {
+        if (_settings is null || _window is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _settings.Save(UserSettings.From(_window.Options, _window.SoundOn));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Not being able to remember a setting is no reason to interrupt the user. It is tried again on the next change.
+        }
+    }
+
+    private void Quit()
+    {
+        _saveTimer?.Stop();
+        SaveSettings();
+        _tray?.Dispose();
+        _tray = null;
+        _window?.Quit();
+        Exit();
+    }
+
+    private static async Task RunSmokeTestAsync(SmokeTest smokeTest, MainWindow window, bool trayShown)
     {
         try
         {
             await Task.Delay(s_settleTime);
-            var diagnostics = new List<DiagnosticResult> { new("Window", true, "Activated") };
+            var diagnostics = new List<DiagnosticResult>
+            {
+                new("Window", true, "Activated"),
+                new("Tray icon", trayShown, trayShown ? "Shown in the notification area" : "The shell did not accept the icon"),
+            };
             var monitorNotes = new List<string>();
 
             if (smokeTest.TestDrops)

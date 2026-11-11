@@ -1,9 +1,14 @@
 // Win32 APIs that CsWin32 generates P/Invokes for. One name per line, kept sorted.
 // Privacy invariant: GetWindowText* must never appear here (enforced by PrivacyInvariantTests).
+AppendMenu
 AreDpiAwarenessContextsEqual
+CheckMenuRadioItem
 CHILDID_SELF
+CreatePopupMenu
 CreateWindowEx
 DefWindowProc
+DestroyIcon
+DestroyMenu
 DestroyWindow
 DispatchMessage
 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
@@ -24,11 +29,13 @@ EVENT_SYSTEM_MINIMIZESTART
 EVENT_SYSTEM_MOVESIZEEND
 EVENT_SYSTEM_MOVESIZESTART
 GetClassName
+GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
 GetMessage
 GetModuleHandle
 GetMonitorInfo
+GetSystemMetrics
 GetThreadDpiAwarenessContext
 GetWindow
 GetWindowDisplayAffinity
@@ -36,10 +43,13 @@ GetWindowLong
 GetWindowRect
 HTTRANSPARENT
 HWND_TOPMOST
+IDI_APPLICATION
 IsIconic
 IsWindowVisible
 IsZoomed
 KillTimer
+LoadIcon
+LoadImage
 MA_NOACTIVATE
 MONITORINFOEXW
 OBJECT_IDENTIFIER
@@ -47,7 +57,10 @@ PeekMessage
 PostMessage
 PostQuitMessage
 RegisterClassEx
+RegisterWindowMessage
+SetForegroundWindow
 SetLayeredWindowAttributes
+SetMenuDefaultItem
 SetThreadDpiAwarenessContext
 SetTimer
 SetWindowDisplayAffinity
@@ -55,6 +68,8 @@ SetWindowPos
 SetWinEventHook
 ShowWindow
 SYSTEM_PARAMETERS_INFO_ACTION
+TRACK_POPUP_MENU_FLAGS
+TrackPopupMenuEx
 TranslateMessage
 UnhookWinEvent
 UnregisterClass
@@ -62,10 +77,13 @@ WindowFromPoint
 WINEVENT_OUTOFCONTEXT
 WINEVENT_SKIPOWNPROCESS
 WM_APP
+WM_CONTEXTMENU
 WM_DISPLAYCHANGE
 WM_DPICHANGED
 WM_MOUSEACTIVATE
 WM_NCHITTEST
+WM_NULL
 WM_QUIT
 WM_SETTINGCHANGE
 WM_TIMER
+WM_USER

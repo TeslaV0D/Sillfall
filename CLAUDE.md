@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M5 (Schnee)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **MVP-Cut (M0–M5 plus Tray, ADR-0008)**, als Nächstes M6. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -60,6 +60,10 @@ Effekte: `TestDropsEffect` (Kalibrierung), `RainEffect` (M4, ADR-0006) und `Snow
 in `src/Weatherly.Core/Effects/`. Schnee nutzt die Sprite-Form `Flake` (Variante in `Sprite.Variant`). Größen und Geschwindigkeiten immer mit `SimulationContext.PixelScale`
 multiplizieren. Für die Sichtprüfung FrameDump-Frames über einen nachgebauten Desktop legen: Die
 PNGs enthalten nur das Overlay.
+
+MVP-Cut (ADR-0008): `TrayIcon` (Platform, `Shell_NotifyIcon` selbst deklariert) zeigt das Menümodell
+`TrayMenu` (Core). Schließen versteckt das Fenster, „Quit“ im Tray beendet die App. `SettingsStore` (Core)
+speichert `UserSettings` als JSON in `%LOCALAPPDATA%`. Der Smoke-Test fasst keine Einstellungen an.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.

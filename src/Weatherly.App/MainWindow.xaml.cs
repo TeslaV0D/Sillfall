@@ -11,9 +11,9 @@ using Weatherly.Platform.Overlay;
 namespace Weatherly.App;
 
 /// <summary>
-/// Test bench of milestones M1 and M2: switches for the overlay, the screenshot exclusion and the
-/// surface debug layer, the monitor list and the self-checks. It is replaced by the tray flyout and the settings window
-/// in later milestones. The window owns the overlay host and disposes it when it closes.
+/// Test bench of the milestones so far: switches and sliders for the overlay and the effects, the monitor list and
+/// the self-checks. With the tray icon (MVP), closing it only hides it. It is replaced by the tray flyout and the
+/// settings window in M9. The window owns the overlay host and disposes it when it really closes.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer _soundTimer;
     private OverlayOptions _options;
     private RainSoundPlayer? _sound;
+    private bool _quitting;
 
     public MainWindow(OverlayHost overlay, OverlayOptions options, string? startError)
     {
@@ -55,6 +56,7 @@ public sealed partial class MainWindow : Window
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
         Closed += OnClosed;
+        AppWindow.Closing += OnClosing;
 
         // The rain sound follows the rain: intensity from the settings, drop density from the simulation.
         _soundTimer = DispatcherQueue.CreateTimer();
@@ -63,6 +65,40 @@ public sealed partial class MainWindow : Window
 
         Refresh();
     }
+
+    /// <summary>Raised on the UI thread whenever a switch or slider changed the options or the sound.</summary>
+    public event EventHandler? OptionsChanged;
+
+    /// <summary>The options the overlay runs with.</summary>
+    public OverlayOptions Options => _options;
+
+    /// <summary>Whether the weather sound plays.</summary>
+    public bool SoundOn => _sound is not null;
+
+    /// <summary>
+    /// Closing the window only hides it (the app lives on in the tray). <see cref="Quit"/> really closes it.
+    /// </summary>
+    public bool HideOnClose { get; set; }
+
+    /// <summary>Shows the window (also after it was hidden to the tray) and brings it to the front.</summary>
+    public void ShowAndActivate()
+    {
+        AppWindow.Show();
+        Activate();
+    }
+
+    /// <summary>Closes the window for good, even with <see cref="HideOnClose"/>.</summary>
+    public void Quit()
+    {
+        _quitting = true;
+        Close();
+    }
+
+    /// <summary>Switches the sound on or off, like the switch does.</summary>
+    public void SetSound(bool on) => SoundSwitch.IsOn = on;
+
+    /// <summary>Pauses or resumes all effects, like the overlay switch does.</summary>
+    public void SetPaused(bool paused) => OverlaySwitch.IsOn = !paused;
 
     /// <summary>Results of the most recent <see cref="Refresh"/>.</summary>
     public IReadOnlyList<DiagnosticResult> Diagnostics { get; private set; } = [];
@@ -127,6 +163,7 @@ public sealed partial class MainWindow : Window
         }
 
         Refresh();
+        OptionsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnCheckAgainClicked(object sender, RoutedEventArgs e) => Refresh();
@@ -171,6 +208,17 @@ public sealed partial class MainWindow : Window
             _sound.Dispose();
             _sound = null;
             SoundStatus.Text = string.Empty;
+        }
+
+        OptionsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+    {
+        if (HideOnClose && !_quitting)
+        {
+            args.Cancel = true;
+            sender.Hide();
         }
     }
 
