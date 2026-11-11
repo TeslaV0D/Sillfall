@@ -1,11 +1,20 @@
 using Weatherly.Core.Geometry;
+using Weatherly.Core.Surfaces;
 
 namespace Weatherly.Core.Overlay;
 
 /// <summary>Everything a surface needs to draw one frame.</summary>
 /// <param name="Content">What to draw.</param>
 /// <param name="ScaleFactor">DPI scale of the monitor, 1 at 100 %.</param>
-public readonly record struct OverlayFrame(OverlayContent Content, float ScaleFactor);
+/// <param name="MonitorBounds">
+/// Where the overlay sits on the virtual desktop. Desktop coordinates are drawn relative to its top left corner.
+/// </param>
+/// <param name="Surfaces">Surfaces for the debug layer, or <see langword="null"/> to draw none.</param>
+public readonly record struct OverlayFrame(
+    OverlayContent Content,
+    float ScaleFactor,
+    PixelRect MonitorBounds = default,
+    SurfaceSet? Surfaces = null);
 
 /// <summary>Outcome of presenting a frame.</summary>
 public enum PresentResult

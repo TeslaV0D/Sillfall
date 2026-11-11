@@ -20,4 +20,7 @@ public sealed record OverlayOptions
     public bool ExcludeFromCapture { get; init; }
 
     public OverlayContent Content { get; init; } = OverlayContent.None;
+
+    /// <summary>Debug layer: draws every detected surface (top edges, sides, floors) as a colored line.</summary>
+    public bool ShowSurfaces { get; init; }
 }

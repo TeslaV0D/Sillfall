@@ -1,6 +1,7 @@
 using Weatherly.Core.Displays;
 using Weatherly.Core.Geometry;
 using Weatherly.Core.Overlay;
+using Weatherly.Core.Surfaces;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -92,14 +93,14 @@ internal sealed class OverlayWindow : IDisposable
         _surface = null;
     }
 
-    public PresentResult Present(OverlayContent content)
+    public PresentResult Present(OverlayContent content, SurfaceSet? surfaces)
     {
         if (_surface is null)
         {
             return PresentResult.DeviceLost;
         }
 
-        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor));
+        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor, Monitor.Bounds, surfaces));
         if (result == PresentResult.Presented)
         {
             PresentedFrames++;

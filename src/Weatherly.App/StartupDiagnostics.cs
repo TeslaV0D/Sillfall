@@ -1,6 +1,7 @@
 using System.Globalization;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Displays;
+using Weatherly.Core.Geometry;
 using Weatherly.Core.Overlay;
 using Weatherly.Platform;
 
@@ -16,7 +17,14 @@ internal static class StartupDiagnostics
     /// <param name="status">Overlay state, or <see langword="null"/> when the overlay could not be started.</param>
     /// <param name="options">The options the overlay was asked to apply.</param>
     /// <param name="overlayError">Why the overlay could not be started or queried, if it could not.</param>
-    public static IReadOnlyList<DiagnosticResult> Evaluate(OverlayStatus? status, OverlayOptions options, string? overlayError)
+    /// <param name="appWindowId">Handle of the app's own window, the reference for the tracking checks.</param>
+    /// <param name="appWindowBounds">Bounds of the app window, measured independently of the tracker.</param>
+    public static IReadOnlyList<DiagnosticResult> Evaluate(
+        OverlayStatus? status,
+        OverlayOptions options,
+        string? overlayError,
+        long appWindowId,
+        PixelRect appWindowBounds)
     {
         var results = new List<DiagnosticResult>
         {
@@ -40,6 +48,13 @@ internal static class StartupDiagnostics
         }
 
         results.AddRange(OverlayDiagnostics.Evaluate(status, options));
+
+        if (options.Enabled)
+        {
+            results.Add(TrackingDiagnostics.EvaluateWindow("Window tracking", status, appWindowId, appWindowBounds));
+            results.Add(TrackingDiagnostics.EvaluateTopEdge(status, appWindowId, appWindowBounds));
+        }
+
         return results;
     }
 

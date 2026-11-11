@@ -12,8 +12,15 @@ namespace Weatherly.App;
 /// <summary>Composition root of the application.</summary>
 public partial class App : Application
 {
+    /// <summary>Time for the freshly opened window to settle before the smoke test measures anything.</summary>
+    private static readonly TimeSpan s_settleTime = TimeSpan.FromMilliseconds(500);
+
     /// <summary>Time between the two measurements that prove the overlay does not render while idle.</summary>
     private static readonly TimeSpan s_idleObservation = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>How far the smoke test moves the app window, and how long it gives the tracking to follow.</summary>
+    private static readonly PointInt32 s_moveOffset = new(40, 30);
+    private static readonly TimeSpan s_moveObservation = TimeSpan.FromMilliseconds(500);
 
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
@@ -26,12 +33,13 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // Milestone M1: the overlay shows the calibration pattern, there are no weather effects yet.
+        // Milestones M1 and M2: calibration pattern and surface debug layer, no weather effects yet.
         var options = new OverlayOptions
         {
             Enabled = true,
-            Content = OverlayContent.TestPattern,
+            Content = (_smokeTest?.TestPattern ?? true) ? OverlayContent.TestPattern : OverlayContent.None,
             ExcludeFromCapture = _smokeTest?.ExcludeFromCapture ?? false,
+            ShowSurfaces = _smokeTest?.ShowSurfaces ?? false,
         };
 
         // The window owns the overlay from here on and disposes it when it closes.
@@ -68,15 +76,27 @@ public partial class App : Application
     {
         try
         {
+            await Task.Delay(s_settleTime);
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
+
+            // Window tracking: move the app window and check that the tracker follows to the exact new position.
+            PointInt32 position = window.AppWindow.Position;
+            window.AppWindow.Move(new PointInt32(position.X + s_moveOffset.X, position.Y + s_moveOffset.Y));
+            await Task.Delay(s_moveObservation);
+            OverlayStatus? moved = window.Refresh();
 
             var diagnostics = new List<DiagnosticResult> { new("Window", true, "Activated") };
             diagnostics.AddRange(window.Diagnostics);
             if (before is not null && after is not null)
             {
                 diagnostics.Add(OverlayDiagnostics.EvaluateIdle(before, after));
+            }
+
+            if (after is not null && moved is not null)
+            {
+                diagnostics.Add(TrackingDiagnostics.EvaluateMoveEvents(after, moved));
             }
 
             int exitCode = smokeTest.WriteReport(diagnostics, window.MonitorLines);

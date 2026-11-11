@@ -1,14 +1,16 @@
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Weatherly.Core;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Overlay;
+using Weatherly.Platform.Desktop;
 using Weatherly.Platform.Overlay;
 
 namespace Weatherly.App;
 
 /// <summary>
-/// Test bench of the overlay spike: switches for the overlay and the screenshot exclusion, the
-/// monitor list and the self-checks. It is replaced by the tray flyout and the settings window
+/// Test bench of milestones M1 and M2: switches for the overlay, the screenshot exclusion and the
+/// surface debug layer, the monitor list and the self-checks. It is replaced by the tray flyout and the settings window
 /// in later milestones. The window owns the overlay host and disposes it when it closes.
 /// </summary>
 public sealed partial class MainWindow : Window
@@ -38,7 +40,9 @@ public sealed partial class MainWindow : Window
         HeadingText.Text = $"{AppInfo.Name} {AppInfo.DisplayVersion}";
         OverlaySwitch.IsOn = options.Enabled;
         CaptureSwitch.IsOn = options.ExcludeFromCapture;
-        OverlaySwitch.IsEnabled = CaptureSwitch.IsEnabled = startError is null;
+        SurfacesSwitch.IsOn = options.ShowSurfaces;
+        PatternSwitch.IsOn = options.Content == OverlayContent.TestPattern;
+        OverlaySwitch.IsEnabled = PatternSwitch.IsEnabled = CaptureSwitch.IsEnabled = SurfacesSwitch.IsEnabled = startError is null;
         _initialized = true;
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
@@ -70,7 +74,9 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        Diagnostics = StartupDiagnostics.Evaluate(status, _options, error);
+        // The app window is the reference for the tracking checks: its true position comes from DWM directly.
+        nint handle = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        Diagnostics = StartupDiagnostics.Evaluate(status, _options, error, handle, WindowGeometry.GetVisibleBounds(handle));
         MonitorLines = status is null ? [] : StartupDiagnostics.DescribeMonitors(status);
 
         DiagnosticsList.ItemsSource = Diagnostics;
@@ -90,6 +96,8 @@ public sealed partial class MainWindow : Window
         {
             Enabled = OverlaySwitch.IsOn,
             ExcludeFromCapture = CaptureSwitch.IsOn,
+            ShowSurfaces = SurfacesSwitch.IsOn,
+            Content = PatternSwitch.IsOn ? OverlayContent.TestPattern : OverlayContent.None,
         };
 
         try

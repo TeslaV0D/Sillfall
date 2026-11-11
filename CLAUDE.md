@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M1 (Overlay-Spike)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M2 (Fenster-Tracking und Oberflächen)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -46,6 +46,10 @@ Overlay-Aufbau (Details in ADR-0003): `OverlayHost` (Platform) besitzt einen eig
 Message-Loop und ein Fenster pro Monitor. Gezeichnet wird über den Vertrag `IOverlayRenderer`
 (Core), den `CompositionOverlayRenderer` (Render) mit D3D11 und DirectComposition erfüllt.
 
+Fenster-Tracking (Details in ADR-0004): Auf demselben Thread erzeugt `WindowEnumerator` (Platform)
+Snapshots der Fenster, `SurfaceExtractor` (Core) berechnet daraus die sichtbaren Kanten und
+`WindowMotionTracker` (Core) die Ereignisse (bewegt, geschüttelt, verschwunden …).
+
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.
 
@@ -80,11 +84,12 @@ Hinweise:
   statt des Pfads als Positionsargument.
 - Die WinUI-App baut nur unter Windows, weil der XAML-Compiler eine Windows-Exe ist. Unter Linux
   ist der Windows-CI-Job die Prüfung dafür.
-- `tools/ci/smoke-test.ps1` startet die App zweimal mit `--smoke-test=<Datei>`. Die App zeigt ihr
-  Fenster und die Overlays, prüft sich selbst (`OverlayDiagnostics`) und schreibt das Ergebnis in die
-  Datei. Das Skript fotografiert währenddessen den Desktop und prüft, ob das Testmuster wirklich zu
-  sehen ist (bzw. mit `--exclude-from-capture` nicht). Neue Schichten tragen sich in
-  `StartupDiagnostics` ein.
+- `tools/ci/smoke-test.ps1` startet die App dreimal mit `--smoke-test=<Datei>`. Die App zeigt ihr
+  Fenster und die Overlays, prüft sich selbst (`OverlayDiagnostics`, `TrackingDiagnostics`),
+  verschiebt ihr Fenster einmal und schreibt das Ergebnis in die Datei. Das Skript fotografiert
+  währenddessen den Desktop und prüft Pixel: Testmuster sichtbar, mit `--exclude-from-capture`
+  unsichtbar, und mit `--show-surfaces --no-test-pattern` liegen die Debug-Linien genau am
+  App-Fenster. Neue Schichten tragen sich in `StartupDiagnostics` ein.
 - Shader liegen in `src/Weatherly.Render/Shaders/` (`Name.vs.hlsl`, `Name.ps.hlsl`) und werden beim
   Build unter Windows mit `fxc` kompiliert und eingebettet (`Shaders.targets`). Unter Linux wird das
   übersprungen: Render kompiliert, kann aber nicht zeichnen.

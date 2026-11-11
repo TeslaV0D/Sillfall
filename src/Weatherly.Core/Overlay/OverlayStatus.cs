@@ -1,5 +1,7 @@
+using Weatherly.Core.Desktop;
 using Weatherly.Core.Displays;
 using Weatherly.Core.Geometry;
+using Weatherly.Core.Surfaces;
 
 namespace Weatherly.Core.Overlay;
 
@@ -45,4 +47,17 @@ public sealed record OverlayStatus(
     IReadOnlyList<OverlayWindowStatus> Overlays,
     string? AdapterName,
     bool OverlayHasFocus,
-    string? LastError);
+    string? LastError)
+{
+    /// <summary>Tracked application windows, topmost first.</summary>
+    public IReadOnlyList<TrackedWindow> Windows { get; init; } = [];
+
+    /// <summary>Visible surfaces computed from <see cref="Windows"/>.</summary>
+    public IReadOnlyList<SurfaceSegment> Surfaces { get; init; } = [];
+
+    /// <summary>Number of window snapshots that differed from the previous one.</summary>
+    public long WindowUpdates { get; init; }
+
+    /// <summary>Window events seen so far, per kind.</summary>
+    public IReadOnlyDictionary<WindowEventKind, long> WindowEvents { get; init; } = new Dictionary<WindowEventKind, long>();
+}

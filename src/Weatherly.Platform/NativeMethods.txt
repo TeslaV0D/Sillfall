@@ -1,6 +1,7 @@
 // Win32 APIs that CsWin32 generates P/Invokes for. One name per line, kept sorted.
 // Privacy invariant: GetWindowText* must never appear here (enforced by PrivacyInvariantTests).
 AreDpiAwarenessContextsEqual
+CHILDID_SELF
 CreateWindowEx
 DefWindowProc
 DestroyWindow
@@ -9,7 +10,19 @@ DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 DwmGetWindowAttribute
 DWMWINDOWATTRIBUTE
 EnumDisplayMonitors
+EnumWindows
+EVENT_OBJECT_CLOAKED
+EVENT_OBJECT_DESTROY
+EVENT_OBJECT_HIDE
+EVENT_OBJECT_LOCATIONCHANGE
+EVENT_OBJECT_REORDER
+EVENT_OBJECT_SHOW
+EVENT_OBJECT_UNCLOAKED
 EVENT_SYSTEM_FOREGROUND
+EVENT_SYSTEM_MINIMIZEEND
+EVENT_SYSTEM_MINIMIZESTART
+EVENT_SYSTEM_MOVESIZEEND
+EVENT_SYSTEM_MOVESIZESTART
 GetClassName
 GetDpiForMonitor
 GetForegroundWindow
@@ -23,10 +36,13 @@ GetWindowLong
 GetWindowRect
 HTTRANSPARENT
 HWND_TOPMOST
+IsIconic
 IsWindowVisible
+IsZoomed
 KillTimer
 MA_NOACTIVATE
 MONITORINFOEXW
+OBJECT_IDENTIFIER
 PostMessage
 PostQuitMessage
 RegisterClassEx

@@ -25,13 +25,21 @@
                 <TextBlock x:Name="HeadingText" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock
                     Style="{StaticResource BodyTextBlockStyle}"
-                    Text="Overlay spike (milestone M1). Every monitor gets a transparent, click-through overlay that shows a calibration pattern: a magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp and a half-transparent black block. There are no weather effects yet."
+                    Text="Milestones M1 and M2. Every monitor gets a transparent, click-through overlay. It can show a calibration pattern (magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp, a half-transparent black block) and the surfaces the weather will interact with: window top edges in green, window sides in orange, the floor above the taskbar in blue. There are no weather effects yet."
                     TextWrapping="Wrap" />
 
                 <StackPanel Spacing="4">
                     <ToggleSwitch
                         x:Name="OverlaySwitch"
-                        Header="Overlay with calibration pattern"
+                        Header="Overlay"
+                        Toggled="OnOptionToggled" />
+                    <ToggleSwitch
+                        x:Name="PatternSwitch"
+                        Header="Show the calibration pattern"
+                        Toggled="OnOptionToggled" />
+                    <ToggleSwitch
+                        x:Name="SurfacesSwitch"
+                        Header="Show detected surfaces (debug layer)"
                         Toggled="OnOptionToggled" />
                     <ToggleSwitch
                         x:Name="CaptureSwitch"

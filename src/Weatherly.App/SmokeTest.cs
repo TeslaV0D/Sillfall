@@ -12,27 +12,38 @@ namespace Weatherly.App;
 /// <list type="bullet">
 /// <item><c>--smoke-hold=&lt;ms&gt;</c> keeps the app on screen after the report is written, so a script can take a screenshot.</item>
 /// <item><c>--exclude-from-capture</c> starts with the overlay hidden from screenshots.</item>
+/// <item><c>--show-surfaces</c> starts with the surface debug layer on.</item>
+/// <item><c>--no-test-pattern</c> starts without the calibration pattern.</item>
 /// </list>
+/// In smoke test mode the app also moves its own window once and checks that the tracking follows.
 /// </summary>
 internal sealed class SmokeTest
 {
     private const string ReportSwitch = "--smoke-test=";
     private const string HoldSwitch = "--smoke-hold=";
     private const string ExcludeSwitch = "--exclude-from-capture";
+    private const string SurfacesSwitch = "--show-surfaces";
+    private const string NoPatternSwitch = "--no-test-pattern";
 
     private readonly string _reportPath;
 
-    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture)
+    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern)
     {
         _reportPath = reportPath;
         Hold = hold;
         ExcludeFromCapture = excludeFromCapture;
+        ShowSurfaces = showSurfaces;
+        TestPattern = testPattern;
     }
 
     /// <summary>How long the app stays on screen after the report was written.</summary>
     public TimeSpan Hold { get; }
 
     public bool ExcludeFromCapture { get; }
+
+    public bool ShowSurfaces { get; }
+
+    public bool TestPattern { get; }
 
     /// <summary>Returns the smoke test when the switch is present, otherwise <see langword="null"/>.</summary>
     public static SmokeTest? FromCommandLine(IReadOnlyList<string> args)
@@ -50,7 +61,9 @@ internal sealed class SmokeTest
         return new SmokeTest(
             Path.GetFullPath(report),
             hold,
-            args.Contains(ExcludeSwitch, StringComparer.OrdinalIgnoreCase));
+            args.Contains(ExcludeSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(SurfacesSwitch, StringComparer.OrdinalIgnoreCase),
+            !args.Contains(NoPatternSwitch, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Writes the report. Returns the exit code: 0 when every check passed, otherwise 1.</summary>

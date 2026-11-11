@@ -1,8 +1,12 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using Weatherly.Core.Desktop;
 using Weatherly.Core.Displays;
 using Weatherly.Core.Overlay;
+using Weatherly.Core.Surfaces;
+using Weatherly.Platform.Desktop;
 using Weatherly.Platform.Displays;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -20,6 +24,11 @@ namespace Weatherly.Platform.Overlay;
 /// thread-safe: they hand their work to the overlay thread and wait for the result.
 /// </para>
 /// <para>
+/// The host also tracks the application windows (event-driven through out-of-context WinEvent hooks,
+/// with a 10 Hz poll as fallback), coalesces changes to at most one snapshot per frame and computes
+/// the visible surfaces from them.
+/// </para>
+/// <para>
 /// The host follows the monitor setup. When a monitor is plugged in, removed, moved, resized or
 /// rescaled, the affected overlays are rebuilt (see <see cref="OverlayLayoutPlanner"/>).
 /// </para>
@@ -29,6 +38,17 @@ public sealed class OverlayHost : IDisposable
     private const uint CommandMessage = PInvoke.WM_APP + 1;
     private const uint StopMessage = PInvoke.WM_APP + 2;
     private const nuint RefreshTimerId = 1;
+    private const nuint TrackingTimerId = 2;
+    private const nuint PollTimerId = 3;
+
+    /// <summary>Window events are coalesced: at most one snapshot per frame (60 Hz).</summary>
+    private const uint TrackingDelayMilliseconds = 16;
+
+    /// <summary>Fallback for changes that raise no event (PLAN.md, section 3.2: 10 Hz).</summary>
+    private const uint PollIntervalMilliseconds = 100;
+
+    /// <summary>Class name prefix of all overlay windows. The window tracker skips windows with it.</summary>
+    private const string OverlayClassPrefix = "Weatherly.Overlay.";
 
     /// <summary>
     /// Display changes arrive as a burst of messages (one per window and per changed property).
@@ -45,8 +65,8 @@ public sealed class OverlayHost : IDisposable
     private readonly IOverlayRenderer _renderer;
     private readonly Thread _thread;
     private readonly WNDPROC _windowProcedure;
-    private readonly WINEVENTPROC _foregroundChanged;
-    private readonly string _windowClass = $"Weatherly.Overlay.{Guid.NewGuid():N}";
+    private readonly WINEVENTPROC _winEventCallback;
+    private readonly string _windowClass = $"{OverlayClassPrefix}{Guid.NewGuid():N}";
     private readonly ConcurrentQueue<Command> _commands = new();
     private readonly ManualResetEventSlim _startCompleted = new();
     private readonly Dictionary<string, OverlayWindow> _overlays = new(StringComparer.OrdinalIgnoreCase);
@@ -57,10 +77,22 @@ public sealed class OverlayHost : IDisposable
 
     // Only touched on the overlay thread.
     private HINSTANCE _module;
-    private HWINEVENTHOOK _foregroundHook;
+    private readonly List<HWINEVENTHOOK> _hooks = [];
     private OverlayOptions _options;
     private IReadOnlyList<MonitorInfo> _monitors = [];
     private string? _lastError;
+
+    // Window tracking, only touched on the overlay thread. All buffers are reused.
+    private readonly WindowEnumerator _enumerator = new(OverlayClassPrefix);
+    private readonly WindowSnapshot _windows = new();
+    private readonly WindowSnapshot _capture = new();
+    private readonly SurfaceExtractor _extractor = new();
+    private readonly SurfaceSet _surfaces = new();
+    private readonly WindowMotionTracker _motion = new();
+    private readonly List<WindowEvent> _windowEvents = [];
+    private readonly Dictionary<WindowEventKind, long> _windowEventCounts = [];
+    private long _windowUpdates;
+    private bool _trackingPending;
 
     /// <summary>Creates the host. It takes ownership of <paramref name="renderer"/> and disposes it on the overlay thread.</summary>
     public OverlayHost(IOverlayRenderer renderer, OverlayOptions options)
@@ -71,7 +103,7 @@ public sealed class OverlayHost : IDisposable
         _renderer = renderer;
         _options = options;
         _windowProcedure = WindowProcedure;
-        _foregroundChanged = OnForegroundChanged;
+        _winEventCallback = OnWinEvent;
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -200,7 +232,7 @@ public sealed class OverlayHost : IDisposable
             _module = GetModule();
             RegisterWindowClass();
             _controlWindow = CreateControlWindow();
-            _foregroundHook = HookForegroundChanges();
+            HookWindowEvents();
             RefreshOverlays();
         }
 #pragma warning disable CA1031 // Rethrown on the thread that called Start.
@@ -243,11 +275,12 @@ public sealed class OverlayHost : IDisposable
             _overlays.Clear();
             _renderer.Dispose();
 
-            if (!_foregroundHook.IsNull)
+            foreach (HWINEVENTHOOK hook in _hooks)
             {
-                PInvoke.UnhookWinEvent(_foregroundHook);
-                _foregroundHook = HWINEVENTHOOK.Null;
+                PInvoke.UnhookWinEvent(hook);
             }
+
+            _hooks.Clear();
 
             if (_controlWindow != 0)
             {
@@ -312,6 +345,16 @@ public sealed class OverlayHost : IDisposable
                     LayoutChanged?.Invoke(this, EventArgs.Empty);
                     return new LRESULT(0);
 
+                case PInvoke.WM_TIMER when isControlWindow && wParam.Value == TrackingTimerId:
+                    PInvoke.KillTimer(window, TrackingTimerId);
+                    _trackingPending = false;
+                    UpdateWindows(force: false);
+                    return new LRESULT(0);
+
+                case PInvoke.WM_TIMER when isControlWindow && wParam.Value == PollTimerId:
+                    UpdateWindows(force: false);
+                    return new LRESULT(0);
+
                 case CommandMessage when isControlWindow:
                     RunCommands();
                     return new LRESULT(0);
@@ -332,31 +375,65 @@ public sealed class OverlayHost : IDisposable
     }
 
     /// <summary>
-    /// Every time another window comes to the foreground, the overlays go back to the top of the
-    /// topmost band. Out-of-context hook: Windows calls back on this thread through the message loop,
-    /// nothing is injected into other processes.
+    /// Subscribes to the window events that change the geometry the effects see. Out-of-context hooks:
+    /// Windows posts the events to this thread through its message loop, nothing is injected into other
+    /// processes. Narrow event ranges keep unrelated events (name, value, selection changes) away.
     /// </summary>
-    private HWINEVENTHOOK HookForegroundChanges()
+    private void HookWindowEvents()
     {
-        HWINEVENTHOOK hook = PInvoke.SetWinEventHook(
-            PInvoke.EVENT_SYSTEM_FOREGROUND,
-            PInvoke.EVENT_SYSTEM_FOREGROUND,
-            HMODULE.Null,
-            _foregroundChanged,
-            0,
-            0,
-            PInvoke.WINEVENT_OUTOFCONTEXT);
+        (uint First, uint Last)[] ranges =
+        [
+            (PInvoke.EVENT_SYSTEM_FOREGROUND, PInvoke.EVENT_SYSTEM_FOREGROUND),
+            (PInvoke.EVENT_SYSTEM_MOVESIZESTART, PInvoke.EVENT_SYSTEM_MOVESIZEEND),
+            (PInvoke.EVENT_SYSTEM_MINIMIZESTART, PInvoke.EVENT_SYSTEM_MINIMIZEEND),
+            (PInvoke.EVENT_OBJECT_DESTROY, PInvoke.EVENT_OBJECT_REORDER),
+            (PInvoke.EVENT_OBJECT_LOCATIONCHANGE, PInvoke.EVENT_OBJECT_LOCATIONCHANGE),
+            (PInvoke.EVENT_OBJECT_CLOAKED, PInvoke.EVENT_OBJECT_UNCLOAKED),
+        ];
 
-        return hook.IsNull ? throw new Win32ErrorException("SetWinEventHook") : hook;
+        foreach ((uint first, uint last) in ranges)
+        {
+            HWINEVENTHOOK hook = PInvoke.SetWinEventHook(first, last, HMODULE.Null, _winEventCallback, 0, 0, PInvoke.WINEVENT_OUTOFCONTEXT);
+            if (hook.IsNull)
+            {
+                throw new Win32ErrorException("SetWinEventHook");
+            }
+
+            _hooks.Add(hook);
+        }
     }
 
-    private void OnForegroundChanged(HWINEVENTHOOK hook, uint winEvent, HWND window, int objectId, int childId, uint eventThread, uint eventTime)
+    private void OnWinEvent(HWINEVENTHOOK hook, uint winEvent, HWND window, int objectId, int childId, uint eventThread, uint eventTime)
     {
         try
         {
-            foreach (OverlayWindow overlay in _overlays.Values)
+            switch (winEvent)
             {
-                overlay.BringToTop();
+                // Another window came to the front: the overlays go back to the top of the topmost band.
+                case PInvoke.EVENT_SYSTEM_FOREGROUND:
+                    foreach (OverlayWindow overlay in _overlays.Values)
+                    {
+                        overlay.BringToTop();
+                    }
+
+                    ScheduleWindowUpdate();
+                    break;
+
+                case PInvoke.EVENT_SYSTEM_MOVESIZESTART:
+                case PInvoke.EVENT_SYSTEM_MOVESIZEEND:
+                case PInvoke.EVENT_SYSTEM_MINIMIZESTART:
+                case PInvoke.EVENT_SYSTEM_MINIMIZEEND:
+                    ScheduleWindowUpdate();
+                    break;
+
+                // Object events also fire for carets, cursors and child controls. Only whole windows matter.
+                default:
+                    if (objectId == (int)OBJECT_IDENTIFIER.OBJID_WINDOW && childId == (int)PInvoke.CHILDID_SELF)
+                    {
+                        ScheduleWindowUpdate();
+                    }
+
+                    break;
             }
         }
 #pragma warning disable CA1031 // An exception must not escape into the native callback.
@@ -364,6 +441,71 @@ public sealed class OverlayHost : IDisposable
 #pragma warning restore CA1031
         {
             _lastError = exception.Message;
+        }
+    }
+
+    /// <summary>Coalesces bursts of window events (a drag raises hundreds) into one update per frame.</summary>
+    private void ScheduleWindowUpdate()
+    {
+        if (!_trackingPending && _controlWindow != 0 && _overlays.Count > 0)
+        {
+            _trackingPending = true;
+            PInvoke.SetTimer((HWND)_controlWindow, TrackingTimerId, TrackingDelayMilliseconds, null);
+        }
+    }
+
+    /// <summary>
+    /// Takes a new window snapshot. When it differs from the last one (or <paramref name="force"/> is set),
+    /// derives window events, recomputes the surfaces and, if the debug layer is on, presents them.
+    /// </summary>
+    private void UpdateWindows(bool force)
+    {
+        if (_overlays.Count == 0)
+        {
+            return;
+        }
+
+        _enumerator.Capture(_capture, Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
+        if (!force && _capture.HasSameWindows(_windows))
+        {
+            return;
+        }
+
+        _windows.CopyFrom(_capture);
+        _windowUpdates++;
+
+        _windowEvents.Clear();
+        _motion.Update(_windows, _windowEvents);
+        foreach (WindowEvent windowEvent in _windowEvents)
+        {
+            System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(_windowEventCounts, windowEvent.Kind, out _)++;
+        }
+
+        _extractor.Extract(_windows, _monitors, _surfaces);
+
+        if (!force && _options.ShowSurfaces)
+        {
+            PresentAll();
+        }
+    }
+
+    /// <summary>The poll runs only while overlays exist, so switched-off overlays cost nothing.</summary>
+    private void UpdatePolling()
+    {
+        if (_controlWindow == 0)
+        {
+            return;
+        }
+
+        if (_overlays.Count > 0)
+        {
+            PInvoke.SetTimer((HWND)_controlWindow, PollTimerId, PollIntervalMilliseconds, null);
+        }
+        else
+        {
+            PInvoke.KillTimer((HWND)_controlWindow, PollTimerId);
+            PInvoke.KillTimer((HWND)_controlWindow, TrackingTimerId);
+            _trackingPending = false;
         }
     }
 
@@ -411,11 +553,14 @@ public sealed class OverlayHost : IDisposable
             CreateOverlay(monitor);
         }
 
+        UpdatePolling();
         if (_overlays.Count == 0)
         {
             return;
         }
 
+        // Monitors or options changed: surfaces are recomputed for the new layout before presenting.
+        UpdateWindows(force: true);
         PresentAll();
 
         foreach (OverlayWindow overlay in _overlays.Values)
@@ -454,7 +599,8 @@ public sealed class OverlayHost : IDisposable
     {
         for (int attempt = 0; attempt < DeviceRecoveryAttempts; attempt++)
         {
-            if (_overlays.Values.All(overlay => overlay.Present(_options.Content) == PresentResult.Presented))
+            SurfaceSet? surfaces = _options.ShowSurfaces ? _surfaces : null;
+            if (_overlays.Values.All(overlay => overlay.Present(_options.Content, surfaces) == PresentResult.Presented))
             {
                 return;
             }
@@ -513,7 +659,13 @@ public sealed class OverlayHost : IDisposable
             overlays,
             _overlays.Count > 0 ? _renderer.AdapterName : null,
             _overlays.Values.Any(overlay => overlay.Handle == foreground),
-            _lastError);
+            _lastError)
+        {
+            Windows = [.. _windows.Windows],
+            Surfaces = [.. _surfaces.Segments],
+            WindowUpdates = _windowUpdates,
+            WindowEvents = new Dictionary<WindowEventKind, long>(_windowEventCounts),
+        };
     }
 
     private static unsafe HINSTANCE GetModule()
