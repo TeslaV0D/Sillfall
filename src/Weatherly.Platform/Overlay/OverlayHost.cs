@@ -95,6 +95,10 @@ public sealed class OverlayHost : IDisposable
     private readonly Lock _systemStateLock = new();
     private Core.Settings.SystemState _systemState = Core.Settings.SystemState.Default;
     private uint _foregroundProcessId;
+
+    /// <summary>Process id to "the app rules hide the weather over its windows", filled as processes appear.</summary>
+    private readonly Dictionary<uint, bool> _weatherHiddenByProcess = [];
+    private HashSet<string> _hiddenProcessNames = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastError;
 
     // Window tracking, only touched on the overlay thread. All buffers are reused.
@@ -564,6 +568,23 @@ public sealed class OverlayHost : IDisposable
         }
     }
 
+    /// <summary>Whether the app rules hide the weather over the windows of a process. Each process is looked up once.</summary>
+    private bool IsWeatherHidden(uint processId)
+    {
+        if (processId == 0)
+        {
+            return false;
+        }
+
+        if (!_weatherHiddenByProcess.TryGetValue(processId, out bool hidden))
+        {
+            hidden = Shell.SystemInfo.ProcessName(processId) is { } name && _hiddenProcessNames.Contains(name);
+            _weatherHiddenByProcess[processId] = hidden;
+        }
+
+        return hidden;
+    }
+
     /// <summary>
     /// Updates the parts of the system state that may have changed and raises <see cref="SystemStateChanged"/> when
     /// something did. The foreground app's name is looked up only when its process changed.
@@ -735,6 +756,11 @@ public sealed class OverlayHost : IDisposable
         _engine.Context.Wind.Base = _options.Wind;
         _engine.Context.Wind.Gustiness = Math.Clamp(_options.Gustiness, 0f, 1f);
         _grass.RainIntensity = _options.Rain.ClampedIntensity;
+
+        // App rules may have changed: processes are looked up again as they show up.
+        _hiddenProcessNames = new HashSet<string>(_options.HideOverProcesses, StringComparer.OrdinalIgnoreCase);
+        _weatherHiddenByProcess.Clear();
+        _enumerator.IsWeatherHidden = _hiddenProcessNames.Count == 0 ? null : IsWeatherHidden;
 
         // Monitors switched off in the settings get no overlay at all.
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? [.. _monitors.Where(monitor => _options.Display(monitor.DeviceName).Enabled)] : [];

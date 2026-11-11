@@ -138,6 +138,19 @@ public class FogAndSunTests
     }
 
     [Fact]
+    public void WindowsHiddenByAnAppRule_BecomeCutouts_WithOrWithoutAtmosphere()
+    {
+        var hidden = new TrackedWindow(8, PixelRect.FromSize(100, 100, 300, 200), WindowTraits.WeatherHidden);
+        (SimulationEngine engine, _, _) = Create();
+        engine.SetWindows(WindowSnapshot.Of(0.1, s_window, hidden));
+
+        Run(engine, seconds: 0.1);
+
+        engine.Frame.Cutouts.ToArray().Should().Equal(hidden.Bounds);
+        engine.Frame.HasAtmosphere.Should().BeFalse();
+    }
+
+    [Fact]
     public void RenderFrame_KeepsAtMostMaxOccluders()
     {
         var frame = new RenderFrame();

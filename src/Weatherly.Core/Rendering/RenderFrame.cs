@@ -13,6 +13,8 @@ public sealed class RenderFrame
     public const int MaxOccluders = 64;
 
     private readonly PixelRect[] _occluders = new PixelRect[MaxOccluders];
+    private readonly PixelRect[] _cutouts = new PixelRect[MaxOccluders];
+    private int _cutoutCount;
     private Sprite[] _sprites;
     private int _count;
     private int _occluderCount;
@@ -54,13 +56,26 @@ public sealed class RenderFrame
     /// </summary>
     public ReadOnlySpan<PixelRect> Occluders => _occluders.AsSpan(0, _occluderCount);
 
+    /// <summary>Windows the user's app rules keep clear of weather: nothing is drawn over them.</summary>
+    public ReadOnlySpan<PixelRect> Cutouts => _cutouts.AsSpan(0, _cutoutCount);
+
     public void Clear()
     {
         _count = 0;
         _occluderCount = 0;
+        _cutoutCount = 0;
         Surfaces = null;
         Fog = default;
         Sun = default;
+    }
+
+    /// <summary>Adds a window to keep clear of weather. Beyond <see cref="MaxOccluders"/> they are ignored.</summary>
+    public void AddCutout(PixelRect rect)
+    {
+        if (_cutoutCount < MaxOccluders && !rect.IsEmpty)
+        {
+            _cutouts[_cutoutCount++] = rect;
+        }
     }
 
     /// <summary>Adds a window rectangle. Beyond <see cref="MaxOccluders"/> (the lowest windows) they are ignored.</summary>

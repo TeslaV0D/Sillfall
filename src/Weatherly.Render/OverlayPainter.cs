@@ -35,6 +35,7 @@ public sealed class OverlayPainter : IDisposable
     private readonly ID3D11BlendState _premultipliedOver;
     private readonly SpriteBatch _sprites;
     private readonly AtmospherePass _atmosphere;
+    private readonly ID3D11BlendState _replace;
 
     public OverlayPainter(ID3D11Device device)
     {
@@ -49,6 +50,7 @@ public sealed class OverlayPainter : IDisposable
         _premultipliedOver = device.CreateBlendState(RectBatch.PremultipliedOver());
         _sprites = new SpriteBatch(device, _premultipliedOver);
         _atmosphere = new AtmospherePass(device, _fullscreenTriangle, _premultipliedOver, _rasterizerState);
+        _replace = device.CreateBlendState(BlendDescription.Opaque);
     }
 
     /// <summary>Number of sprites drawn by the last <see cref="Paint"/>.</summary>
@@ -78,6 +80,12 @@ public sealed class OverlayPainter : IDisposable
             }
 
             _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites, frame.Opacity);
+
+            // App rules: windows of some processes stay clear. Their rectangles are cut back to transparent.
+            if (scene.Cutouts.Length > 0)
+            {
+                CutOut(target, size, MonitorArea(frame, size), scene.Cutouts);
+            }
         }
 
         // The debug layer goes on top of everything, so it stays readable while effects run.
@@ -92,6 +100,7 @@ public sealed class OverlayPainter : IDisposable
 
     public void Dispose()
     {
+        _replace.Dispose();
         _atmosphere.Dispose();
         _sprites.Dispose();
         _premultipliedOver.Dispose();
@@ -125,6 +134,17 @@ public sealed class OverlayPainter : IDisposable
         }
 
         _rects.Draw(target, size);
+    }
+
+    private void CutOut(ID3D11RenderTargetView target, PixelSize size, PixelRect area, ReadOnlySpan<PixelRect> cutouts)
+    {
+        _rects.Clear();
+        foreach (PixelRect cutout in cutouts)
+        {
+            _rects.Add(SurfaceGeometry.ToMonitor(cutout, area), Vector4.Zero);
+        }
+
+        _rects.Draw(target, size, _replace);
     }
 
     /// <summary>The desktop area the target shows. Without monitor bounds the target sits at the desktop origin.</summary>

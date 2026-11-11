@@ -121,6 +121,35 @@ public sealed class SpriteTests : IDisposable
     }
 
     [Fact]
+    public void Cutouts_LeaveTheirWindowsClearOfWeather()
+    {
+        var frame = new RenderFrame();
+        frame.Add(new Sprite(new Vector2(32, 24), new Vector2(30, 20), 0f, SpriteShape.Rectangle, new Vector4(0.5f, 0.5f, 0.5f, 0.5f)));
+        frame.AddCutout(PixelRect.FromSize(10, 10, 20, 20));
+        using var target = new OffscreenTarget(_device, s_size);
+
+        _painter.Paint(target.View, s_size, new OverlayFrame(OverlayContent.None, 1f, PixelRect.FromSize(0, 0, 64, 48), Scene: frame));
+
+        var image = new RenderedImage(target.ReadPixels(), s_size);
+        image.SavePreview("sprite-cutout");
+        image[15, 15].Should().Be(Pixel.Transparent, "inside the cut-out window");
+        image[40, 15].Alpha.Should().BeInRange(127, 128, "the weather around it stays");
+    }
+
+    [Fact]
+    public void Opacity_ScalesTheWeatherOfAMonitor()
+    {
+        var frame = new RenderFrame();
+        frame.Add(new Sprite(new Vector2(32, 24), new Vector2(30, 20), 0f, SpriteShape.Rectangle, new Vector4(1f, 1f, 1f, 1f)));
+        using var target = new OffscreenTarget(_device, s_size);
+
+        _painter.Paint(target.View, s_size, new OverlayFrame(OverlayContent.None, 1f, PixelRect.FromSize(0, 0, 64, 48), Scene: frame, Opacity: 0.4f));
+
+        var image = new RenderedImage(target.ReadPixels(), s_size);
+        ((int)image[32, 24].Alpha).Should().BeInRange(101, 103);
+    }
+
+    [Fact]
     public void HalfTransparentSprites_BlendOverEachOther()
     {
         RenderedImage image = Render(

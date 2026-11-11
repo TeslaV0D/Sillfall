@@ -33,6 +33,11 @@ internal sealed class WindowEnumerator
     private readonly WNDENUMPROC _callback;
     private WindowSnapshot? _target;
 
+    /// <summary>
+    /// Decides per process id whether the user's app rules hide the weather over its windows. <see langword="null"/>: none do.
+    /// </summary>
+    public Func<uint, bool>? IsWeatherHidden { get; set; }
+
     /// <param name="ownOverlayClassPrefix">Class name prefix of our own overlay windows, which are never tracked.</param>
     public WindowEnumerator(string ownOverlayClassPrefix)
     {
@@ -108,6 +113,11 @@ internal sealed class WindowEnumerator
         if ((exStyle & WINDOW_EX_STYLE.WS_EX_TOPMOST) != 0)
         {
             traits |= WindowTraits.Topmost;
+        }
+
+        if (IsWeatherHidden is { } isHidden && isHidden(Shell.SystemInfo.ProcessIdOf((nint)window.Value)))
+        {
+            traits |= WindowTraits.WeatherHidden;
         }
 
         tracked = new TrackedWindow((nint)window.Value, bounds, traits);

@@ -59,7 +59,10 @@ internal sealed class RectBatch : IDisposable
     }
 
     /// <summary>Draws all collected rectangles onto <paramref name="target"/>.</summary>
-    public void Draw(ID3D11RenderTargetView target, PixelSize size)
+    public void Draw(ID3D11RenderTargetView target, PixelSize size) => Draw(target, size, null);
+
+    /// <summary>Draws the rectangles with <paramref name="blendState"/> instead of premultiplied blending (null: the default).</summary>
+    public void Draw(ID3D11RenderTargetView target, PixelSize size, ID3D11BlendState? blendState)
     {
         if (_count == 0)
         {
@@ -82,7 +85,7 @@ internal sealed class RectBatch : IDisposable
         _context.UpdateSubresource(in constants, _constants);
 
         _context.OMSetRenderTargets(target);
-        _context.OMSetBlendState(_blendState);
+        _context.OMSetBlendState(blendState ?? _blendState);
         _context.RSSetViewport(0f, 0f, size.Width, size.Height);
         _context.RSSetState(_rasterizerState);
         _context.IASetPrimitiveTopology(PrimitiveTopology.TriangleStrip);

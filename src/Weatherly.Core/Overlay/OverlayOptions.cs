@@ -60,6 +60,9 @@ public sealed record OverlayOptions
     /// <summary>Highest frame rate of the render loop; 0 for the display's own rate (PLAN.md: Smoothness).</summary>
     public int FrameRateCap { get; init; }
 
+    /// <summary>Executable names ("obs64.exe") whose windows are kept clear of weather (app rules).</summary>
+    public IReadOnlyList<string> HideOverProcesses { get; init; } = [];
+
     /// <summary>Per-monitor settings by device name. Monitors without an entry show the weather at full opacity.</summary>
     public IReadOnlyList<Settings.DisplayConfig> Displays { get; init; } = [];
 

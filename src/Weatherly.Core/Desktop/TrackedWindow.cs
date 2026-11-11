@@ -13,6 +13,9 @@ public enum WindowTraits
 
     /// <summary>The window is in the topmost band (always on top).</summary>
     Topmost = 2,
+
+    /// <summary>An app rule of the user hides the weather over this window (PLAN.md, section 7: Apps page).</summary>
+    WeatherHidden = 4,
 }
 
 /// <summary>

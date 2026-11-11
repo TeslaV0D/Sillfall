@@ -158,6 +158,15 @@ public sealed class SimulationEngine
             effect.Emit(_frame, Context);
         }
 
+        // App rules: no weather over the windows of some processes.
+        foreach (TrackedWindow window in Context.Windows.Windows)
+        {
+            if ((window.Traits & WindowTraits.WeatherHidden) != 0)
+            {
+                _frame.AddCutout(window.Bounds);
+            }
+        }
+
         // Fog and sunlight need to know where the windows are.
         if (_frame.HasAtmosphere)
         {
