@@ -149,6 +149,8 @@ function Get-SurfaceProbes($Bitmap, $Window) {
 # Calibration drops resting on the app window's top edge: a 6 px disc centered 3 px above the frame,
 # in the color (217, 235, 255) at 90 % alpha. The band above the green debug line holds their upper half.
 # Whatever lies behind (terminal, desktop) shines through by 10 %, hence the generous tolerance.
+# The app moves its window to the top of the screen for this run: a window with a higher top edge
+# (on the runner: the terminal) would otherwise catch every drop first.
 function Get-DropProbes($Bitmap, $Window) {
     $restingDrop = @(205, 220, 240)
     return @(

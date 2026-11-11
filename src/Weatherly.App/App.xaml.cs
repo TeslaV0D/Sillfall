@@ -117,7 +117,10 @@ public partial class App : Application
             string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
             if (smokeTest.TestDrops)
             {
-                // Drops on again for the screenshot, with time to land on the app window.
+                // Drops on again for the screenshot, with time to land on the app window. The window goes to
+                // the top of the screen first: any window with a higher top edge would catch the drops before.
+                RectInt32 workArea = DisplayArea.Primary.WorkArea;
+                window.AppWindow.Move(new PointInt32(window.AppWindow.Position.X, workArea.Y + 12));
                 window.SetTestDrops(1f);
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
