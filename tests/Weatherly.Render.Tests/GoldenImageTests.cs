@@ -56,7 +56,10 @@ public sealed class GoldenImageTests : IDisposable
                 return;
             }
 
-            ImageDifference difference = ImageComparison.Compare(golden.PremultipliedBgra, actual, ChannelTolerance);
+            // Compare what a PNG can hold: the light of the sun is additive (colour above alpha in premultiplied
+            // terms), which straight-alpha PNGs clip. The golden went through that, so the frame does too.
+            byte[] storable = PngDecoder.Decode(PngEncoder.Encode(actual, size.Width, size.Height)).PremultipliedBgra;
+            ImageDifference difference = ImageComparison.Compare(golden.PremultipliedBgra, storable, ChannelTolerance);
             if (difference.DifferingFraction > MaxDifferingFraction)
             {
                 failures.Add($"{name}: {difference.DifferingPixels} of {difference.TotalPixels} pixels differ (max channel difference {difference.MaxChannelDifference}).");

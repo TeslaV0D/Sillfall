@@ -60,6 +60,11 @@ Additives Licht über einem transparenten Overlay ist nur bedingt möglich. Das 
 warmer Farbanteil mit wenig Deckung ausgegeben (Alpha = 30 % der Helligkeit). Ob das auf echten Desktops
 warm statt milchig wirkt, entscheidet die Abnahme.
 
+Das Licht ist damit „überhell“ im Sinne von premultiplied Alpha (Farbe größer als Alpha), also additiv.
+PNGs speichern straight Alpha und schneiden solche Werte ab. Die Vorschauen zeigen das Licht deshalb etwas
+schwächer, als es auf dem Bildschirm ist. Der Golden-Vergleich schickt das gerenderte Bild durch denselben
+PNG-Weg, bevor er vergleicht.
+
 ### 5. Ohne Wetter-Sync
 
 Das Tag-Nacht-Verhalten (`is_day`) und die Stärke nach Bewölkung kommen mit M10. Die Seite der Sonne ist
