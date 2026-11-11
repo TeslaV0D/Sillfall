@@ -93,14 +93,14 @@ internal sealed class OverlayWindow : IDisposable
         _surface = null;
     }
 
-    public PresentResult Present(OverlayContent content, SurfaceSet? surfaces)
+    public PresentResult Present(OverlayContent content, SurfaceSet? surfaces, Core.Rendering.RenderFrame? scene)
     {
         if (_surface is null)
         {
             return PresentResult.DeviceLost;
         }
 
-        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor, Monitor.Bounds, surfaces));
+        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor, Monitor.Bounds, surfaces, scene));
         if (result == PresentResult.Presented)
         {
             PresentedFrames++;

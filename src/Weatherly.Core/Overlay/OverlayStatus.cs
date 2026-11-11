@@ -60,4 +60,25 @@ public sealed record OverlayStatus(
 
     /// <summary>Window events seen so far, per kind.</summary>
     public IReadOnlyDictionary<WindowEventKind, long> WindowEvents { get; init; } = new Dictionary<WindowEventKind, long>();
+
+    /// <summary>Whether the render loop is running. False while no effect is active.</summary>
+    public bool IsAnimating { get; init; }
+
+    /// <summary>Frames rendered by the render loop since start.</summary>
+    public long AnimationFrames { get; init; }
+
+    /// <summary>Average time between animation frames over the last second, in milliseconds. 0 when idle.</summary>
+    public double FrameMilliseconds { get; init; }
+
+    /// <summary>Average CPU time of simulating and building one frame over the last second, in milliseconds.</summary>
+    public double SimulationMilliseconds { get; init; }
+
+    /// <summary>Sprites in the last frame.</summary>
+    public int Sprites { get; init; }
+
+    /// <summary>Frames of the render loop whose allocations were measured (frames after the warm-up).</summary>
+    public long MeasuredLoopFrames { get; init; }
+
+    /// <summary>Bytes allocated by the overlay thread during the measured loop frames. Must be 0.</summary>
+    public long LoopAllocatedBytes { get; init; }
 }

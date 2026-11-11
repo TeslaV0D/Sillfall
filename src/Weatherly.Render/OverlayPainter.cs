@@ -32,6 +32,8 @@ public sealed class OverlayPainter : IDisposable
     private readonly ID3D11Buffer _testPatternConstants;
     private readonly ID3D11RasterizerState _rasterizerState;
     private readonly RectBatch _rects;
+    private readonly ID3D11BlendState _premultipliedOver;
+    private readonly SpriteBatch _sprites;
 
     public OverlayPainter(ID3D11Device device)
     {
@@ -43,7 +45,12 @@ public sealed class OverlayPainter : IDisposable
         _testPatternConstants = device.CreateBuffer((uint)Marshal.SizeOf<TestPatternConstants>(), BindFlags.ConstantBuffer);
         _rasterizerState = device.CreateRasterizerState(RasterizerDescription.CullNone);
         _rects = new RectBatch(device);
+        _premultipliedOver = device.CreateBlendState(RectBatch.PremultipliedOver());
+        _sprites = new SpriteBatch(device, _premultipliedOver);
     }
+
+    /// <summary>Number of sprites drawn by the last <see cref="Paint"/>.</summary>
+    public int LastSpriteCount => _sprites.LastDrawnCount;
 
     /// <summary>Thickness of the debug lines in pixels for a monitor with the given DPI scale.</summary>
     public static int DebugLineThickness(float scaleFactor) => 2 * TestPatternLayout.Create(new PixelSize(1, 1), scaleFactor).Unit;
@@ -60,6 +67,12 @@ public sealed class OverlayPainter : IDisposable
             DrawTestPattern(target, size, frame.ScaleFactor);
         }
 
+        if (frame.Scene is { } scene)
+        {
+            _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites);
+        }
+
+        // The debug layer goes on top of everything, so it stays readable while effects run.
         if (frame.Surfaces is { } surfaces)
         {
             DrawSurfaces(target, size, frame, surfaces);
@@ -71,6 +84,8 @@ public sealed class OverlayPainter : IDisposable
 
     public void Dispose()
     {
+        _sprites.Dispose();
+        _premultipliedOver.Dispose();
         _rects.Dispose();
         _rasterizerState.Dispose();
         _testPatternConstants.Dispose();
@@ -102,6 +117,10 @@ public sealed class OverlayPainter : IDisposable
 
         _rects.Draw(target, size);
     }
+
+    /// <summary>The desktop area the target shows. Without monitor bounds the target sits at the desktop origin.</summary>
+    private static PixelRect MonitorArea(in OverlayFrame frame, PixelSize size) =>
+        frame.MonitorBounds.IsEmpty ? PixelRect.FromSize(0, 0, size.Width, size.Height) : frame.MonitorBounds;
 
     private static Vector4 Opaque(byte red, byte green, byte blue) => new(red / 255f, green / 255f, blue / 255f, 1f);
 

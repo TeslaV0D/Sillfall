@@ -13,6 +13,8 @@
       3. Surface debug layer only (--show-surfaces --no-test-pattern): the green line must sit on
          the two rows directly above the app window, the orange lines on the two columns left and
          right of it. The window position comes from DWM, independently of the app's tracker.
+      4. Calibration drops (--test-drops --no-test-pattern): the app checks the render loop itself
+         (frame rate, zero allocations, stop when idle). The screenshot is kept for visual review.
 
     Screenshots are saved to -PreviewDirectory so CI can upload them for review. Usable locally:
 
@@ -219,5 +221,6 @@ if (-not $script:exe) {
 Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true }
 Invoke-SmokeRun -Name 'excluded-from-capture' -ExtraArguments @('--exclude-from-capture') -Probes { param($b, $w) Get-PatternProbes $b $w $false }
 Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-SurfaceProbes $b $w }
+Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--no-test-pattern') -Probes { param($b, $w) @() }
 
 Write-Host 'Smoke test passed.'

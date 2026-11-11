@@ -42,7 +42,8 @@ public sealed partial class MainWindow : Window
         CaptureSwitch.IsOn = options.ExcludeFromCapture;
         SurfacesSwitch.IsOn = options.ShowSurfaces;
         PatternSwitch.IsOn = options.Content == OverlayContent.TestPattern;
-        OverlaySwitch.IsEnabled = PatternSwitch.IsEnabled = CaptureSwitch.IsEnabled = SurfacesSwitch.IsEnabled = startError is null;
+        DropsSwitch.IsOn = options.TestDrops > 0f;
+        OverlaySwitch.IsEnabled = PatternSwitch.IsEnabled = CaptureSwitch.IsEnabled = SurfacesSwitch.IsEnabled = DropsSwitch.IsEnabled = startError is null;
         _initialized = true;
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
@@ -98,6 +99,7 @@ public sealed partial class MainWindow : Window
             ExcludeFromCapture = CaptureSwitch.IsOn,
             ShowSurfaces = SurfacesSwitch.IsOn,
             Content = PatternSwitch.IsOn ? OverlayContent.TestPattern : OverlayContent.None,
+            TestDrops = DropsSwitch.IsOn ? 1f : 0f,
         };
 
         try
@@ -113,6 +115,13 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnCheckAgainClicked(object sender, RoutedEventArgs e) => Refresh();
+
+    /// <summary>Switches the calibration drops on or off, like the switch does.</summary>
+    public void SetTestDrops(float intensity)
+    {
+        // Setting the switch raises Toggled, which applies the new options.
+        DropsSwitch.IsOn = intensity > 0f;
+    }
 
     private void OnClosed(object sender, WindowEventArgs args)
     {

@@ -14,6 +14,8 @@ namespace Weatherly.App;
 /// <item><c>--exclude-from-capture</c> starts with the overlay hidden from screenshots.</item>
 /// <item><c>--show-surfaces</c> starts with the surface debug layer on.</item>
 /// <item><c>--no-test-pattern</c> starts without the calibration pattern.</item>
+/// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
+/// zero allocations, and that it stops once the drops are switched off.</item>
 /// </list>
 /// In smoke test mode the app also moves its own window once and checks that the tracking follows.
 /// </summary>
@@ -24,11 +26,13 @@ internal sealed class SmokeTest
     private const string ExcludeSwitch = "--exclude-from-capture";
     private const string SurfacesSwitch = "--show-surfaces";
     private const string NoPatternSwitch = "--no-test-pattern";
+    private const string DropsSwitch = "--test-drops";
 
     private readonly string _reportPath;
 
-    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern)
+    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern, bool testDrops)
     {
+        TestDrops = testDrops;
         _reportPath = reportPath;
         Hold = hold;
         ExcludeFromCapture = excludeFromCapture;
@@ -44,6 +48,8 @@ internal sealed class SmokeTest
     public bool ShowSurfaces { get; }
 
     public bool TestPattern { get; }
+
+    public bool TestDrops { get; }
 
     /// <summary>Returns the smoke test when the switch is present, otherwise <see langword="null"/>.</summary>
     public static SmokeTest? FromCommandLine(IReadOnlyList<string> args)
@@ -63,7 +69,8 @@ internal sealed class SmokeTest
             hold,
             args.Contains(ExcludeSwitch, StringComparer.OrdinalIgnoreCase),
             args.Contains(SurfacesSwitch, StringComparer.OrdinalIgnoreCase),
-            !args.Contains(NoPatternSwitch, StringComparer.OrdinalIgnoreCase));
+            !args.Contains(NoPatternSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(DropsSwitch, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Writes the report. Returns the exit code: 0 when every check passed, otherwise 1.</summary>

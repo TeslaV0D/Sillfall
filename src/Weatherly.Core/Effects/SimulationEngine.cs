@@ -20,6 +20,7 @@ public sealed class SimulationEngine
     private readonly WindowMotionTracker _motion = new();
     private readonly List<WindowEvent> _events = [];
     private readonly RenderFrame _frame = new();
+    private readonly Dictionary<WindowEventKind, long> _eventCounts = [];
     private bool _surfacesDirty = true;
 
     public SimulationEngine(uint seed = 1, double step = FixedStepClock.DefaultStep)
@@ -57,6 +58,12 @@ public sealed class SimulationEngine
     /// <summary>Number of window events delivered to the effects so far.</summary>
     public long WindowEventCount { get; private set; }
 
+    /// <summary>Window events delivered so far, per kind.</summary>
+    public IReadOnlyDictionary<WindowEventKind, long> WindowEventCounts => _eventCounts;
+
+    /// <summary>Number of window snapshots that differed from the previous one.</summary>
+    public long WindowUpdates { get; private set; }
+
     public void Add(IEffectSystem effect)
     {
         ArgumentNullException.ThrowIfNull(effect);
@@ -76,14 +83,20 @@ public sealed class SimulationEngine
 
     /// <summary>
     /// Updates the windows. Derives window events (moved, shaken, …) and hands them to the effects.
-    /// Cheap when nothing changed: an identical snapshot is ignored.
+    /// Cheap when nothing changed: an identical snapshot is ignored. Returns whether anything changed.
     /// </summary>
-    public void SetWindows(WindowSnapshot windows)
+    public bool SetWindows(WindowSnapshot windows)
     {
         ArgumentNullException.ThrowIfNull(windows);
-        if (windows.HasSameWindows(Context.Windows) && !_surfacesDirty)
+        bool sameWindows = windows.HasSameWindows(Context.Windows);
+        if (sameWindows && !_surfacesDirty)
         {
-            return;
+            return false;
+        }
+
+        if (!sameWindows)
+        {
+            WindowUpdates++;
         }
 
         Context.Windows.CopyFrom(windows);
@@ -94,12 +107,18 @@ public sealed class SimulationEngine
         foreach (WindowEvent windowEvent in _events)
         {
             WindowEventCount++;
+            System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(_eventCounts, windowEvent.Kind, out _)++;
             foreach (IEffectSystem effect in _effects)
             {
                 effect.OnWindowEvent(windowEvent, Context);
             }
         }
+
+        return true;
     }
+
+    /// <summary>Forgets the real time that passed while the loop was stopped, so it is not simulated later.</summary>
+    public void ResumeAfterIdle() => Clock.Reset();
 
     public void SetCursor(Vector2 position, Vector2 velocity)
     {

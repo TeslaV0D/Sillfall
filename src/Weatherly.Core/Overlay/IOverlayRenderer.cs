@@ -1,4 +1,5 @@
 using Weatherly.Core.Geometry;
+using Weatherly.Core.Rendering;
 using Weatherly.Core.Surfaces;
 
 namespace Weatherly.Core.Overlay;
@@ -10,11 +11,13 @@ namespace Weatherly.Core.Overlay;
 /// Where the overlay sits on the virtual desktop. Desktop coordinates are drawn relative to its top left corner.
 /// </param>
 /// <param name="Surfaces">Surfaces for the debug layer, or <see langword="null"/> to draw none.</param>
+/// <param name="Scene">Sprites of the effects, or <see langword="null"/> while no effect runs.</param>
 public readonly record struct OverlayFrame(
     OverlayContent Content,
     float ScaleFactor,
     PixelRect MonitorBounds = default,
-    SurfaceSet? Surfaces = null);
+    SurfaceSet? Surfaces = null,
+    RenderFrame? Scene = null);
 
 /// <summary>Outcome of presenting a frame.</summary>
 public enum PresentResult

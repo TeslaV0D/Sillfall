@@ -104,7 +104,8 @@ internal sealed class RectBatch : IDisposable
         _vertexShader.Dispose();
     }
 
-    private static BlendDescription PremultipliedOver()
+    /// <summary>"Source over destination" for premultiplied colors.</summary>
+    public static BlendDescription PremultipliedOver()
     {
         var description = new BlendDescription();
         description.RenderTarget[0] = new RenderTargetBlendDescription

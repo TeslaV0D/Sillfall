@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
@@ -24,6 +25,10 @@ public partial class App : Application
     private static readonly PointInt32 s_moveOffset = new(40, 30);
     private static readonly TimeSpan s_moveObservation = TimeSpan.FromMilliseconds(500);
 
+    /// <summary>How long the render loop is observed, and how long it may take to stop once the drops are off.</summary>
+    private static readonly TimeSpan s_animationObservation = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan s_idleStopTimeout = TimeSpan.FromSeconds(8);
+
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
 
@@ -42,6 +47,7 @@ public partial class App : Application
             Content = (_smokeTest?.TestPattern ?? true) ? OverlayContent.TestPattern : OverlayContent.None,
             ExcludeFromCapture = _smokeTest?.ExcludeFromCapture ?? false,
             ShowSurfaces = _smokeTest?.ShowSurfaces ?? false,
+            TestDrops = (_smokeTest?.TestDrops ?? false) ? 1f : 0f,
         };
 
         // The window owns the overlay from here on and disposes it when it closes.
@@ -79,6 +85,13 @@ public partial class App : Application
         try
         {
             await Task.Delay(s_settleTime);
+            var diagnostics = new List<DiagnosticResult> { new("Window", true, "Activated") };
+
+            if (smokeTest.TestDrops)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -89,7 +102,6 @@ public partial class App : Application
             await Task.Delay(s_moveObservation);
             OverlayStatus? moved = window.Refresh();
 
-            var diagnostics = new List<DiagnosticResult> { new("Window", true, "Activated") };
             diagnostics.AddRange(window.Diagnostics);
             if (before is not null && after is not null)
             {
@@ -103,6 +115,13 @@ public partial class App : Application
 
             // The script measures the window itself (DWM) and needs the handle: the process owns overlay windows too.
             string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
+            if (smokeTest.TestDrops)
+            {
+                // Drops on again for the screenshot, with time to land on the app window.
+                window.SetTestDrops(1f);
+                await Task.Delay(TimeSpan.FromSeconds(2.5));
+            }
+
             int exitCode = smokeTest.WriteReport(diagnostics, [.. window.MonitorLines, handleLine]);
 
             // Stays on screen so the calling script can take its screenshot of the desktop.
@@ -118,6 +137,40 @@ public partial class App : Application
         {
             smokeTest.Fail(exception);
         }
+    }
+
+    /// <summary>
+    /// With the drops running: the loop renders steadily and allocates nothing. Then the drops are
+    /// switched off, and the loop has to stop by itself once the last drop has faded.
+    /// </summary>
+    private static async Task<List<DiagnosticResult>> CheckRenderLoopAsync(MainWindow window)
+    {
+        var results = new List<DiagnosticResult>();
+        OverlayStatus? start = window.Refresh();
+        await Task.Delay(s_animationObservation);
+        OverlayStatus? running = window.Refresh();
+        if (start is null || running is null)
+        {
+            results.Add(new DiagnosticResult("Animation", false, "Overlay not running"));
+            return results;
+        }
+
+        results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds));
+        results.Add(AnimationDiagnostics.EvaluateLoopAllocations(running));
+
+        window.SetTestDrops(0f);
+        var waited = Stopwatch.StartNew();
+        OverlayStatus? status = window.Refresh();
+        while (status is { IsAnimating: true } && waited.Elapsed < s_idleStopTimeout)
+        {
+            await Task.Delay(250);
+            status = window.Refresh();
+        }
+
+        results.Add(status is null
+            ? new DiagnosticResult("Idle stop", false, "Overlay not running")
+            : AnimationDiagnostics.EvaluateIdleStop(status, waited.Elapsed));
+        return results;
     }
 
     private static void CenterOnPrimaryMonitor(Window window)

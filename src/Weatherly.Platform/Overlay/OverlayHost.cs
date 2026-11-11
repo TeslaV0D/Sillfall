@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using Weatherly.Core.Desktop;
 using Weatherly.Core.Displays;
+using Weatherly.Core.Effects;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Surfaces;
 using Weatherly.Platform.Desktop;
@@ -27,6 +28,11 @@ namespace Weatherly.Platform.Overlay;
 /// The host also tracks the application windows (event-driven through out-of-context WinEvent hooks,
 /// with a 10 Hz poll as fallback), coalesces changes to at most one snapshot per frame and computes
 /// the visible surfaces from them.
+/// </para>
+/// <para>
+/// While an effect is active, the thread runs a render loop paced by the swap chains (one frame per
+/// display refresh at most). When no effect is active, the loop stops and the thread blocks in its
+/// message loop: no frames, no GPU work (PLAN.md, section 2).
 /// </para>
 /// <para>
 /// The host follows the monitor setup. When a monitor is plugged in, removed, moved, resized or
@@ -58,6 +64,12 @@ public sealed class OverlayHost : IDisposable
 
     private const int DeviceRecoveryAttempts = 3;
 
+    /// <summary>Frames after the start of the loop that are not measured for allocations (JIT, buffer growth).</summary>
+    private const int AllocationWarmUpFrames = 60;
+
+    /// <summary>Upper frame rate. Normally the swap chain paces the loop; this only guards against a busy loop.</summary>
+    private const double MinimumFrameSeconds = 1.0 / 240;
+
     private const int StateCreated = 0;
     private const int StateStarted = 1;
     private const int StateDisposed = 2;
@@ -84,15 +96,19 @@ public sealed class OverlayHost : IDisposable
 
     // Window tracking, only touched on the overlay thread. All buffers are reused.
     private readonly WindowEnumerator _enumerator = new(OverlayClassPrefix);
-    private readonly WindowSnapshot _windows = new();
     private readonly WindowSnapshot _capture = new();
-    private readonly SurfaceExtractor _extractor = new();
-    private readonly SurfaceSet _surfaces = new();
-    private readonly WindowMotionTracker _motion = new();
-    private readonly List<WindowEvent> _windowEvents = [];
-    private readonly Dictionary<WindowEventKind, long> _windowEventCounts = [];
-    private long _windowUpdates;
+    private readonly SimulationEngine _engine = new();
+    private readonly TestDropsEffect _testDrops = new();
     private bool _trackingPending;
+
+    // Render loop state and statistics, only touched on the overlay thread.
+    private bool _animating;
+    private long _lastFrameTimestamp;
+    private long _animationFrames;
+    private long _loopFramesSinceStart;
+    private long _measuredLoopFrames;
+    private long _loopAllocatedBytes;
+    private readonly FrameStatistics _frameStatistics = new();
 
     /// <summary>Creates the host. It takes ownership of <paramref name="renderer"/> and disposes it on the overlay thread.</summary>
     public OverlayHost(IOverlayRenderer renderer, OverlayOptions options)
@@ -104,6 +120,7 @@ public sealed class OverlayHost : IDisposable
         _options = options;
         _windowProcedure = WindowProcedure;
         _winEventCallback = OnWinEvent;
+        _engine.Add(_testDrops);
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -254,12 +271,97 @@ public sealed class OverlayHost : IDisposable
         Shutdown();
     }
 
-    private static void RunMessageLoop()
+    /// <summary>
+    /// Blocks in <c>GetMessage</c> while idle. While animating, drains the queue without blocking and
+    /// renders one frame per pass: the swap chains' frame latency wait inside Present paces the loop.
+    /// </summary>
+    private void RunMessageLoop()
     {
-        while (PInvoke.GetMessage(out MSG message, HWND.Null, 0, 0).Value > 0)
+        while (true)
         {
-            PInvoke.TranslateMessage(message);
-            PInvoke.DispatchMessage(message);
+            if (!_animating)
+            {
+                if (PInvoke.GetMessage(out MSG message, HWND.Null, 0, 0).Value <= 0)
+                {
+                    return;
+                }
+
+                PInvoke.TranslateMessage(message);
+                PInvoke.DispatchMessage(message);
+                continue;
+            }
+
+            while (PInvoke.PeekMessage(out MSG message, HWND.Null, 0, 0, PEEK_MESSAGE_REMOVE_TYPE.PM_REMOVE))
+            {
+                if (message.message == PInvoke.WM_QUIT)
+                {
+                    return;
+                }
+
+                PInvoke.TranslateMessage(message);
+                PInvoke.DispatchMessage(message);
+            }
+
+            if (_animating)
+            {
+                RenderAnimationFrame();
+            }
+        }
+    }
+
+    /// <summary>Starts or stops the render loop depending on whether any effect is active.</summary>
+    private void UpdateAnimation()
+    {
+        bool shouldAnimate = _overlays.Count > 0 && _engine.IsActive;
+        if (shouldAnimate && !_animating)
+        {
+            _animating = true;
+            _engine.ResumeAfterIdle();
+            _lastFrameTimestamp = Stopwatch.GetTimestamp();
+            _loopFramesSinceStart = 0;
+        }
+        else if (!shouldAnimate && _animating)
+        {
+            _animating = false;
+            _frameStatistics.Reset();
+
+            // One last frame without sprites, so the last drops do not stay frozen on screen.
+            _engine.Advance(0);
+            PresentAll();
+        }
+    }
+
+    private void RenderAnimationFrame()
+    {
+        long start = Stopwatch.GetTimestamp();
+        double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
+        if (elapsed < MinimumFrameSeconds)
+        {
+            Thread.Sleep(1);
+            return;
+        }
+
+        _lastFrameTimestamp = start;
+        bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
+        long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
+
+        _engine.Advance(elapsed);
+        long simulated = Stopwatch.GetTimestamp();
+        PresentAll();
+
+        if (measure)
+        {
+            _loopAllocatedBytes += GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+            _measuredLoopFrames++;
+        }
+
+        _loopFramesSinceStart++;
+        _animationFrames++;
+        _frameStatistics.Add(elapsed, (simulated - start) / (double)Stopwatch.Frequency);
+
+        if (!_engine.IsActive)
+        {
+            UpdateAnimation();
         }
     }
 
@@ -455,8 +557,9 @@ public sealed class OverlayHost : IDisposable
     }
 
     /// <summary>
-    /// Takes a new window snapshot. When it differs from the last one (or <paramref name="force"/> is set),
-    /// derives window events, recomputes the surfaces and, if the debug layer is on, presents them.
+    /// Takes a new window snapshot and hands it to the engine, which derives window events and
+    /// recomputes the surfaces when it changed. If nothing animates but the debug layer is on, the new
+    /// surfaces are presented right away; a running loop picks them up with its next frame.
     /// </summary>
     private void UpdateWindows(bool force)
     {
@@ -466,24 +569,9 @@ public sealed class OverlayHost : IDisposable
         }
 
         _enumerator.Capture(_capture, Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
-        if (!force && _capture.HasSameWindows(_windows))
-        {
-            return;
-        }
+        bool changed = _engine.SetWindows(_capture);
 
-        _windows.CopyFrom(_capture);
-        _windowUpdates++;
-
-        _windowEvents.Clear();
-        _motion.Update(_windows, _windowEvents);
-        foreach (WindowEvent windowEvent in _windowEvents)
-        {
-            System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrAddDefault(_windowEventCounts, windowEvent.Kind, out _)++;
-        }
-
-        _extractor.Extract(_windows, _monitors, _surfaces);
-
-        if (!force && _options.ShowSurfaces)
+        if (changed && !force && !_animating && _options.ShowSurfaces)
         {
             PresentAll();
         }
@@ -531,6 +619,8 @@ public sealed class OverlayHost : IDisposable
     {
         _lastError = null;
         _monitors = MonitorService.GetMonitors();
+        _engine.SetMonitors(_monitors);
+        _testDrops.Intensity = Math.Clamp(_options.TestDrops, 0f, 1f);
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);
@@ -556,11 +646,13 @@ public sealed class OverlayHost : IDisposable
         UpdatePolling();
         if (_overlays.Count == 0)
         {
+            UpdateAnimation();
             return;
         }
 
         // Monitors or options changed: surfaces are recomputed for the new layout before presenting.
         UpdateWindows(force: true);
+        _engine.Advance(0);
         PresentAll();
 
         foreach (OverlayWindow overlay in _overlays.Values)
@@ -570,6 +662,8 @@ public sealed class OverlayHost : IDisposable
             // Shown only after the first frame is presented, so a new overlay never flashes stale content.
             overlay.Show();
         }
+
+        UpdateAnimation();
     }
 
     private void CreateOverlay(MonitorInfo monitor)
@@ -597,10 +691,19 @@ public sealed class OverlayHost : IDisposable
     /// </summary>
     private void PresentAll()
     {
+        SurfaceSet? surfaces = _options.ShowSurfaces ? _engine.Context.Surfaces : null;
+        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 ? _engine.Frame : null;
+
         for (int attempt = 0; attempt < DeviceRecoveryAttempts; attempt++)
         {
-            SurfaceSet? surfaces = _options.ShowSurfaces ? _surfaces : null;
-            if (_overlays.Values.All(overlay => overlay.Present(_options.Content, surfaces) == PresentResult.Presented))
+            // A plain loop instead of LINQ: this runs every frame and must not allocate.
+            bool allPresented = true;
+            foreach (OverlayWindow overlay in _overlays.Values)
+            {
+                allPresented &= overlay.Present(_options.Content, surfaces, scene) == PresentResult.Presented;
+            }
+
+            if (allPresented)
             {
                 return;
             }
@@ -661,10 +764,17 @@ public sealed class OverlayHost : IDisposable
             _overlays.Values.Any(overlay => overlay.Handle == foreground),
             _lastError)
         {
-            Windows = [.. _windows.Windows],
-            Surfaces = [.. _surfaces.Segments],
-            WindowUpdates = _windowUpdates,
-            WindowEvents = new Dictionary<WindowEventKind, long>(_windowEventCounts),
+            Windows = [.. _engine.Context.Windows.Windows],
+            Surfaces = [.. _engine.Context.Surfaces.Segments],
+            WindowUpdates = _engine.WindowUpdates,
+            WindowEvents = new Dictionary<WindowEventKind, long>(_engine.WindowEventCounts),
+            IsAnimating = _animating,
+            AnimationFrames = _animationFrames,
+            FrameMilliseconds = _frameStatistics.AverageFrameSeconds * 1000,
+            SimulationMilliseconds = _frameStatistics.AverageSimulationSeconds * 1000,
+            Sprites = _engine.Frame.SpriteCount,
+            MeasuredLoopFrames = _measuredLoopFrames,
+            LoopAllocatedBytes = _loopAllocatedBytes,
         };
     }
 
@@ -728,4 +838,48 @@ public sealed class OverlayHost : IDisposable
     }
 
     private sealed record Command(Action Run, Action Cancel);
+
+    /// <summary>Rolling averages over roughly the last second of frames. Fixed-size ring: no allocation.</summary>
+    private sealed class FrameStatistics
+    {
+        private const int Capacity = 120;
+        private readonly double[] _frames = new double[Capacity];
+        private readonly double[] _simulation = new double[Capacity];
+        private int _count;
+        private int _next;
+
+        public double AverageFrameSeconds => Average(_frames);
+
+        public double AverageSimulationSeconds => Average(_simulation);
+
+        public void Add(double frameSeconds, double simulationSeconds)
+        {
+            _frames[_next] = frameSeconds;
+            _simulation[_next] = simulationSeconds;
+            _next = (_next + 1) % Capacity;
+            _count = Math.Min(_count + 1, Capacity);
+        }
+
+        public void Reset()
+        {
+            _count = 0;
+            _next = 0;
+        }
+
+        private double Average(double[] values)
+        {
+            if (_count == 0)
+            {
+                return 0;
+            }
+
+            double sum = 0;
+            for (int i = 0; i < _count; i++)
+            {
+                sum += values[i];
+            }
+
+            return sum / _count;
+        }
+    }
 }

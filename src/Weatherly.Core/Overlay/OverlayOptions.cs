@@ -23,4 +23,7 @@ public sealed record OverlayOptions
 
     /// <summary>Debug layer: draws every detected surface (top edges, sides, floors) as a colored line.</summary>
     public bool ShowSurfaces { get; init; }
+
+    /// <summary>Intensity of the calibration drops (milestone M3), 0 to 1. 0 switches them off.</summary>
+    public float TestDrops { get; init; }
 }
