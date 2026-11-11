@@ -158,14 +158,25 @@ public class SimulationEngineTests
         (SimulationEngine engine, TestDropsEffect drops) = Create();
         drops.Intensity = 1f;
         WindowSnapshot windows = WindowSnapshot.Of(0, s_window);
-        Run(engine, seconds: 5);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int frame = 0; frame < 600; frame++)
+        // The warm-up runs exactly the measured loop body: first uses (JIT, lazily created
+        // equality comparers, buffer growth) must happen before the measurement, whatever ran before.
+        void Frame(int frame)
         {
             engine.SetWindows(windows);
             engine.SetCursor(new Vector2(frame, frame), Vector2.Zero);
             engine.Advance(FrameTime);
+        }
+
+        for (int frame = 0; frame < 300; frame++)
+        {
+            Frame(frame);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int frame = 0; frame < 600; frame++)
+        {
+            Frame(frame);
         }
 
         (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);

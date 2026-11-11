@@ -90,16 +90,22 @@ public class SurfaceIndexTests
         }
 
         var index = new SurfaceIndex();
-        index.Build(surfaces);
-
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int round = 0; round < 50; round++)
+        void Round()
         {
             index.Build(surfaces);
             for (int x = 0; x < 2000; x += 7)
             {
                 index.TryFindLanding(x, 0, 2000, out _);
             }
+        }
+
+        // Warm-up runs the measured body, so first-use costs land before the measurement.
+        Round();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int round = 0; round < 50; round++)
+        {
+            Round();
         }
 
         (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);

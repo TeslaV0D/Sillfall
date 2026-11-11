@@ -38,7 +38,8 @@ public sealed class SpriteTests : IDisposable
 
         image[32, 24].Should().Be(new Pixel(0, 0, 255, 255));
         image[32, 15].Should().Be(Pixel.Transparent, "9 px from the center is outside a 6 px disc");
-        image[38, 24].Alpha.Should().BeInRange(1, 254, "the edge is antialiased");
+        // Pixel centers lie on half pixels: (36.5, 28.5) is 6.36 px from the center, inside the one-pixel soft edge.
+        image[36, 28].Alpha.Should().BeInRange(1, 254, "the edge is antialiased");
     }
 
     [Fact]

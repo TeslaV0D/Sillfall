@@ -45,6 +45,9 @@ public sealed class OffscreenTarget : IDisposable
 
     public ID3D11RenderTargetView View { get; }
 
+    /// <summary>The texture behind <see cref="View"/>, for example to draw into it with Direct2D.</summary>
+    public ID3D11Texture2D Texture => _texture;
+
     /// <summary>
     /// Copies the rendered image to memory: 4 bytes per pixel in the order blue, green, red, alpha
     /// (premultiplied), rows from top to bottom without padding.

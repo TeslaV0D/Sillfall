@@ -13,8 +13,12 @@
       3. Surface debug layer only (--show-surfaces --no-test-pattern): the green line must sit on
          the two rows directly above the app window, the orange lines on the two columns left and
          right of it. The window position comes from DWM, independently of the app's tracker.
-      4. Calibration drops (--test-drops --no-test-pattern): the app checks the render loop itself
-         (frame rate, zero allocations, stop when idle). The screenshot is kept for visual review.
+      4. Calibration drops with the debug layer (--test-drops --show-surfaces --no-test-pattern): the app
+         checks the render loop itself (frame rate, zero allocations, stop when idle). The screenshot must
+         show drops resting on the app window's top edge and the debug lines beside it, both drawn by
+         animated frames. (The debug lines are drawn after the sprites, so falling drops never cover them.)
+
+    Then the sandbox runs for a few seconds and its window is captured for review.
 
     Screenshots are saved to -PreviewDirectory so CI can upload them for review. Usable locally:
 
@@ -83,6 +87,24 @@ function New-Probe([string] $Name, [int] $X, [int] $Y, [int[]] $Color, [bool] $M
     return @{ Name = $Name; X = $X; Y = $Y; R = $Color[0]; G = $Color[1]; B = $Color[2]; Match = $Match }
 }
 
+# An area probe expects at least MinimumCount pixels close to a color inside a rectangle.
+function New-AreaProbe([string] $Name, [int] $Left, [int] $Top, [int] $Right, [int] $Bottom, [int[]] $Color, [int] $Tolerance, [int] $MinimumCount) {
+    return @{ Name = $Name; Area = $true; Left = $Left; Top = $Top; Right = $Right; Bottom = $Bottom; R = $Color[0]; G = $Color[1]; B = $Color[2]; Tolerance = $Tolerance; MinimumCount = $MinimumCount }
+}
+
+function Measure-Area($Bitmap, $Probe) {
+    $count = 0
+    for ($y = [Math]::Max($Probe.Top, 0); $y -lt [Math]::Min($Probe.Bottom, $Bitmap.Height); $y++) {
+        for ($x = [Math]::Max($Probe.Left, 0); $x -lt [Math]::Min($Probe.Right, $Bitmap.Width); $x++) {
+            $pixel = $Bitmap.GetPixel($x, $y)
+            if ([Math]::Abs($pixel.R - $Probe.R) -le $Probe.Tolerance -and [Math]::Abs($pixel.G - $Probe.G) -le $Probe.Tolerance -and [Math]::Abs($pixel.B - $Probe.B) -le $Probe.Tolerance) {
+                $count++
+            }
+        }
+    }
+    return $count
+}
+
 $magenta = @(255, 0, 255)
 $red = @(255, 0, 0)
 $green = @(0, 255, 0)
@@ -124,6 +146,16 @@ function Get-SurfaceProbes($Bitmap, $Window) {
     )
 }
 
+# Calibration drops resting on the app window's top edge: a 6 px disc centered 3 px above the frame,
+# in the color (217, 235, 255) at 90 % alpha. The band above the green debug line holds their upper half.
+# Whatever lies behind (terminal, desktop) shines through by 10 %, hence the generous tolerance.
+function Get-DropProbes($Bitmap, $Window) {
+    $restingDrop = @(205, 220, 240)
+    return @(
+        (New-AreaProbe 'resting drops on the app window' $Window.Left ($Window.Top - 6) $Window.Right ($Window.Top - 2) $restingDrop 30 20)
+    ) + (Get-SurfaceProbes $Bitmap $Window | Where-Object { $_.Name -like 'left band*' -or $_.Name -like 'right band*' })
+}
+
 function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [scriptblock] $Probes) {
     $report = Join-Path $ReportDirectory "smoke-report-$Name.txt"
     $screenshot = Join-Path $PreviewDirectory "desktop-$Name.png"
@@ -155,6 +187,16 @@ function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [scriptbloc
         $bitmap = Get-PrimaryScreenshot $screenshot
         try {
             foreach ($probe in & $Probes $bitmap $window) {
+                if ($probe.Area) {
+                    $count = Measure-Area $bitmap $probe
+                    $verdict = if ($count -ge $probe.MinimumCount) { 'ok' } else { 'FAILED' }
+                    Write-Host "  probe $verdict`: $($probe.Name): $count pixel(s) near rgb($($probe.R), $($probe.G), $($probe.B)), at least $($probe.MinimumCount) expected"
+                    if ($count -lt $probe.MinimumCount) {
+                        $screenFailures += "$($probe.Name): $count pixel(s), at least $($probe.MinimumCount) expected"
+                    }
+                    continue
+                }
+
                 $found = Test-Color $bitmap $probe.X $probe.Y $probe.R $probe.G $probe.B
                 $actual = $bitmap.GetPixel($probe.X, $probe.Y)
                 $verdict = if ($found -eq $probe.Match) { 'ok' } else { 'FAILED' }
@@ -200,6 +242,31 @@ function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [scriptbloc
     Write-Host "Smoke run '$Name' passed."
 }
 
+# The sandbox renders fake windows and drops into a normal window. It exits by itself and returns 0 if it rendered.
+function Invoke-SandboxRun {
+    Write-Host '=== Sandbox ==='
+    $sandbox = Get-ChildItem (Join-Path $repoRoot 'tools' 'Weatherly.Sandbox' 'bin') -Recurse -Filter 'Weatherly.Sandbox.exe' |
+        Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" } |
+        Select-Object -First 1
+    if (-not $sandbox) {
+        throw 'Weatherly.Sandbox.exe was not found. Build the solution first.'
+    }
+
+    $process = Start-Process -FilePath $sandbox.FullName -ArgumentList '--exit-after=6' -PassThru
+    $null = $process.Handle
+    Start-Sleep -Seconds 4
+    $bitmap = Get-PrimaryScreenshot (Join-Path $PreviewDirectory 'desktop-sandbox.png')
+    $bitmap.Dispose()
+    if (-not $process.WaitForExit(30000)) {
+        $process.Kill()
+        throw 'The sandbox did not exit.'
+    }
+    if ($process.ExitCode -ne 0) {
+        throw "The sandbox failed with exit code $($process.ExitCode)."
+    }
+    Write-Host 'Sandbox passed.'
+}
+
 New-Item -ItemType Directory -Force -Path $ReportDirectory, $PreviewDirectory | Out-Null
 
 # Unpackaged, so the exe starts without MSIX deployment and brings the Windows App SDK runtime along.
@@ -221,6 +288,7 @@ if (-not $script:exe) {
 Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true }
 Invoke-SmokeRun -Name 'excluded-from-capture' -ExtraArguments @('--exclude-from-capture') -Probes { param($b, $w) Get-PatternProbes $b $w $false }
 Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-SurfaceProbes $b $w }
-Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--no-test-pattern') -Probes { param($b, $w) @() }
+Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-DropProbes $b $w }
+Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'
