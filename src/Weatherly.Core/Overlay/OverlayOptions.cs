@@ -38,4 +38,10 @@ public sealed record OverlayOptions
 
     /// <summary>Leaves (milestone M6).</summary>
     public Effects.EffectSettings Leaves { get; init; } = new();
+
+    /// <summary>Fog (milestone M7).</summary>
+    public Effects.EffectSettings Fog { get; init; } = new();
+
+    /// <summary>Sunlight (milestone M7).</summary>
+    public Effects.EffectSettings Sun { get; init; } = new();
 }

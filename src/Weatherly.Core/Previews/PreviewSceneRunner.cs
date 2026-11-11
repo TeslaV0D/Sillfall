@@ -40,6 +40,22 @@ public static class PreviewSceneRunner
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(scene.FrameRate);
 
         var engine = new SimulationEngine(scene.Seed);
+
+        // Sun and fog first: they lie behind everything (PLAN.md, section 4.7).
+        var sun = new Effects.Sun.SunEffect(seed: scene.Seed)
+        {
+            Settings = new EffectSettings { Intensity = scene.Effects.Sun },
+            Side = string.Equals(scene.Effects.SunSide, "left", StringComparison.OrdinalIgnoreCase) ? Effects.Sun.SunSide.Left : Effects.Sun.SunSide.Right,
+        };
+        var fog = new Effects.Fog.FogEffect(seed: scene.Seed) { Settings = new EffectSettings { Intensity = scene.Effects.Fog } };
+        if (scene.Effects.SkipFadeIn)
+        {
+            sun.SkipTransition();
+            fog.SkipTransition();
+        }
+
+        engine.Add(sun);
+        engine.Add(fog);
         var drops = new TestDropsEffect(seed: scene.Seed) { Intensity = scene.Effects.TestDrops };
         engine.Add(drops);
         engine.Add(new Effects.Rain.RainEffect(seed: scene.Seed)

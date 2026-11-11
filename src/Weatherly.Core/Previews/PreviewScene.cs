@@ -95,6 +95,20 @@ public sealed record PreviewEffects
 
     /// <summary>Leaves already lying on every window and the floor at the start, per 100 px.</summary>
     public float LeavesScatter { get; set; }
+
+    /// <summary>Fog intensity, 0 to 1.</summary>
+    public float Fog { get; set; }
+
+    /// <summary>Sunlight intensity, 0 to 1.</summary>
+    public float Sun { get; set; }
+
+    /// <summary>Upper corner the sun stands above: "right" (default) or "left".</summary>
+    public string SunSide { get; set; } = "right";
+
+    /// <summary>
+    /// Starts fog and sun at full strength instead of letting them fade in, so a capture at 0 s shows them.
+    /// </summary>
+    public bool SkipFadeIn { get; set; }
 }
 
 public sealed record PreviewWind

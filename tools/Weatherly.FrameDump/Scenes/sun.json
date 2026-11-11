@@ -1,0 +1,13 @@
+{
+  // Sunlight from the top right: rays between the windows, the windows cast long shadows towards the bottom
+  // left, a glow around the sun and dust in the light.
+  "name": "sun",
+  "seed": 42,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 380, "y": 120, "width": 200, "height": 150 },
+    { "id": 1, "x": 50, "y": 170, "width": 300, "height": 170 }
+  ],
+  "effects": { "sun": 1.0, "skipFadeIn": true },
+  "captures": [ 2.0 ]
+}

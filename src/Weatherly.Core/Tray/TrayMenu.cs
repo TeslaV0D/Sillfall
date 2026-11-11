@@ -8,6 +8,8 @@ namespace Weatherly.Core.Tray;
 /// <param name="SetRain">Sets the rain intensity, 0 to 1.</param>
 /// <param name="SetSnow">Sets the snow intensity, 0 to 1.</param>
 /// <param name="SetLeaves">Sets the leaf intensity, 0 to 1.</param>
+/// <param name="SetFog">Sets the fog intensity, 0 to 1.</param>
+/// <param name="SetSun">Sets the sunlight intensity, 0 to 1.</param>
 /// <param name="SetSound">Switches the weather sound on or off.</param>
 /// <param name="SetPaused">Pauses or resumes all effects.</param>
 /// <param name="Quit">Ends the app.</param>
@@ -16,6 +18,8 @@ public sealed record TrayCommands(
     Action<float> SetRain,
     Action<float> SetSnow,
     Action<float> SetLeaves,
+    Action<float> SetFog,
+    Action<float> SetSun,
     Action<bool> SetSound,
     Action<bool> SetPaused,
     Action Quit);
@@ -48,6 +52,8 @@ public static class TrayMenu
             EffectMenu("Rain", options.Rain.ClampedIntensity, commands.SetRain, paused),
             EffectMenu("Snow", options.Snow.ClampedIntensity, commands.SetSnow, paused),
             EffectMenu("Leaves", options.Leaves.ClampedIntensity, commands.SetLeaves, paused),
+            EffectMenu("Fog", options.Fog.ClampedIntensity, commands.SetFog, paused),
+            EffectMenu("Sun", options.Sun.ClampedIntensity, commands.SetSun, paused),
             new TrayMenuItem { Text = "Sound", IsChecked = soundOn, Invoke = () => commands.SetSound(!soundOn) },
             TrayMenuItem.Separator,
             new TrayMenuItem { Text = "Pause all effects", IsChecked = paused, Invoke = () => commands.SetPaused(!paused) },
@@ -79,6 +85,16 @@ public static class TrayMenu
         if (options.Leaves.ClampedIntensity > 0f)
         {
             parts.Add($"leaves {Percent(options.Leaves.ClampedIntensity)}");
+        }
+
+        if (options.Fog.ClampedIntensity > 0f)
+        {
+            parts.Add($"fog {Percent(options.Fog.ClampedIntensity)}");
+        }
+
+        if (options.Sun.ClampedIntensity > 0f)
+        {
+            parts.Add($"sun {Percent(options.Sun.ClampedIntensity)}");
         }
 
         return parts.Count == 0 ? $"{AppInfo.Name}: clear sky" : $"{AppInfo.Name}: {string.Join(", ", parts)}";

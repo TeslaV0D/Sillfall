@@ -102,6 +102,8 @@ public sealed class OverlayHost : IDisposable
     private readonly Core.Effects.Rain.RainEffect _rain = new();
     private readonly Core.Effects.Snow.SnowEffect _snow = new();
     private readonly Core.Effects.Leaves.LeafEffect _leaves = new();
+    private readonly Core.Effects.Fog.FogEffect _fog = new();
+    private readonly Core.Effects.Sun.SunEffect _sun = new();
     private readonly Core.Simulation.CursorMotion _cursor = new();
     private bool _trackingPending;
     private float _rainHitsPerSecond;
@@ -125,6 +127,9 @@ public sealed class OverlayHost : IDisposable
         _options = options;
         _windowProcedure = WindowProcedure;
         _winEventCallback = OnWinEvent;
+        // Draw order follows PLAN.md, section 4.7: sun and fog behind, then snow piles, leaves, snow, rain.
+        _engine.Add(_sun);
+        _engine.Add(_fog);
         _engine.Add(_testDrops);
         _engine.Add(_rain);
         _engine.Add(_snow);
@@ -646,6 +651,8 @@ public sealed class OverlayHost : IDisposable
         _snow.Settings = _options.Snow;
         _snow.RainIntensity = _options.Rain.ClampedIntensity;
         _leaves.Settings = _options.Leaves;
+        _fog.Settings = _options.Fog;
+        _sun.Settings = _options.Sun;
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);

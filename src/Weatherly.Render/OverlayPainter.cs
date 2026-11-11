@@ -34,6 +34,7 @@ public sealed class OverlayPainter : IDisposable
     private readonly RectBatch _rects;
     private readonly ID3D11BlendState _premultipliedOver;
     private readonly SpriteBatch _sprites;
+    private readonly AtmospherePass _atmosphere;
 
     public OverlayPainter(ID3D11Device device)
     {
@@ -47,6 +48,7 @@ public sealed class OverlayPainter : IDisposable
         _rects = new RectBatch(device);
         _premultipliedOver = device.CreateBlendState(RectBatch.PremultipliedOver());
         _sprites = new SpriteBatch(device, _premultipliedOver);
+        _atmosphere = new AtmospherePass(device, _fullscreenTriangle, _premultipliedOver, _rasterizerState);
     }
 
     /// <summary>Number of sprites drawn by the last <see cref="Paint"/>.</summary>
@@ -69,6 +71,12 @@ public sealed class OverlayPainter : IDisposable
 
         if (frame.Scene is { } scene)
         {
+            // Sun and fog lie behind everything else (PLAN.md, section 4.7).
+            if (scene.HasAtmosphere)
+            {
+                _atmosphere.Draw(target, size, MonitorArea(frame, size), scene);
+            }
+
             _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites);
         }
 
@@ -84,6 +92,7 @@ public sealed class OverlayPainter : IDisposable
 
     public void Dispose()
     {
+        _atmosphere.Dispose();
         _sprites.Dispose();
         _premultipliedOver.Dispose();
         _rects.Dispose();

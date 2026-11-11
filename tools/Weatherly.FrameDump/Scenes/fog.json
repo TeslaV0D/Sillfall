@@ -1,0 +1,14 @@
+{
+  // Fog drifting with a light wind over two windows: denser towards the bottom, thinner over the windows,
+  // a faint light rim on their top edges.
+  "name": "fog",
+  "seed": 41,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 380, "y": 120, "width": 200, "height": 150 },
+    { "id": 1, "x": 50, "y": 170, "width": 300, "height": 170 }
+  ],
+  "effects": { "fog": 1.0, "skipFadeIn": true },
+  "wind": { "x": 40, "gustiness": 0.3 },
+  "captures": [ 0.0, 8.0 ]
+}

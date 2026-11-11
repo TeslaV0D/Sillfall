@@ -2,13 +2,14 @@ using Weatherly.Sandbox;
 
 // Debug app: the effects in a normal window, over fake windows that can be dragged with the mouse.
 // Keys: D drops on/off, R rain on/off, W snow on/off, F fill all windows with snow, L leaves on/off,
-//       K scatter leaves on all windows, S surfaces on/off, N new window, Delete close top window,
+//       K scatter leaves on all windows, G fog on/off, U sunlight on/off, S surfaces on/off,
+//       N new window, Delete close top window,
 //       Left/Right wind, Escape quit.
 // Snow demo: press F, then shake a window (drag it quickly back and forth), fling it, or close it with Delete:
 // the snow slides off and piles up wherever it lands.
 // Leaf demo: press K, then sweep the mouse quickly over a window edge (the gust lifts the leaves) or shake a window.
 //
-//   Weatherly.Sandbox [--effect=drops|rain|snow|leaves] [--fill-snow] [--scatter-leaves] [--exit-after=<seconds>]
+//   Weatherly.Sandbox [--effect=drops|rain|snow|leaves|fog|sun] [--fill-snow] [--scatter-leaves] [--exit-after=<seconds>]
 //
 // --exit-after closes the sandbox after the given time and returns 0 if it rendered frames: a CI self-check.
 

@@ -46,6 +46,9 @@ public partial class App : Application
 
     private const float SmokeLeavesIntensity = 1f;
 
+    /// <summary>Fog and sun fade out in a few seconds; there is nothing that has to run off first.</summary>
+    private static readonly TimeSpan s_atmosphereIdleStopTimeout = TimeSpan.FromSeconds(20);
+
     /// <summary>Leaves: the last ones need about ten seconds to fall, then the lying ones fade.</summary>
     private static readonly TimeSpan s_leavesIdleStopTimeout = TimeSpan.FromSeconds(60);
 
@@ -76,6 +79,8 @@ public partial class App : Application
             Rain = new EffectSettings { Intensity = (_smokeTest?.Rain ?? false) ? SmokeRainIntensity : 0f },
             Snow = new EffectSettings { Intensity = (_smokeTest?.Snow ?? false) ? SmokeSnowIntensity : 0f },
             Leaves = new EffectSettings { Intensity = (_smokeTest?.Leaves ?? false) ? SmokeLeavesIntensity : 0f },
+            Fog = new EffectSettings { Intensity = (_smokeTest?.Fog ?? false) ? 1f : 0f },
+            Sun = new EffectSettings { Intensity = (_smokeTest?.Sun ?? false) ? 1f : 0f },
         };
 
         UserSettings settings = new();
@@ -148,6 +153,8 @@ public partial class App : Application
                     SetRain: window.SetRain,
                     SetSnow: window.SetSnow,
                     SetLeaves: window.SetLeaves,
+                    SetFog: window.SetFog,
+                    SetSun: window.SetSun,
                     SetSound: window.SetSound,
                     SetPaused: window.SetPaused,
                     Quit: Quit)),
@@ -243,6 +250,16 @@ public partial class App : Application
                 diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetLeaves, s_leavesIdleStopTimeout));
             }
 
+            if (smokeTest.Fog)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetFog, s_atmosphereIdleStopTimeout));
+            }
+
+            if (smokeTest.Sun)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetSun, s_atmosphereIdleStopTimeout));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -283,7 +300,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
-            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves)
+            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun)
             {
                 // Window to the top, weather still off: the script takes a clear screenshot first.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
@@ -312,6 +329,21 @@ public partial class App : Application
                 // Then leaves: they fall slowly, the screenshot catches them on the way and on the edge.
                 await Task.Delay(TimeSpan.FromMilliseconds(1500));
                 window.SetLeaves(SmokeLeavesIntensity);
+            }
+
+            if (smokeTest.Fog || smokeTest.Sun)
+            {
+                // Then fog or sun, faded in fully before the second screenshot.
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                if (smokeTest.Fog)
+                {
+                    window.SetFog(1f);
+                }
+
+                if (smokeTest.Sun)
+                {
+                    window.SetSun(1f);
+                }
             }
 
             // Stays on screen so the calling script can take its screenshot of the desktop.

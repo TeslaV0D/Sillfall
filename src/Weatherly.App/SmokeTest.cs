@@ -18,7 +18,7 @@ namespace Weatherly.App;
 /// screenshot the rain is off for a moment, so the script can compare a dry and a wet desktop.</item>
 /// <item><c>--snow</c> does the same with snow: render loop check (including melting until the loop stops),
 /// then a snow-free and a snowy screenshot.</item>
-/// <item><c>--leaves</c> does the same with leaves.</item>
+/// <item><c>--leaves</c>, <c>--fog</c> and <c>--sun</c> do the same with leaves, fog and sunlight.</item>
 /// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
 /// zero allocations, and that it stops once the drops are switched off.</item>
 /// </list>
@@ -35,11 +35,15 @@ internal sealed class SmokeTest
     private const string RainSwitch = "--rain";
     private const string SnowSwitch = "--snow";
     private const string LeavesSwitch = "--leaves";
+    private const string FogSwitch = "--fog";
+    private const string SunSwitch = "--sun";
 
     private readonly string _reportPath;
 
-    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern, bool testDrops, bool rain, bool snow, bool leaves)
+    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern, bool testDrops, bool rain, bool snow, bool leaves, bool fog, bool sun)
     {
+        Fog = fog;
+        Sun = sun;
         Leaves = leaves;
         TestDrops = testDrops;
         Rain = rain;
@@ -68,6 +72,10 @@ internal sealed class SmokeTest
 
     public bool Leaves { get; }
 
+    public bool Fog { get; }
+
+    public bool Sun { get; }
+
     /// <summary>Returns the smoke test when the switch is present, otherwise <see langword="null"/>.</summary>
     public static SmokeTest? FromCommandLine(IReadOnlyList<string> args)
     {
@@ -90,7 +98,9 @@ internal sealed class SmokeTest
             args.Contains(DropsSwitch, StringComparer.OrdinalIgnoreCase),
             args.Contains(RainSwitch, StringComparer.OrdinalIgnoreCase),
             args.Contains(SnowSwitch, StringComparer.OrdinalIgnoreCase),
-            args.Contains(LeavesSwitch, StringComparer.OrdinalIgnoreCase));
+            args.Contains(LeavesSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(FogSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(SunSwitch, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Writes the report. Returns the exit code: 0 when every check passed, otherwise 1.</summary>

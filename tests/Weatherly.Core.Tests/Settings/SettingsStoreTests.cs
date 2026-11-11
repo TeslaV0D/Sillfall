@@ -29,7 +29,7 @@ public sealed class SettingsStoreTests : IDisposable
     public void SaveThenLoad_GivesTheSameSettings()
     {
         var store = new SettingsStore(Path.Combine(_directory, "nested", "settings.json"));
-        var settings = new UserSettings { Enabled = false, Rain = 0.6f, RainDepth = 0.8f, Snow = 0.3f, Leaves = 1f, Sound = true };
+        var settings = new UserSettings { Enabled = false, Rain = 0.6f, RainDepth = 0.8f, Snow = 0.3f, Leaves = 1f, Fog = 0.4f, Sun = 0.7f, Sound = true };
 
         store.Save(settings);
 
@@ -87,6 +87,8 @@ public sealed class SettingsStoreTests : IDisposable
             RainDepth = 0.7f,
             Snow = new EffectSettings { Intensity = 1f },
             Leaves = new EffectSettings { Intensity = 0.6f },
+            Fog = new EffectSettings { Intensity = 0.3f },
+            Sun = new EffectSettings { Intensity = 0.9f },
             ShowSurfaces = true,
         };
 

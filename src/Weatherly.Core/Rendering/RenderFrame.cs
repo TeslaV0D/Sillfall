@@ -1,3 +1,4 @@
+using Weatherly.Core.Geometry;
 using Weatherly.Core.Surfaces;
 
 namespace Weatherly.Core.Rendering;
@@ -8,8 +9,13 @@ namespace Weatherly.Core.Rendering;
 /// </summary>
 public sealed class RenderFrame
 {
+    /// <summary>Most windows the atmosphere passes take into account: the topmost ones.</summary>
+    public const int MaxOccluders = 64;
+
+    private readonly PixelRect[] _occluders = new PixelRect[MaxOccluders];
     private Sprite[] _sprites;
     private int _count;
+    private int _occluderCount;
 
     /// <summary>
     /// The default capacity holds the full particle budget of PLAN.md, section 4 (12k rain drops plus splashes,
@@ -33,10 +39,37 @@ public sealed class RenderFrame
     /// <summary>Simulated time of this frame in seconds.</summary>
     public double Time { get; set; }
 
+    /// <summary>Fog behind all sprites. Default: none.</summary>
+    public FogLayer Fog { get; set; }
+
+    /// <summary>Sunlight behind the fog and all sprites. Default: none.</summary>
+    public SunLayer Sun { get; set; }
+
+    /// <summary>Whether a full-screen atmosphere pass (fog or sun) has to run.</summary>
+    public bool HasAtmosphere => Fog.IsVisible || Sun.IsVisible;
+
+    /// <summary>
+    /// Window rectangles in desktop pixels, topmost first: they block the sunlight and thin the fog.
+    /// Filled by the engine while an atmosphere is visible.
+    /// </summary>
+    public ReadOnlySpan<PixelRect> Occluders => _occluders.AsSpan(0, _occluderCount);
+
     public void Clear()
     {
         _count = 0;
+        _occluderCount = 0;
         Surfaces = null;
+        Fog = default;
+        Sun = default;
+    }
+
+    /// <summary>Adds a window rectangle. Beyond <see cref="MaxOccluders"/> (the lowest windows) they are ignored.</summary>
+    public void AddOccluder(PixelRect rect)
+    {
+        if (_occluderCount < MaxOccluders && !rect.IsEmpty)
+        {
+            _occluders[_occluderCount++] = rect;
+        }
     }
 
     /// <summary>Appends a sprite on top of all sprites added so far.</summary>

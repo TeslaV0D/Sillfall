@@ -375,6 +375,8 @@ Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces
 Invoke-WeatherRun -Name 'rain'
 Invoke-WeatherRun -Name 'snow'
 Invoke-WeatherRun -Name 'leaves'
+Invoke-WeatherRun -Name 'fog'
+Invoke-WeatherRun -Name 'sun'
 Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'

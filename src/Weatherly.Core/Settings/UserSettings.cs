@@ -24,6 +24,10 @@ public sealed record UserSettings
 
     public float Leaves { get; set; }
 
+    public float Fog { get; set; }
+
+    public float Sun { get; set; }
+
     public bool Sound { get; set; }
 
     /// <summary>The settings as they stand in the running app.</summary>
@@ -37,6 +41,8 @@ public sealed record UserSettings
             RainDepth = options.RainDepth,
             Snow = options.Snow.Intensity,
             Leaves = options.Leaves.Intensity,
+            Fog = options.Fog.Intensity,
+            Sun = options.Sun.Intensity,
             Sound = sound,
         }.Sanitized();
     }
@@ -53,6 +59,8 @@ public sealed record UserSettings
             RainDepth = settings.RainDepth,
             Snow = options.Snow with { Intensity = settings.Snow },
             Leaves = options.Leaves with { Intensity = settings.Leaves },
+            Fog = options.Fog with { Intensity = settings.Fog },
+            Sun = options.Sun with { Intensity = settings.Sun },
         };
     }
 
@@ -64,6 +72,8 @@ public sealed record UserSettings
         RainDepth = Clamp01(RainDepth, 0.5f),
         Snow = Clamp01(Snow),
         Leaves = Clamp01(Leaves),
+        Fog = Clamp01(Fog),
+        Sun = Clamp01(Sun),
     };
 
     private static float Clamp01(float value, float fallback = 0f) => float.IsFinite(value) ? Math.Clamp(value, 0f, 1f) : fallback;

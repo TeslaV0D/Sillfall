@@ -158,6 +158,15 @@ public sealed class SimulationEngine
             effect.Emit(_frame, Context);
         }
 
+        // Fog and sunlight need to know where the windows are.
+        if (_frame.HasAtmosphere)
+        {
+            foreach (TrackedWindow window in Context.Windows.Windows)
+            {
+                _frame.AddOccluder(window.Bounds);
+            }
+        }
+
         return steps;
     }
 

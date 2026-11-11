@@ -29,6 +29,8 @@ internal sealed class SandboxWindow : IDisposable
     private readonly Core.Effects.Rain.RainEffect _rain = new(seed: 3);
     private readonly Core.Effects.Snow.SnowEffect _snow = new(seed: 3);
     private readonly Core.Effects.Leaves.LeafEffect _leaves = new(seed: 3);
+    private readonly Core.Effects.Fog.FogEffect _fog = new(seed: 3);
+    private readonly Core.Effects.Sun.SunEffect _sun = new(seed: 3);
     private readonly Core.Simulation.CursorMotion _cursor = new();
     private Vector2 _mouse = new(-10_000, -10_000);
     private readonly FakeDesktop _desktop = new();
@@ -55,6 +57,10 @@ internal sealed class SandboxWindow : IDisposable
         _leaves.Settings = new EffectSettings { Intensity = effect == "leaves" ? 0.7f : 0f };
         _fillSnow = fillSnow;
         _scatterLeaves = scatterLeaves;
+        _fog.Settings = new EffectSettings { Intensity = effect == "fog" ? 0.8f : 0f };
+        _sun.Settings = new EffectSettings { Intensity = effect == "sun" ? 0.8f : 0f };
+        _engine.Add(_sun);
+        _engine.Add(_fog);
         _engine.Add(_drops);
         _engine.Add(_rain);
         _engine.Add(_snow);
@@ -235,6 +241,12 @@ internal sealed class SandboxWindow : IDisposable
             case VIRTUAL_KEY.VK_K:
                 _scatterLeaves = true;
                 break;
+            case VIRTUAL_KEY.VK_G:
+                _fog.Settings = new EffectSettings { Intensity = _fog.Settings.Intensity > 0 ? 0f : 0.8f };
+                break;
+            case VIRTUAL_KEY.VK_U:
+                _sun.Settings = new EffectSettings { Intensity = _sun.Settings.Intensity > 0 ? 0f : 0.8f };
+                break;
             case VIRTUAL_KEY.VK_S:
                 _showSurfaces = !_showSurfaces;
                 break;
@@ -261,7 +273,7 @@ internal sealed class SandboxWindow : IDisposable
     private void UpdateTitle()
     {
         static string OnOff(bool on) => on ? "on" : "off";
-        string title = $"{AppInfo.Name} Sandbox  |  drops {OnOff(_drops.Intensity > 0)}  |  rain {OnOff(_rain.Settings.Intensity > 0)}  |  snow {OnOff(_snow.Settings.Intensity > 0)}  |  leaves {OnOff(_leaves.Settings.Intensity > 0)}  |  surfaces {OnOff(_showSurfaces)}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D R W F L K S N Del Left Right Esc";
+        string title = $"{AppInfo.Name} Sandbox  |  drops {OnOff(_drops.Intensity > 0)}  |  rain {OnOff(_rain.Settings.Intensity > 0)}  |  snow {OnOff(_snow.Settings.Intensity > 0)}  |  leaves {OnOff(_leaves.Settings.Intensity > 0)}  |  fog {OnOff(_fog.Settings.Intensity > 0)}  |  sun {OnOff(_sun.Settings.Intensity > 0)}  |  surfaces {OnOff(_showSurfaces)}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D R W F L K G U S N Del Left Right Esc";
         PInvoke.SetWindowText(_window, title);
     }
 
