@@ -656,6 +656,9 @@ public sealed class OverlayHost : IDisposable
         _fog.Settings = _options.Fog;
         _sun.Settings = _options.Sun;
         _grass.Settings = _options.Grass;
+        _sun.Side = _options.SunSide;
+        _engine.Context.Wind.Base = _options.Wind;
+        _engine.Context.Wind.Gustiness = Math.Clamp(_options.Gustiness, 0f, 1f);
         _grass.RainIntensity = _options.Rain.ClampedIntensity;
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];

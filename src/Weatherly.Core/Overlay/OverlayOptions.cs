@@ -47,4 +47,13 @@ public sealed record OverlayOptions
 
     /// <summary>Grass (milestone M8).</summary>
     public Effects.EffectSettings Grass { get; init; } = new();
+
+    /// <summary>Upper corner the sun stands above.</summary>
+    public Effects.Sun.SunSide SunSide { get; init; } = Effects.Sun.SunSide.Right;
+
+    /// <summary>Steady wind in pixels per second at 100 % (all effects read it).</summary>
+    public System.Numerics.Vector2 Wind { get; init; }
+
+    /// <summary>Strength of the gusts relative to the steady wind, 0 to 1.</summary>
+    public float Gustiness { get; init; } = 0.5f;
 }

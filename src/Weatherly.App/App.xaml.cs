@@ -58,6 +58,7 @@ public partial class App : Application
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
     private SettingsStore? _settings;
+    private AppSettings _savedSettings = new();
     private DispatcherQueueTimer? _saveTimer;
 
     public App()
@@ -84,12 +85,13 @@ public partial class App : Application
             Grass = new EffectSettings { Intensity = (_smokeTest?.Grass ?? false) ? 1f : 0f },
         };
 
-        UserSettings settings = new();
+        AppSettings settings = new();
         if (_smokeTest is null)
         {
             _settings = new SettingsStore(SettingsStore.DefaultPath);
             settings = _settings.Load();
-            options = settings.ApplyTo(options);
+            _savedSettings = settings;
+            options = settings.ToOverlayOptions(options);
         }
 
         // The window owns the overlay from here on and disposes it when it closes.
@@ -119,7 +121,7 @@ public partial class App : Application
         _window.HideOnClose = trayShown && _smokeTest is null;
         if (_settings is not null)
         {
-            if (settings.Sound)
+            if (!settings.Sound.Muted)
             {
                 _window.SetSound(true);
             }
@@ -204,7 +206,8 @@ public partial class App : Application
 
         try
         {
-            _settings.Save(UserSettings.From(_window.Options, _window.SoundOn));
+            _savedSettings = _savedSettings.WithOverlay(_window.Options, _window.SoundOn);
+            _settings.Save(_savedSettings);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
