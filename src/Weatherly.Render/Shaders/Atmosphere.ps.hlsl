@@ -101,7 +101,7 @@ float4 main(float4 position : SV_Position) : SV_Target
         float glow = exp(-pow(distance / (170.0 * SunScale), 2.0)) + 0.35 * exp(-distance / (650.0 * SunScale));
 
         // Windows catch less light than the open desktop: the content stays readable.
-        float light = SunStrength * (0.26 * shafts + 0.5 * glow) * lerp(0.35, 1.0, open);
+        float light = SunStrength * (0.42 * shafts + 0.45 * glow) * lerp(0.35, 1.0, open);
         result = float4(SunColor.rgb * light, light * 0.3);
     }
 

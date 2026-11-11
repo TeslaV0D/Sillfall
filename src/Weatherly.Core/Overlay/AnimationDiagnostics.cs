@@ -23,13 +23,13 @@ public static class AnimationDiagnostics
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(seconds);
 
         double fps = (after.AnimationFrames - before.AnimationFrames) / seconds;
-        bool passed = after.IsAnimating && fps >= MinimumFramesPerSecond && after.Sprites > 0;
+        bool passed = after.IsAnimating && fps >= MinimumFramesPerSecond && (after.Sprites > 0 || after.HasAtmosphere);
         return new DiagnosticResult(
             "Animation",
             passed,
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"{fps:0} fps, {after.FrameMilliseconds:0.0} ms per frame, simulation {after.SimulationMilliseconds:0.00} ms, {after.Sprites} sprite(s)"));
+                $"{fps:0} fps, {after.FrameMilliseconds:0.0} ms per frame, simulation {after.SimulationMilliseconds:0.00} ms, {after.Sprites} sprite(s){(after.HasAtmosphere ? ", fog/sun layer" : string.Empty)}"));
     }
 
     /// <summary>Whether the render loop allocated nothing after its warm-up (PLAN.md, section 9: 0 B in the frame loop).</summary>

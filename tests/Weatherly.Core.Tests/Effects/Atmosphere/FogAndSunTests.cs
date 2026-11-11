@@ -158,7 +158,8 @@ public class FogAndSunTests
     {
         (SimulationEngine engine, _, _) = Create(fog: 1f, sun: 1f);
         WindowSnapshot windows = WindowSnapshot.Of(0, s_window);
-        for (int i = 0; i < 400; i++)
+        // Long enough for tiered compilation to settle (as in the other effects' allocation tests).
+        for (int i = 0; i < 800; i++)
         {
             engine.SetWindows(windows);
             engine.Advance(FrameTime);

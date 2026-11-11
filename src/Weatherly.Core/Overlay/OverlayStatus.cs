@@ -76,6 +76,9 @@ public sealed record OverlayStatus(
     /// <summary>Sprites in the last frame.</summary>
     public int Sprites { get; init; }
 
+    /// <summary>Whether the last frame had fog or sunlight (full-screen layers, no sprites).</summary>
+    public bool HasAtmosphere { get; init; }
+
     /// <summary>Frames of the render loop whose allocations were measured (frames after the warm-up).</summary>
     public long MeasuredLoopFrames { get; init; }
 

@@ -724,7 +724,8 @@ public sealed class OverlayHost : IDisposable
     private void PresentAll()
     {
         SurfaceSet? surfaces = _options.ShowSurfaces ? _engine.Context.Surfaces : null;
-        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 ? _engine.Frame : null;
+        // Fog and sunlight have no sprites, only layers: they are content too.
+        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere ? _engine.Frame : null;
 
         for (int attempt = 0; attempt < DeviceRecoveryAttempts; attempt++)
         {
@@ -805,6 +806,7 @@ public sealed class OverlayHost : IDisposable
             FrameMilliseconds = _frameStatistics.AverageFrameSeconds * 1000,
             SimulationMilliseconds = _frameStatistics.AverageSimulationSeconds * 1000,
             Sprites = _engine.Frame.SpriteCount,
+            HasAtmosphere = _engine.Frame.HasAtmosphere,
             MeasuredLoopFrames = _measuredLoopFrames,
             LoopAllocatedBytes = _loopAllocatedBytes,
         };

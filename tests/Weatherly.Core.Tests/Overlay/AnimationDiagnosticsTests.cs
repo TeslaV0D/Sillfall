@@ -1,3 +1,4 @@
+using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Overlay;
 
 namespace Weatherly.Core.Tests.Overlay;
@@ -25,6 +26,18 @@ public class AnimationDiagnosticsTests
         OverlayStatus after = Status() with { IsAnimating = animating, AnimationFrames = frames, Sprites = sprites };
 
         AnimationDiagnostics.EvaluateAnimation(before, after, 2.0).Passed.Should().Be(expected);
+    }
+
+    [Fact]
+    public void EvaluateAnimation_FogOrSunWithoutSprites_CountsAsContent()
+    {
+        OverlayStatus before = Status() with { IsAnimating = true };
+        OverlayStatus after = Status() with { IsAnimating = true, AnimationFrames = 120, Sprites = 0, HasAtmosphere = true };
+
+        DiagnosticResult result = AnimationDiagnostics.EvaluateAnimation(before, after, 2.0);
+
+        result.Passed.Should().BeTrue();
+        result.Detail.Should().EndWith("0 sprite(s), fog/sun layer");
     }
 
     [Theory]
