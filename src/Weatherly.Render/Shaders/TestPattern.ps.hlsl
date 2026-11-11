@@ -32,8 +32,10 @@ float4 main(float4 position : SV_Position) : SV_Target
     float4 color = float4(0.0, 0.0, 0.0, 0.0);
 
     // Faint grid, shows the DPI scale: one cell is 100 device-independent pixels.
-    float2 cell = fmod(p, GridSpacing);
-    if (cell.x < Unit || cell.y < Unit)
+    // Integer modulo on purpose: float fmod is inexact (fmod(101, 100) can land just below 1)
+    // and would draw some grid lines one pixel too thick.
+    uint2 cell = uint2(p) % (uint)GridSpacing;
+    if (cell.x < (uint)Unit || cell.y < (uint)Unit)
     {
         color = Over(color, float4(0.15, 0.15, 0.15, 0.15));
     }
