@@ -3,9 +3,14 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M2 (Fenster-Tracking und Oberflächen). Über jedem Monitor liegt ein
-transparentes, klick-durchlässiges Overlay. Die App erkennt die offenen Fenster und ihre sichtbaren
-Kanten und kann sie als Debug-Linien zeigen. Wettereffekte gibt es noch nicht. Der Fahrplan steht in
+**Status:** Meilenstein M3 (Engine und Tooling). Über jedem Monitor liegt ein transparentes,
+klick-durchlässiges Overlay. Die App erkennt die offenen Fenster und ihre Kanten, und eine Engine mit
+Render-Loop lässt Kalibrier-Tropfen fallen, auf Fenstern liegen bleiben und abrutschen. Echte
+Wettereffekte folgen ab M4. Zum Ausprobieren ohne Overlay gibt es die Sandbox:
+
+```bash
+dotnet run --project tools/Weatherly.Sandbox
+``` Der Fahrplan steht in
 [PLAN.md](PLAN.md).
 
 **Privacy:** Weatherly liest nur Fenstergeometrie. Keine Fenstertitel, keine Inhalte, keine Analytics.

@@ -28,3 +28,13 @@ Neu erzeugen mit `python3 tools/icons/generate_app_icons.py` (braucht Pillow).
 | `src/Weatherly.App/Assets/Square44x44Logo.targetsize-48_altform-lightunplated.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
 | `src/Weatherly.App/Assets/StoreLogo.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
 | `src/Weatherly.App/Assets/Wide310x150Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
+
+## Golden-Images
+
+Referenzbilder der Render-Tests (`GoldenImageTests`), gerendert vom eigenen Renderer mit WARP aus den
+Szenen in `tools/Weatherly.FrameDump/Scenes/`. Neue oder geänderte Goldens werden nach Sichtprüfung aus
+dem CI-Artefakt `previews` (`render/golden-actual-*.png`) übernommen.
+
+| Datei | Quelle | Lizenz | Autor |
+|---|---|---|---|
+| `tests/Weatherly.Render.Tests/Goldens/` | `GoldenImageTests` (eigener Renderer, WARP) | MIT (Projektlizenz) | Weatherly-Projekt |

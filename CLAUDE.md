@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M2 (Fenster-Tracking und Oberflächen)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M3 (Engine und Tooling)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -35,8 +35,8 @@ Stand: **M2 (Fenster-Tracking und Oberflächen)**. Den Fortschritt pro Meilenste
 | `src/Weatherly.Render` | Windows | Direct3D 11, DirectComposition, Direct2D über Vortice |
 | `src/Weatherly.Audio` | Windows | XAudio2 über Vortice |
 | `src/Weatherly.App` | Windows, WinUI 3 | Tray, Settings, Composition Root. MSIX. |
-| `tools/Weatherly.Sandbox` | Windows | Debug-App mit Fake-Fenstern (ab M3) |
-| `tools/Weatherly.FrameDump` | Windows | Headless-Renderer für Golden-Images über WARP (ab M3) |
+| `tools/Weatherly.Sandbox` | Windows | Debug-App: Effekte über einem Fake-Desktop mit ziehbaren Fenstern |
+| `tools/Weatherly.FrameDump` | Windows | Rendert JSON-Szenen (`Scenes/`) headless mit WARP zu PNGs |
 | `tools/icons` | Python | Generator für die App-Icons |
 | `tools/ci` | PowerShell | Skripte für CI, lokal genauso ausführbar |
 | `tests/Weatherly.Core.Tests` | `net10.0` | Läuft auf Linux und Windows |
@@ -49,6 +49,12 @@ Message-Loop und ein Fenster pro Monitor. Gezeichnet wird über den Vertrag `IOv
 Fenster-Tracking (Details in ADR-0004): Auf demselben Thread erzeugt `WindowEnumerator` (Platform)
 Snapshots der Fenster, `SurfaceExtractor` (Core) berechnet daraus die sichtbaren Kanten und
 `WindowMotionTracker` (Core) die Ereignisse (bewegt, geschüttelt, verschwunden …).
+
+Engine (Details in ADR-0005): `SimulationEngine` (Core) hält Welt und Effekte, simuliert mit festem
+Schritt und baut ein `RenderFrame` aus `Sprite`s. Effekte implementieren `IEffectSystem` und dürfen in
+`Simulate`/`Emit` nichts allokieren. Der Render-Loop im `OverlayHost` läuft nur, solange ein Effekt
+aktiv ist. Werkzeuge: Sandbox (Fake-Desktop im Fenster), FrameDump (JSON-Szenen als PNG) und
+Golden-Images (`tests/Weatherly.Render.Tests/Goldens/`, nur nach Sichtprüfung aktualisieren).
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.
@@ -89,7 +95,11 @@ Hinweise:
   verschiebt ihr Fenster einmal und schreibt das Ergebnis in die Datei. Das Skript fotografiert
   währenddessen den Desktop und prüft Pixel: Testmuster sichtbar, mit `--exclude-from-capture`
   unsichtbar, und mit `--show-surfaces --no-test-pattern` liegen die Debug-Linien genau am
-  App-Fenster. Neue Schichten tragen sich in `StartupDiagnostics` ein.
+  App-Fenster. Mit `--test-drops` prüft die App ihren Render-Loop (fps, 0 Allokationen, Idle-Stopp),
+  und das Skript sucht ruhende Tropfen über dem App-Fenster. Zum Schluss läuft die Sandbox kurz.
+  Neue Schichten tragen sich in `StartupDiagnostics` ein.
+- Golden-Image aktualisieren: CI-Artefakt `previews` laden, `render/golden-actual-<name>.png` ansehen,
+  bei Gefallen nach `tests/Weatherly.Render.Tests/Goldens/<name>.png` kopieren und committen.
 - Shader liegen in `src/Weatherly.Render/Shaders/` (`Name.vs.hlsl`, `Name.ps.hlsl`) und werden beim
   Build unter Windows mit `fxc` kompiliert und eingebettet (`Shaders.targets`). Unter Linux wird das
   übersprungen: Render kompiliert, kann aber nicht zeichnen.
@@ -105,10 +115,10 @@ Jeder Render-Test speichert sein Bild als PNG, das Smoke-Skript seine Desktop-Sc
 lädt der Job als Artefakt `previews` hoch. So lässt sich die Optik ohne Windows-Desktop prüfen
 (Artefakt herunterladen, PNGs mit dem Read-Tool ansehen).
 
-Noch nicht eingerichtet, weil der Inhalt dafür erst später entsteht:
+Dazu rendert der Job alle FrameDump-Szenen in die Previews. Statt eines Branches
+`ci-previews/<branch>` (PLAN.md) gibt es nur das Artefakt, siehe ADR-0005.
 
-- FrameDump-Previews und der Branch `ci-previews/<branch>` (M3),
-- Job `package` für MSIX-Build und Signierung bei Tags (M14).
+Noch nicht eingerichtet: Job `package` für MSIX-Build und Signierung bei Tags (M14).
 
 ## Code-Konventionen
 
