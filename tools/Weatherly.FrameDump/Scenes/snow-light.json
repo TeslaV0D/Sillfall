@@ -1,0 +1,12 @@
+{
+  // Light snow without wind: small flakes in front of and behind the windows, a first thin layer on the edges.
+  "name": "snow-light",
+  "seed": 21,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 120, "y": 150, "width": 380, "height": 180 }
+  ],
+  "effects": { "snow": 0.4 },
+  "wind": { "x": 0, "gustiness": 0.0 },
+  "captures": [ 4.0, 12.0 ]
+}

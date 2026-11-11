@@ -32,4 +32,7 @@ public sealed record OverlayOptions
 
     /// <summary>Share of rain drops that interact with windows, 0 to 1 (PLAN.md: "Depth").</summary>
     public float RainDepth { get; init; } = 0.5f;
+
+    /// <summary>Snow (milestone M5).</summary>
+    public Effects.EffectSettings Snow { get; init; } = new();
 }

@@ -83,6 +83,12 @@ public sealed record PreviewEffects
 
     /// <summary>Share of rain drops that interact with windows, 0 to 1.</summary>
     public float RainDepth { get; set; } = 0.5f;
+
+    /// <summary>Snow intensity, 0 to 1.</summary>
+    public float Snow { get; set; }
+
+    /// <summary>Snow already lying on every window and the floor at the start, in pixels at 100 %.</summary>
+    public float SnowFill { get; set; }
 }
 
 public sealed record PreviewWind

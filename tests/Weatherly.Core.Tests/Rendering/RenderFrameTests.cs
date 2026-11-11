@@ -14,6 +14,7 @@ public class RenderFrameTests
         Marshal.SizeOf<Sprite>().Should().Be(Sprite.SizeInBytes);
         Marshal.OffsetOf<Sprite>("<Rotation>k__BackingField").ToInt32().Should().Be(16);
         Marshal.OffsetOf<Sprite>("<Color>k__BackingField").ToInt32().Should().Be(24);
+        Marshal.OffsetOf<Sprite>("<Variant>k__BackingField").ToInt32().Should().Be(40);
     }
 
     [Fact]

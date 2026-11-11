@@ -1,0 +1,11 @@
+{
+  // No more snow: the piles melt away, rain makes it faster.
+  "name": "snow-melt",
+  "seed": 24,
+  "monitor": { "width": 400, "height": 240, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 60, "y": 90, "width": 280, "height": 120 }
+  ],
+  "effects": { "snowFill": 24 },
+  "captures": [ 0.1, 6.0, 14.0 ]
+}

@@ -8,7 +8,8 @@ struct Sprite
     float Rotation;
     uint Shape;
     float4 Color; // premultiplied
-    float2 Padding;
+    float Variant;
+    float Padding;
 };
 
 StructuredBuffer<Sprite> Sprites : register(t0);
@@ -25,6 +26,7 @@ struct VertexOutput
     float2 Local : TEXCOORD0; // -1..1 across the quad, before rotation
     float2 HalfSize : TEXCOORD1;
     nointerpolation uint Shape : SHAPE;
+    nointerpolation uint Variant : VARIANT;
     float4 Color : COLOR0;
 };
 
@@ -48,6 +50,7 @@ VertexOutput main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     output.Local = local;
     output.HalfSize = sprite.HalfSize;
     output.Shape = sprite.Shape;
+    output.Variant = (uint)sprite.Variant;
     output.Color = sprite.Color;
     return output;
 }

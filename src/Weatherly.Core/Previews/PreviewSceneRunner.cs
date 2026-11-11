@@ -47,6 +47,12 @@ public static class PreviewSceneRunner
             Settings = new EffectSettings { Intensity = scene.Effects.Rain },
             Depth = scene.Effects.RainDepth,
         });
+        var snow = new Effects.Snow.SnowEffect(seed: scene.Seed)
+        {
+            Settings = new EffectSettings { Intensity = scene.Effects.Snow },
+            RainIntensity = scene.Effects.Rain,
+        };
+        engine.Add(snow);
         engine.Context.Wind.Base = new Vector2(scene.Wind.X, scene.Wind.Y);
         engine.Context.Wind.Gustiness = scene.Wind.Gustiness;
         engine.SetMonitors([MonitorOf(scene)]);
@@ -55,6 +61,10 @@ public static class PreviewSceneRunner
         var order = scene.Windows.Select(window => window.Id).ToList();
         var snapshot = new WindowSnapshot();
         Publish(engine, snapshot, windows, order, 0);
+        if (scene.Effects.SnowFill > 0f)
+        {
+            snow.Fill(engine.Context, scene.Effects.SnowFill);
+        }
 
         var events = scene.Events.OrderBy(e => e.At).ToList();
         var captures = scene.Captures.Select((time, index) => (time, index)).OrderBy(capture => capture.time).ToList();

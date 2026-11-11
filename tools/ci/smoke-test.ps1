@@ -244,15 +244,18 @@ function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [scriptbloc
     Write-Host "Smoke run '$Name' passed."
 }
 
-# Rain: the app checks its render loop itself. For the screenshots it moves its window to the top and
-# keeps the rain off for a moment: a dry screenshot first, then a wet one. Where they differ in the band
-# right above the window, rain is on screen: streaks, splashes, ripples and the water film on the edge.
-function Invoke-RainRun {
-    $name = 'rain'
+# Rain and snow: the app checks its render loop itself. For the screenshots it moves its window to the top
+# and keeps the weather off for a moment: a clear screenshot first, then one with weather. Where they differ
+# in the band right above the window, the weather is on screen: streaks, splashes and the water film, or
+# flakes and the first snow on the edge.
+function Invoke-WeatherRun {
+    param([string]$Name)
+
+    $name = $Name
     $report = Join-Path $ReportDirectory "smoke-report-$name.txt"
     Remove-Item $report -ErrorAction SilentlyContinue
     Write-Host "=== Smoke run '$name' ==="
-    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", '--smoke-hold=6000', '--rain', '--no-test-pattern') -PassThru
+    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", '--smoke-hold=6000', "--$name", '--no-test-pattern') -PassThru
     $null = $process.Handle
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -270,9 +273,9 @@ function Invoke-RainRun {
         $window = Get-WindowBounds ([IntPtr][long]$Matches[1])
 
         Start-Sleep -Milliseconds 400
-        $dry = Get-PrimaryScreenshot (Join-Path $PreviewDirectory 'desktop-rain-dry.png')
+        $dry = Get-PrimaryScreenshot (Join-Path $PreviewDirectory "desktop-$name-before.png")
         Start-Sleep -Milliseconds 3500
-        $wet = Get-PrimaryScreenshot (Join-Path $PreviewDirectory 'desktop-rain.png')
+        $wet = Get-PrimaryScreenshot (Join-Path $PreviewDirectory "desktop-$name.png")
         try {
             $changed = 0
             for ($y = [Math]::Max($window.Top - 6, 0); $y -lt $window.Top; $y++) {
@@ -286,9 +289,9 @@ function Invoke-RainRun {
             }
             $minimum = 60
             $verdict = if ($changed -ge $minimum) { 'ok' } else { 'FAILED' }
-            Write-Host "  probe $verdict`: $changed pixel(s) changed by rain in the band above the app window, at least $minimum expected"
+            Write-Host "  probe $verdict`: $changed pixel(s) changed by $name in the band above the app window, at least $minimum expected"
             if ($changed -lt $minimum) {
-                $failures += "rain band: $changed changed pixel(s)"
+                $failures += "$name band: $changed changed pixel(s)"
             }
         }
         finally {
@@ -316,13 +319,13 @@ function Invoke-RainRun {
     }
 
     if ($failures.Count -gt 0) {
-        throw "Smoke run '$name': the screenshots do not show rain ($($failures -join '; '))."
+        throw "Smoke run '$name': the screenshots do not show $name ($($failures -join '; '))."
     }
 
     Write-Host "Smoke run '$name' passed."
 }
 
-# The sandbox renders fake windows and drops into a normal window. It exits by itself and returns 0 if it rendered.
+# The sandbox renders fake windows with snow on them into a normal window. It exits by itself and returns 0 if it rendered.
 function Invoke-SandboxRun {
     Write-Host '=== Sandbox ==='
     $sandbox = Get-ChildItem (Join-Path $repoRoot 'tools' 'Weatherly.Sandbox' 'bin') -Recurse -Filter 'Weatherly.Sandbox.exe' |
@@ -332,7 +335,7 @@ function Invoke-SandboxRun {
         throw 'Weatherly.Sandbox.exe was not found. Build the solution first.'
     }
 
-    $process = Start-Process -FilePath $sandbox.FullName -ArgumentList '--exit-after=6' -PassThru
+    $process = Start-Process -FilePath $sandbox.FullName -ArgumentList @('--exit-after=6', '--effect=snow', '--fill-snow') -PassThru
     $null = $process.Handle
     Start-Sleep -Seconds 4
     $bitmap = Get-PrimaryScreenshot (Join-Path $PreviewDirectory 'desktop-sandbox.png')
@@ -369,7 +372,8 @@ Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-
 Invoke-SmokeRun -Name 'excluded-from-capture' -ExtraArguments @('--exclude-from-capture') -Probes { param($b, $w) Get-PatternProbes $b $w $false }
 Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-SurfaceProbes $b $w }
 Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-DropProbes $b $w }
-Invoke-RainRun
+Invoke-WeatherRun -Name 'rain'
+Invoke-WeatherRun -Name 'snow'
 Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'

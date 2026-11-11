@@ -34,7 +34,12 @@ public partial class App : Application
     /// <summary>Rain needs longer to stop: the drips run off and the edges dry first.</summary>
     private static readonly TimeSpan s_rainIdleStopTimeout = TimeSpan.FromSeconds(45);
 
+    /// <summary>Snow needs longer still: the slowest flakes take half a minute to fall, then the piles melt.</summary>
+    private static readonly TimeSpan s_snowIdleStopTimeout = TimeSpan.FromSeconds(75);
+
     private const float SmokeRainIntensity = 0.8f;
+
+    private const float SmokeSnowIntensity = 1f;
 
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
@@ -56,6 +61,7 @@ public partial class App : Application
             ShowSurfaces = _smokeTest?.ShowSurfaces ?? false,
             TestDrops = (_smokeTest?.TestDrops ?? false) ? 1f : 0f,
             Rain = new EffectSettings { Intensity = (_smokeTest?.Rain ?? false) ? SmokeRainIntensity : 0f },
+            Snow = new EffectSettings { Intensity = (_smokeTest?.Snow ?? false) ? SmokeSnowIntensity : 0f },
         };
 
         // The window owns the overlay from here on and disposes it when it closes.
@@ -106,6 +112,11 @@ public partial class App : Application
                 diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetRain, s_rainIdleStopTimeout));
             }
 
+            if (smokeTest.Snow)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetSnow, s_snowIdleStopTimeout));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -146,9 +157,9 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
-            if (smokeTest.Rain)
+            if (smokeTest.Rain || smokeTest.Snow)
             {
-                // Window to the top, rain still off: the script takes a dry screenshot first.
+                // Window to the top, weather still off: the script takes a clear screenshot first.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
                 window.AppWindow.Move(new PointInt32(window.AppWindow.Position.X, workArea.Y + 12));
                 await Task.Delay(TimeSpan.FromMilliseconds(300));
@@ -161,6 +172,13 @@ public partial class App : Application
                 // Then rain, so the wet screenshot shows streaks, splashes and the water film on the edge.
                 await Task.Delay(TimeSpan.FromMilliseconds(1500));
                 window.SetRain(SmokeRainIntensity);
+            }
+
+            if (smokeTest.Snow)
+            {
+                // Then snow, so the second screenshot shows flakes and the first snow on the edge.
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                window.SetSnow(SmokeSnowIntensity);
             }
 
             // Stays on screen so the calling script can take its screenshot of the desktop.

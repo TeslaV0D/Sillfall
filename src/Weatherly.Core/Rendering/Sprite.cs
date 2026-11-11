@@ -17,6 +17,12 @@ public enum SpriteShape : uint
 
     /// <summary>Thin elliptic ring: the ripple where a drop hits a surface.</summary>
     Ring = 3,
+
+    /// <summary>
+    /// Snow flake, drawn procedurally in one of <see cref="Sprite.FlakeVariants"/> forms chosen by
+    /// <see cref="Sprite.Variant"/>: soft blob, star, branched star, plate, broad star, cluster.
+    /// </summary>
+    Flake = 4,
 }
 
 /// <summary>
@@ -34,8 +40,14 @@ public readonly record struct Sprite(Vector2 Center, Vector2 HalfSize, float Rot
     /// <summary>Size of one instance in bytes, as the shader expects it.</summary>
     public const int SizeInBytes = 48;
 
+    /// <summary>Number of forms <see cref="SpriteShape.Flake"/> knows.</summary>
+    public const int FlakeVariants = 6;
+
+    /// <summary>Which form a shape with variants takes (<see cref="SpriteShape.Flake"/>). Ignored by the others.</summary>
+    public float Variant { get; init; }
+
     // Pads the struct to 48 bytes, so instances are 16-byte aligned in the GPU buffer.
-    private readonly Vector2 _padding;
+    private readonly float _padding;
 
     /// <summary>Conservative bounding box: the circle around the rotated quad.</summary>
     public float BoundingRadius => HalfSize.Length();

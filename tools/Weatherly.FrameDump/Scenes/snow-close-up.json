@@ -1,0 +1,12 @@
+{
+  // A small area at 200 % scaling for judging the flake shapes, the pile's soft top, shade and glitter.
+  "name": "snow-close-up",
+  "seed": 23,
+  "monitor": { "width": 320, "height": 240, "taskbar": 0, "scale": 2.0 },
+  "windows": [
+    { "id": 1, "x": 40, "y": 120, "width": 240, "height": 120 }
+  ],
+  "effects": { "snow": 0.8, "snowFill": 10 },
+  "wind": { "x": 15 },
+  "captures": [ 3.0, 6.0 ]
+}

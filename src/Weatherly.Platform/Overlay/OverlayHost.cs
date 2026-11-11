@@ -100,6 +100,7 @@ public sealed class OverlayHost : IDisposable
     private readonly SimulationEngine _engine = new();
     private readonly TestDropsEffect _testDrops = new();
     private readonly Core.Effects.Rain.RainEffect _rain = new();
+    private readonly Core.Effects.Snow.SnowEffect _snow = new();
     private bool _trackingPending;
     private float _rainHitsPerSecond;
 
@@ -124,6 +125,7 @@ public sealed class OverlayHost : IDisposable
         _winEventCallback = OnWinEvent;
         _engine.Add(_testDrops);
         _engine.Add(_rain);
+        _engine.Add(_snow);
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -631,6 +633,8 @@ public sealed class OverlayHost : IDisposable
         _testDrops.Intensity = Math.Clamp(_options.TestDrops, 0f, 1f);
         _rain.Settings = _options.Rain;
         _rain.Depth = Math.Clamp(_options.RainDepth, 0f, 1f);
+        _snow.Settings = _options.Snow;
+        _snow.RainIntensity = _options.Rain.ClampedIntensity;
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);

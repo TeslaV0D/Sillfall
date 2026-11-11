@@ -26,6 +26,8 @@ internal sealed class SandboxWindow : IDisposable
     private readonly CompositionOverlayRenderer _renderer = new();
     private readonly SimulationEngine _engine = new(seed: 3);
     private readonly TestDropsEffect _drops = new() { Intensity = 1f };
+    private readonly Core.Effects.Rain.RainEffect _rain = new(seed: 3);
+    private readonly Core.Effects.Snow.SnowEffect _snow = new(seed: 3);
     private readonly FakeDesktop _desktop = new();
     private readonly WindowSnapshot _snapshot = new();
     private readonly RenderFrame _scene = new();
@@ -33,13 +35,22 @@ internal sealed class SandboxWindow : IDisposable
     private IOverlaySurface? _surface;
     private PixelSize _size;
     private bool _showSurfaces;
+    private bool _fillSnow;
     private bool _closed;
 
-    public SandboxWindow()
+    /// <param name="effect">Effect to start with: "drops", "rain" or "snow".</param>
+    /// <param name="fillSnow">Start with snow lying on every window, ready to slide off.</param>
+    public SandboxWindow(string effect = "drops", bool fillSnow = false)
     {
         PInvoke.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         _windowProcedure = WindowProcedure;
+        _drops.Intensity = effect == "drops" ? 1f : 0f;
+        _rain.Settings = new EffectSettings { Intensity = effect == "rain" ? 0.7f : 0f };
+        _snow.Settings = new EffectSettings { Intensity = effect == "snow" ? 0.7f : 0f };
+        _fillSnow = fillSnow;
         _engine.Add(_drops);
+        _engine.Add(_rain);
+        _engine.Add(_snow);
         _window = CreateWindow();
 
         _desktop.Add(PixelRect.FromSize(80, 120, 460, 300));
@@ -78,6 +89,13 @@ internal sealed class SandboxWindow : IDisposable
             double now = clock.Elapsed.TotalSeconds;
             _desktop.Fill(_snapshot, now);
             _engine.SetWindows(_snapshot);
+            if (_fillSnow)
+            {
+                _fillSnow = false;
+                _snow.Fill(_engine.Context, 18f);
+            }
+
+            _snow.RainIntensity = _rain.Settings.ClampedIntensity;
             _engine.Advance(now - last);
             last = now;
 
@@ -185,6 +203,15 @@ internal sealed class SandboxWindow : IDisposable
             case VIRTUAL_KEY.VK_D:
                 _drops.Intensity = _drops.Intensity > 0 ? 0f : 1f;
                 break;
+            case VIRTUAL_KEY.VK_R:
+                _rain.Settings = new EffectSettings { Intensity = _rain.Settings.Intensity > 0 ? 0f : 0.7f };
+                break;
+            case VIRTUAL_KEY.VK_W:
+                _snow.Settings = new EffectSettings { Intensity = _snow.Settings.Intensity > 0 ? 0f : 0.7f };
+                break;
+            case VIRTUAL_KEY.VK_F:
+                _fillSnow = true;
+                break;
             case VIRTUAL_KEY.VK_S:
                 _showSurfaces = !_showSurfaces;
                 break;
@@ -210,7 +237,8 @@ internal sealed class SandboxWindow : IDisposable
 
     private void UpdateTitle()
     {
-        string title = $"{AppInfo.Name} Sandbox  |  drops {(_drops.Intensity > 0 ? "on" : "off")}  |  surfaces {(_showSurfaces ? "on" : "off")}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D S N Del Left Right Esc";
+        static string OnOff(bool on) => on ? "on" : "off";
+        string title = $"{AppInfo.Name} Sandbox  |  drops {OnOff(_drops.Intensity > 0)}  |  rain {OnOff(_rain.Settings.Intensity > 0)}  |  snow {OnOff(_snow.Settings.Intensity > 0)}  |  surfaces {OnOff(_showSurfaces)}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D R W F S N Del Left Right Esc";
         PInvoke.SetWindowText(_window, title);
     }
 

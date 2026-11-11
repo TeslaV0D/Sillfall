@@ -54,6 +54,29 @@ public sealed class SpriteTests : IDisposable
     }
 
     [Fact]
+    public void Flake_DrawsEveryVariantAsASixArmedOrRoundShape()
+    {
+        // One 9 px flake per variant in a row, white.
+        var sprites = new Sprite[Sprite.FlakeVariants];
+        for (int v = 0; v < sprites.Length; v++)
+        {
+            sprites[v] = new Sprite(new Vector2(6 + (v * 10.5f), 24), new Vector2(4.5f, 4.5f), 0f, SpriteShape.Flake, Vector4.One) { Variant = v };
+        }
+
+        RenderedImage image = Render("sprite-flake", sprites);
+
+        image[6, 24].Alpha.Should().Be(255, "the blob is solid in the middle");
+        image[27, 24].Alpha.Should().BeGreaterThan(180, "the centre of the branched star");
+
+        // Star (variant 1): along an arm it is bright, between two arms only the faint glow remains.
+        // With rotation 0 the arms point to 30, 90, 150 ... degrees; 0 degrees lies between two arms.
+        // Its centre is x = 16.5; pixel 16 has its centre there.
+        image[16, 21].Alpha.Should().BeGreaterThan(150, "an arm points straight up");
+        image[19, 24].Alpha.Should().BeLessThan(110, "no arm points to the right");
+        image[63, 24].Should().Be(Pixel.Transparent);
+    }
+
+    [Fact]
     public void HalfTransparentSprites_BlendOverEachOther()
     {
         RenderedImage image = Render(
