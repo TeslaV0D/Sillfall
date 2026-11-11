@@ -41,6 +41,7 @@ public static class OverlayDiagnostics
                 overlay => overlay.IsClickThrough,
                 "Hit tests pass through the overlay",
                 "The overlay catches mouse input"));
+            results.Add(CheckZOrder(overlays));
             results.Add(CheckAll(
                 "First frame",
                 overlays,
@@ -93,6 +94,35 @@ public static class OverlayDiagnostics
             after == before
                 ? "No frame presented while the content was static"
                 : string.Create(CultureInfo.InvariantCulture, $"{after - before} frame(s) presented although nothing changed"));
+    }
+
+    /// <summary>
+    /// A normal window above an overlay hides the weather on that window, so it fails the check.
+    /// Other topmost windows (taskbar, tool palettes) can legitimately end up above for a moment:
+    /// they are reported but tolerated.
+    /// </summary>
+    private static DiagnosticResult CheckZOrder(IReadOnlyList<OverlayWindowStatus> overlays)
+    {
+        const string CheckName = "Z-order";
+
+        if (overlays.Count == 0)
+        {
+            return new DiagnosticResult(CheckName, false, "No overlay window exists");
+        }
+
+        var normal = overlays
+            .SelectMany(overlay => overlay.CoveredBy.Where(window => !window.IsTopmost).Select(window => $"{overlay.Monitor.DeviceName}: {window}"))
+            .ToList();
+        if (normal.Count > 0)
+        {
+            return new DiagnosticResult(CheckName, false, $"Normal windows above the overlay: {string.Join(", ", normal)}");
+        }
+
+        var topmost = overlays.SelectMany(overlay => overlay.CoveredBy).Select(window => window.ToString()).Distinct().ToList();
+        return new DiagnosticResult(
+            CheckName,
+            true,
+            topmost.Count == 0 ? "Overlays are above every window" : $"Above every normal window. Topmost windows above: {string.Join(", ", topmost)}");
     }
 
     private static DiagnosticResult CheckCoverage(OverlayStatus status)

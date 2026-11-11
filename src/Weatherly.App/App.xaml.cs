@@ -1,9 +1,11 @@
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Overlay;
 using Weatherly.Platform.Overlay;
 using Weatherly.Render;
+using Windows.Graphics;
 
 namespace Weatherly.App;
 
@@ -47,6 +49,12 @@ public partial class App : Application
         }
 
         _window = new MainWindow(overlay, options, startError);
+        if (_smokeTest is not null)
+        {
+            // Centered, so the screenshot check can verify that the overlay is drawn on top of this window.
+            CenterOnPrimaryMonitor(_window);
+        }
+
         _window.Activate();
 
         if (_smokeTest is not null)
@@ -86,6 +94,15 @@ public partial class App : Application
         {
             smokeTest.Fail(exception);
         }
+    }
+
+    private static void CenterOnPrimaryMonitor(Window window)
+    {
+        RectInt32 workArea = DisplayArea.Primary.WorkArea;
+        SizeInt32 size = window.AppWindow.Size;
+        window.AppWindow.Move(new PointInt32(
+            workArea.X + ((workArea.Width - size.Width) / 2),
+            workArea.Y + ((workArea.Height - size.Height) / 2)));
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)

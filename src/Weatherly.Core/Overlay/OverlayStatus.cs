@@ -3,6 +3,14 @@ using Weatherly.Core.Geometry;
 
 namespace Weatherly.Core.Overlay;
 
+/// <summary>A visible window that lies above an overlay and overlaps its monitor.</summary>
+/// <param name="ClassName">Window class (never the title).</param>
+/// <param name="IsTopmost">Whether the window is in the topmost band itself.</param>
+public sealed record CoveringWindow(string ClassName, bool IsTopmost)
+{
+    public override string ToString() => IsTopmost ? $"{ClassName} (topmost)" : ClassName;
+}
+
 /// <summary>Measured state of one overlay window. Everything is read back from Windows, nothing is assumed.</summary>
 /// <param name="Monitor">The monitor this overlay covers.</param>
 /// <param name="WindowHandle">Native handle of the overlay window.</param>
@@ -11,6 +19,7 @@ namespace Weatherly.Core.Overlay;
 /// <param name="IsClickThrough">Whether a hit test in the monitor center misses the overlay, so clicks reach the window below.</param>
 /// <param name="IsExcludedFromCapture">Whether screenshots and recordings skip the overlay.</param>
 /// <param name="PresentedFrames">Number of frames shown since the overlay was created.</param>
+/// <param name="CoveredBy">Visible windows above the overlay on its monitor, topmost first.</param>
 public sealed record OverlayWindowStatus(
     MonitorInfo Monitor,
     nint WindowHandle,
@@ -18,7 +27,8 @@ public sealed record OverlayWindowStatus(
     bool HasOverlayStyles,
     bool IsClickThrough,
     bool IsExcludedFromCapture,
-    long PresentedFrames)
+    long PresentedFrames,
+    IReadOnlyList<CoveringWindow> CoveredBy)
 {
     /// <summary>Whether the window sits exactly on its monitor.</summary>
     public bool CoversMonitor => WindowBounds == Monitor.Bounds;

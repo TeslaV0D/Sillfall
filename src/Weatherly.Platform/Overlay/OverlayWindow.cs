@@ -122,6 +122,22 @@ internal sealed class OverlayWindow : IDisposable
             SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
     }
 
+    /// <summary>
+    /// Moves the window back to the top of the topmost band. Windows that are activated later,
+    /// or other topmost windows like the taskbar, can otherwise end up above the overlay.
+    /// </summary>
+    public void BringToTop()
+    {
+        PInvoke.SetWindowPos(
+            _window,
+            HWND.HWND_TOPMOST,
+            0,
+            0,
+            0,
+            0,
+            SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_NOOWNERZORDER);
+    }
+
     /// <summary>Includes the window in or excludes it from screenshots and screen recordings.</summary>
     public void SetExcludedFromCapture(bool excluded)
     {
@@ -159,7 +175,8 @@ internal sealed class OverlayWindow : IDisposable
             (exStyle & OverlayExStyle) == OverlayExStyle,
             clickThrough,
             excluded,
-            PresentedFrames);
+            PresentedFrames,
+            ZOrderProbe.FindWindowsAbove(_window, bounds));
     }
 
     public void Dispose()

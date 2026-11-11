@@ -63,15 +63,17 @@ function Test-Color($Bitmap, [int] $X, [int] $Y, [int] $R, [int] $G, [int] $B) {
     return ([Math]::Abs($pixel.R - $R) -le $tolerance) -and ([Math]::Abs($pixel.G - $G) -le $tolerance) -and ([Math]::Abs($pixel.B - $B) -le $tolerance)
 }
 
-# Probe points in the top corners of the primary monitor. The taskbar may cover the bottom ones.
-# At 100 % scaling the frame is 2 px, the corner markers end 26 px from the edge.
+# Probe points on the primary monitor at 100 % scaling: the frame is 2 px, the corner markers end
+# 26 px from the edge. In smoke test mode the app centers its window on the primary monitor, so the
+# center cross lies on top of it: this proves that the overlay stays above a window activated after it.
 function Get-PatternProbes($Bitmap) {
     $right = $Bitmap.Width - 1
     return @(
         @{ Name = 'frame top left'; X = 0; Y = 0; R = 255; G = 0; B = 255 },
         @{ Name = 'frame top right'; X = $right; Y = 0; R = 255; G = 0; B = 255 },
         @{ Name = 'red marker top left'; X = 12; Y = 12; R = 255; G = 0; B = 0 },
-        @{ Name = 'green marker top right'; X = $right - 12; Y = 12; R = 0; G = 255; B = 0 }
+        @{ Name = 'green marker top right'; X = $right - 12; Y = 12; R = 0; G = 255; B = 0 },
+        @{ Name = 'cyan cross over the app window'; X = [int]($Bitmap.Width / 2); Y = [int]($Bitmap.Height / 2); R = 0; G = 255; B = 255 }
     )
 }
 

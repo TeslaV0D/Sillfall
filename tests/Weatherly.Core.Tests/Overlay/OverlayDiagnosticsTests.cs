@@ -23,6 +23,7 @@ public class OverlayDiagnosticsTests
             "Overlay windows",
             "Overlay window styles",
             "Click-through",
+            "Z-order",
             "First frame",
             "Screenshot exclusion",
             "Keyboard focus",
@@ -64,6 +65,31 @@ public class OverlayDiagnosticsTests
 
         clickThrough.Passed.Should().BeFalse();
         clickThrough.Detail.Should().Contain(s_primary.DeviceName);
+    }
+
+    [Fact]
+    public void Evaluate_NormalWindowAboveTheOverlay_FailsZOrder()
+    {
+        OverlayWindowStatus covered = Healthy(s_primary) with
+        {
+            CoveredBy = [new CoveringWindow("Shell_TrayWnd", IsTopmost: true), new CoveringWindow("WinUIDesktopWin32WindowClass", IsTopmost: false)],
+        };
+
+        DiagnosticResult zOrder = Result(Status([s_primary], [covered]), s_enabled, "Z-order");
+
+        zOrder.Passed.Should().BeFalse();
+        zOrder.Detail.Should().Contain("WinUIDesktopWin32WindowClass").And.NotContain("Shell_TrayWnd");
+    }
+
+    [Fact]
+    public void Evaluate_OnlyTopmostWindowsAbove_PassesZOrderAndNamesThem()
+    {
+        OverlayWindowStatus covered = Healthy(s_primary) with { CoveredBy = [new CoveringWindow("Shell_TrayWnd", IsTopmost: true)] };
+
+        DiagnosticResult zOrder = Result(Status([s_primary], [covered]), s_enabled, "Z-order");
+
+        zOrder.Passed.Should().BeTrue();
+        zOrder.Detail.Should().Contain("Shell_TrayWnd (topmost)");
     }
 
     [Fact]
@@ -130,7 +156,7 @@ public class OverlayDiagnosticsTests
     {
         IReadOnlyList<DiagnosticResult> results = OverlayDiagnostics.Evaluate(Status([s_primary], []), s_enabled);
 
-        results.Where(result => result.Name is "Click-through" or "First frame" or "Overlay window styles")
+        results.Where(result => result.Name is "Click-through" or "Z-order" or "First frame" or "Overlay window styles")
             .Should().OnlyContain(result => !result.Passed);
     }
 
@@ -177,7 +203,7 @@ public class OverlayDiagnosticsTests
         new(monitors, overlays, overlays.Length > 0 ? "Test adapter" : null, OverlayHasFocus: false, LastError: null);
 
     private static OverlayWindowStatus Healthy(MonitorInfo monitor) =>
-        new(monitor, WindowHandle: monitor.Bounds.Left + 1000, monitor.Bounds, HasOverlayStyles: true, IsClickThrough: true, IsExcludedFromCapture: false, PresentedFrames: 1);
+        new(monitor, WindowHandle: monitor.Bounds.Left + 1000, monitor.Bounds, HasOverlayStyles: true, IsClickThrough: true, IsExcludedFromCapture: false, PresentedFrames: 1, CoveredBy: []);
 
     private static MonitorInfo Monitor(int number, int left, int top, int width, int height)
     {

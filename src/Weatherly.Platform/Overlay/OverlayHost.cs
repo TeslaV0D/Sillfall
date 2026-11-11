@@ -6,6 +6,7 @@ using Weatherly.Core.Overlay;
 using Weatherly.Platform.Displays;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
@@ -44,6 +45,7 @@ public sealed class OverlayHost : IDisposable
     private readonly IOverlayRenderer _renderer;
     private readonly Thread _thread;
     private readonly WNDPROC _windowProcedure;
+    private readonly WINEVENTPROC _foregroundChanged;
     private readonly string _windowClass = $"Weatherly.Overlay.{Guid.NewGuid():N}";
     private readonly ConcurrentQueue<Command> _commands = new();
     private readonly ManualResetEventSlim _startCompleted = new();
@@ -55,6 +57,7 @@ public sealed class OverlayHost : IDisposable
 
     // Only touched on the overlay thread.
     private HINSTANCE _module;
+    private HWINEVENTHOOK _foregroundHook;
     private OverlayOptions _options;
     private IReadOnlyList<MonitorInfo> _monitors = [];
     private string? _lastError;
@@ -68,6 +71,7 @@ public sealed class OverlayHost : IDisposable
         _renderer = renderer;
         _options = options;
         _windowProcedure = WindowProcedure;
+        _foregroundChanged = OnForegroundChanged;
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -196,6 +200,7 @@ public sealed class OverlayHost : IDisposable
             _module = GetModule();
             RegisterWindowClass();
             _controlWindow = CreateControlWindow();
+            _foregroundHook = HookForegroundChanges();
             RefreshOverlays();
         }
 #pragma warning disable CA1031 // Rethrown on the thread that called Start.
@@ -237,6 +242,12 @@ public sealed class OverlayHost : IDisposable
 
             _overlays.Clear();
             _renderer.Dispose();
+
+            if (!_foregroundHook.IsNull)
+            {
+                PInvoke.UnhookWinEvent(_foregroundHook);
+                _foregroundHook = HWINEVENTHOOK.Null;
+            }
 
             if (_controlWindow != 0)
             {
@@ -318,6 +329,42 @@ public sealed class OverlayHost : IDisposable
         }
 
         return PInvoke.DefWindowProc(window, message, wParam, lParam);
+    }
+
+    /// <summary>
+    /// Every time another window comes to the foreground, the overlays go back to the top of the
+    /// topmost band. Out-of-context hook: Windows calls back on this thread through the message loop,
+    /// nothing is injected into other processes.
+    /// </summary>
+    private HWINEVENTHOOK HookForegroundChanges()
+    {
+        HWINEVENTHOOK hook = PInvoke.SetWinEventHook(
+            PInvoke.EVENT_SYSTEM_FOREGROUND,
+            PInvoke.EVENT_SYSTEM_FOREGROUND,
+            HMODULE.Null,
+            _foregroundChanged,
+            0,
+            0,
+            PInvoke.WINEVENT_OUTOFCONTEXT);
+
+        return hook.IsNull ? throw new Win32ErrorException("SetWinEventHook") : hook;
+    }
+
+    private void OnForegroundChanged(HWINEVENTHOOK hook, uint winEvent, HWND window, int objectId, int childId, uint eventThread, uint eventTime)
+    {
+        try
+        {
+            foreach (OverlayWindow overlay in _overlays.Values)
+            {
+                overlay.BringToTop();
+            }
+        }
+#pragma warning disable CA1031 // An exception must not escape into the native callback.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            _lastError = exception.Message;
+        }
     }
 
     private void ScheduleRefresh()
