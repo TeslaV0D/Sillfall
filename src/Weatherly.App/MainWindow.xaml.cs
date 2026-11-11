@@ -9,7 +9,7 @@ namespace Weatherly.App;
 /// <summary>
 /// Test bench of the overlay spike: switches for the overlay and the screenshot exclusion, the
 /// monitor list and the self-checks. It is replaced by the tray flyout and the settings window
-/// in later milestones.
+/// in later milestones. The window owns the overlay host and disposes it when it closes.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -42,7 +42,7 @@ public sealed partial class MainWindow : Window
         _initialized = true;
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
-        Closed += (_, _) => _overlay.LayoutChanged -= OnOverlayLayoutChanged;
+        Closed += OnClosed;
 
         Refresh();
     }
@@ -105,6 +105,12 @@ public sealed partial class MainWindow : Window
     }
 
     private void OnCheckAgainClicked(object sender, RoutedEventArgs e) => Refresh();
+
+    private void OnClosed(object sender, WindowEventArgs args)
+    {
+        _overlay.LayoutChanged -= OnOverlayLayoutChanged;
+        _overlay.Dispose();
+    }
 
     /// <summary>Called on the overlay thread when monitors were added, removed or changed.</summary>
     private void OnOverlayLayoutChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() => Refresh());

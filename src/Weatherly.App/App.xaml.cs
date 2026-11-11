@@ -14,7 +14,6 @@ public partial class App : Application
     private static readonly TimeSpan s_idleObservation = TimeSpan.FromMilliseconds(750);
 
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
-    private OverlayHost? _overlay;
     private MainWindow? _window;
 
     public App()
@@ -33,11 +32,12 @@ public partial class App : Application
             ExcludeFromCapture = _smokeTest?.ExcludeFromCapture ?? false,
         };
 
-        _overlay = new OverlayHost(new CompositionOverlayRenderer(), options);
+        // The window owns the overlay from here on and disposes it when it closes.
+        var overlay = new OverlayHost(new CompositionOverlayRenderer(), options);
         string? startError = null;
         try
         {
-            _overlay.Start();
+            overlay.Start();
         }
 #pragma warning disable CA1031 // The window reports why the overlay is missing instead of the app dying at startup.
         catch (Exception exception)
@@ -46,8 +46,7 @@ public partial class App : Application
             startError = $"{exception.GetType().Name}: {exception.Message}";
         }
 
-        _window = new MainWindow(_overlay, options, startError);
-        _window.Closed += (_, _) => _overlay.Dispose();
+        _window = new MainWindow(overlay, options, startError);
         _window.Activate();
 
         if (_smokeTest is not null)
@@ -77,7 +76,8 @@ public partial class App : Application
             // Stays on screen so the calling script can take its screenshot of the desktop.
             await Task.Delay(smokeTest.Hold);
 
-            _overlay?.Dispose();
+            // Closing the window removes the overlays before the process ends.
+            window.Close();
             Environment.Exit(exitCode);
         }
 #pragma warning disable CA1031 // Any failure of the self-check is its result.
