@@ -45,11 +45,12 @@ public class TrayMenuTests
         menu.Single(item => item.Text.StartsWith("Leaves", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Medium").Invoke!();
         menu.Single(item => item.Text.StartsWith("Fog", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Off").Invoke!();
         menu.Single(item => item.Text.StartsWith("Sun", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Heavy").Invoke!();
+        menu.Single(item => item.Text.StartsWith("Grass", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Light").Invoke!();
         menu.Single(item => item.Text == "Sound").Invoke!();
         menu.Single(item => item.Text == "Pause all effects").Invoke!();
         menu[^1].Invoke!();
 
-        calls.Should().Equal("open", "rain 1", "snow 0.3", "leaves 0.6", "fog 0", "sun 1", "sound False", "paused True", "quit");
+        calls.Should().Equal("open", "rain 1", "snow 0.3", "leaves 0.6", "fog 0", "sun 1", "grass 0.3", "sound False", "paused True", "quit");
     }
 
     [Fact]
@@ -99,6 +100,7 @@ public class TrayMenuTests
         SetLeaves: value => calls.Add($"leaves {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         SetFog: value => calls.Add($"fog {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         SetSun: value => calls.Add($"sun {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
+        SetGrass: value => calls.Add($"grass {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         SetSound: on => calls.Add($"sound {on}"),
         SetPaused: paused => calls.Add($"paused {paused}"),
         Quit: () => calls.Add("quit"));

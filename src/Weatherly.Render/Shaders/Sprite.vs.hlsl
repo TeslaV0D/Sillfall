@@ -27,6 +27,7 @@ struct VertexOutput
     float2 HalfSize : TEXCOORD1;
     nointerpolation uint Shape : SHAPE;
     nointerpolation uint Variant : VARIANT;
+    nointerpolation float Bend : BEND;
     float4 Color : COLOR0;
 };
 
@@ -50,7 +51,8 @@ VertexOutput main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     output.Local = local;
     output.HalfSize = sprite.HalfSize;
     output.Shape = sprite.Shape;
-    output.Variant = (uint)sprite.Variant;
+    output.Variant = (uint)max(sprite.Variant, 0.0);
+    output.Bend = sprite.Variant;
     output.Color = sprite.Color;
     return output;
 }

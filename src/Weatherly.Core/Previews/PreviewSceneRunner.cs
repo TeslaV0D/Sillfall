@@ -56,6 +56,12 @@ public static class PreviewSceneRunner
 
         engine.Add(sun);
         engine.Add(fog);
+        var grass = new Effects.Grass.GrassEffect(seed: scene.Seed)
+        {
+            Settings = new EffectSettings { Intensity = scene.Effects.Grass },
+            RainIntensity = scene.Effects.Rain,
+        };
+        engine.Add(grass);
         var drops = new TestDropsEffect(seed: scene.Seed) { Intensity = scene.Effects.TestDrops };
         engine.Add(drops);
         engine.Add(new Effects.Rain.RainEffect(seed: scene.Seed)
@@ -85,6 +91,11 @@ public static class PreviewSceneRunner
         if (scene.Effects.SnowFill > 0f)
         {
             snow.Fill(engine.Context, scene.Effects.SnowFill);
+        }
+
+        if (scene.Effects.GrassGrown > 0f)
+        {
+            grass.Grow(engine.Context, scene.Effects.GrassGrown);
         }
 
         if (scene.Effects.LeavesScatter > 0f)

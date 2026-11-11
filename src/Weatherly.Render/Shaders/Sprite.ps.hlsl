@@ -1,4 +1,4 @@
-// Shades a sprite quad: solid rectangle, soft disc, streak (capsule), ring, snow flake or leaf. Premultiplied output.
+// Shades a sprite quad: solid rectangle, soft disc, streak (capsule), ring, snow flake, leaf or grass blade. Premultiplied output.
 
 struct PixelInput
 {
@@ -7,6 +7,7 @@ struct PixelInput
     float2 HalfSize : TEXCOORD1;
     nointerpolation uint Shape : SHAPE;
     nointerpolation uint Variant : VARIANT;
+    nointerpolation float Bend : BEND;
     float4 Color : COLOR0;
 };
 
@@ -133,6 +134,20 @@ float4 main(PixelInput input) : SV_Target
         float2 normalized = input.Local / max(input.HalfSize, 0.001);
         float distance = abs(length(normalized) - 1.0) * min(input.HalfSize.x, input.HalfSize.y) - 0.6;
         return input.Color * Coverage(distance);
+    }
+
+    if (input.Shape == 6)
+    {
+        // Grass blade: from the root at -x to the tip at +x, curving sideways with the square of the way up.
+        float halfLength = max(input.HalfSize.x, 0.5);
+        float t = saturate((input.Local.x / halfLength + 1.0) * 0.5);
+        float center = input.Bend * t * t * 2.0 * halfLength;
+        float halfWidth = max(halfLength * 0.09 * (1.0 - 0.85 * t), 0.35);
+        float distance = abs(input.Local.y - center) - halfWidth;
+        distance = max(distance, abs(input.Local.x) - halfLength);
+        float4 color = input.Color;
+        color.rgb *= lerp(0.6, 1.1, t); // darker at the root
+        return color * Coverage(distance);
     }
 
     if (input.Shape == 5)

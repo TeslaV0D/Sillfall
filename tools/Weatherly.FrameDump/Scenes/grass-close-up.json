@@ -1,0 +1,12 @@
+{
+  // A small area at 200 % scaling for judging the blades: taper, curve, colours and the clumps.
+  "name": "grass-close-up",
+  "seed": 53,
+  "monitor": { "width": 320, "height": 240, "taskbar": 0, "scale": 2.0 },
+  "windows": [
+    { "id": 1, "x": 40, "y": 130, "width": 240, "height": 110 }
+  ],
+  "effects": { "grass": 1.0, "grassGrown": 1.0 },
+  "wind": { "x": 30 },
+  "captures": [ 1.0 ]
+}

@@ -28,6 +28,8 @@ public sealed record UserSettings
 
     public float Sun { get; set; }
 
+    public float Grass { get; set; }
+
     public bool Sound { get; set; }
 
     /// <summary>The settings as they stand in the running app.</summary>
@@ -43,6 +45,7 @@ public sealed record UserSettings
             Leaves = options.Leaves.Intensity,
             Fog = options.Fog.Intensity,
             Sun = options.Sun.Intensity,
+            Grass = options.Grass.Intensity,
             Sound = sound,
         }.Sanitized();
     }
@@ -61,6 +64,7 @@ public sealed record UserSettings
             Leaves = options.Leaves with { Intensity = settings.Leaves },
             Fog = options.Fog with { Intensity = settings.Fog },
             Sun = options.Sun with { Intensity = settings.Sun },
+            Grass = options.Grass with { Intensity = settings.Grass },
         };
     }
 
@@ -74,6 +78,7 @@ public sealed record UserSettings
         Leaves = Clamp01(Leaves),
         Fog = Clamp01(Fog),
         Sun = Clamp01(Sun),
+        Grass = Clamp01(Grass),
     };
 
     private static float Clamp01(float value, float fallback = 0f) => float.IsFinite(value) ? Math.Clamp(value, 0f, 1f) : fallback;

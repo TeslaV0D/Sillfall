@@ -44,4 +44,7 @@ public sealed record OverlayOptions
 
     /// <summary>Sunlight (milestone M7).</summary>
     public Effects.EffectSettings Sun { get; init; } = new();
+
+    /// <summary>Grass (milestone M8).</summary>
+    public Effects.EffectSettings Grass { get; init; } = new();
 }

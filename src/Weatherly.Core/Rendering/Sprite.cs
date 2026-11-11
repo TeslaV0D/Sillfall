@@ -29,6 +29,13 @@ public enum SpriteShape : uint
     /// by <see cref="Sprite.Variant"/>: pointed oval, maple, oak, narrow. A darker midrib runs along the axis.
     /// </summary>
     Leaf = 5,
+
+    /// <summary>
+    /// Grass blade: root at -x, tip at +x, tapering towards the tip and curving sideways by
+    /// <see cref="Sprite.Variant"/> (the tip's offset as a share of the blade length, negative to the left of its axis).
+    /// The quad's half height must cover the curve: <see cref="Sprite.BladeHalfHeight"/>.
+    /// </summary>
+    Blade = 6,
 }
 
 /// <summary>
@@ -60,6 +67,9 @@ public readonly record struct Sprite(Vector2 Center, Vector2 HalfSize, float Rot
 
     /// <summary>Conservative bounding box: the circle around the rotated quad.</summary>
     public float BoundingRadius => HalfSize.Length();
+
+    /// <summary>Half height of the quad of a <see cref="SpriteShape.Blade"/> that holds its curve and width.</summary>
+    public static float BladeHalfHeight(float halfLength, float bend) => (halfLength * ((2f * MathF.Abs(bend)) + 0.12f)) + 0.5f;
 
     /// <summary>A premultiplied color from straight RGB in [0, 1] and an alpha.</summary>
     public static Vector4 Premultiply(Vector3 color, float alpha) => new(color * alpha, alpha);

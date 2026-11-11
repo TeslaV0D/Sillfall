@@ -100,6 +100,27 @@ public sealed class SpriteTests : IDisposable
     }
 
     [Fact]
+    public void Blade_StandsOnItsRootAndCurvesTowardsTheTip()
+    {
+        // Two 30 px blades standing up from row 40: one straight, one curving right by 0.4 of its length.
+        const float HalfLength = 15f;
+        RenderedImage image = Render(
+            "sprite-blade",
+            new Sprite(new Vector2(16, 40 - HalfLength), new Vector2(HalfLength, Sprite.BladeHalfHeight(HalfLength, 0f)), -MathF.PI / 2, SpriteShape.Blade, new Vector4(0.3f, 0.6f, 0.2f, 1f)),
+            new Sprite(new Vector2(40, 40 - HalfLength), new Vector2(HalfLength, Sprite.BladeHalfHeight(HalfLength, 0.4f)), -MathF.PI / 2, SpriteShape.Blade, new Vector4(0.3f, 0.6f, 0.2f, 1f)) { Variant = 0.4f });
+
+        image[16, 38].Alpha.Should().BeGreaterThan(200, "solid at the root");
+        image[16, 14].Alpha.Should().BeGreaterThan(30, "still there near the tip");
+        image[16, 8].Alpha.Should().Be(0, "nothing above the tip");
+        image[19, 38].Alpha.Should().Be(0, "thin");
+
+        // The curved blade: 11.5 px up its axis the curve is 0.4 x 30 px x t^2 (t = 0.88), about 9 px to the right.
+        image[40, 38].Alpha.Should().BeGreaterThan(200);
+        image[40, 13].Alpha.Should().BeLessThan(40, "the tip has moved away from the axis");
+        image[49, 13].Alpha.Should().BeGreaterThan(30, "to the right");
+    }
+
+    [Fact]
     public void HalfTransparentSprites_BlendOverEachOther()
     {
         RenderedImage image = Render(

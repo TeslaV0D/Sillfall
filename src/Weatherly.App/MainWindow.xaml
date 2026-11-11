@@ -25,7 +25,7 @@
                 <TextBlock x:Name="HeadingText" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock
                     Style="{StaticResource BodyTextBlockStyle}"
-                    Text="Milestones M1 to M7. Every monitor gets a transparent, click-through overlay. It can show a calibration pattern (magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp, a half-transparent black block) and the surfaces the weather will interact with: window top edges in green, window sides in orange, the floor above the taskbar in blue. Calibration drops test the render loop: they fall, rest on window edges, move with their window and fall off when it is shaken or closed. Rain is the first weather effect: drops at different depths, splashes, puddles on window edges, drips down the sides and, in heavy rain, waterfalls from the corners. Snow piles up on window edges and the taskbar, falls off in clumps when a window is shaken, jerked or closed, and melts when it stops snowing. Leaves flutter down, settle on window edges, are blown away by a quick mouse movement and thrown off by a shake. Fog drifts with the wind and leaves the windows clearer; sunlight falls in rays that the windows block."
+                    Text="Milestones M1 to M8. Every monitor gets a transparent, click-through overlay. It can show a calibration pattern (magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp, a half-transparent black block) and the surfaces the weather will interact with: window top edges in green, window sides in orange, the floor above the taskbar in blue. Calibration drops test the render loop: they fall, rest on window edges, move with their window and fall off when it is shaken or closed. Rain is the first weather effect: drops at different depths, splashes, puddles on window edges, drips down the sides and, in heavy rain, waterfalls from the corners. Snow piles up on window edges and the taskbar, falls off in clumps when a window is shaken, jerked or closed, and melts when it stops snowing. Leaves flutter down, settle on window edges, are blown away by a quick mouse movement and thrown off by a shake. Fog drifts with the wind and leaves the windows clearer; sunlight falls in rays that the windows block. Grass grows on window edges and the taskbar, faster in the rain, sways in the wind and bends away from the cursor."
                     TextWrapping="Wrap" />
 
                 <StackPanel Spacing="4">
@@ -92,6 +92,15 @@
                         Width="320"
                         HorizontalAlignment="Left"
                         Header="Sunlight intensity"
+                        Maximum="100"
+                        Minimum="0"
+                        StepFrequency="5"
+                        ValueChanged="OnSliderChanged" />
+                    <Slider
+                        x:Name="GrassSlider"
+                        Width="320"
+                        HorizontalAlignment="Left"
+                        Header="Grass intensity"
                         Maximum="100"
                         Minimum="0"
                         StepFrequency="5"

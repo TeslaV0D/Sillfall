@@ -56,6 +56,7 @@ public sealed partial class MainWindow : Window
         LeavesSlider.Value = Math.Round(options.Leaves.Intensity * 100);
         FogSlider.Value = Math.Round(options.Fog.Intensity * 100);
         SunSlider.Value = Math.Round(options.Sun.Intensity * 100);
+        GrassSlider.Value = Math.Round(options.Grass.Intensity * 100);
         OverlaySwitch.IsEnabled = PatternSwitch.IsEnabled = CaptureSwitch.IsEnabled = SurfacesSwitch.IsEnabled = DropsSwitch.IsEnabled = startError is null;
         _initialized = true;
 
@@ -170,6 +171,7 @@ public sealed partial class MainWindow : Window
             Leaves = _options.Leaves with { Intensity = (float)(LeavesSlider.Value / 100) },
             Fog = _options.Fog with { Intensity = (float)(FogSlider.Value / 100) },
             Sun = _options.Sun with { Intensity = (float)(SunSlider.Value / 100) },
+            Grass = _options.Grass with { Intensity = (float)(GrassSlider.Value / 100) },
         };
 
         try
@@ -214,6 +216,9 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Sets the sunlight intensity (0 to 1), like the slider does.</summary>
     public void SetSun(float intensity) => SunSlider.Value = Math.Round(intensity * 100);
+
+    /// <summary>Sets the grass intensity (0 to 1), like the slider does.</summary>
+    public void SetGrass(float intensity) => GrassSlider.Value = Math.Round(intensity * 100);
 
     /// <summary>Switches the calibration drops on or off, like the switch does.</summary>
     public void SetTestDrops(float intensity)

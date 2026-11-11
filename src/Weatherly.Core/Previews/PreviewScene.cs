@@ -102,6 +102,12 @@ public sealed record PreviewEffects
     /// <summary>Sunlight intensity, 0 to 1.</summary>
     public float Sun { get; set; }
 
+    /// <summary>Grass intensity, 0 to 1.</summary>
+    public float Grass { get; set; }
+
+    /// <summary>Share of its full height the grass already has at the start, 0 to 1.</summary>
+    public float GrassGrown { get; set; }
+
     /// <summary>Upper corner the sun stands above: "right" (default) or "left".</summary>
     public string SunSide { get; set; } = "right";
 

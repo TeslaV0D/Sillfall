@@ -1,0 +1,11 @@
+{
+  // Grass sprouting in the rain: it grows three times as fast as without.
+  "name": "grass-rain",
+  "seed": 52,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 120, "y": 150, "width": 380, "height": 180 }
+  ],
+  "effects": { "grass": 1.0, "rain": 0.6 },
+  "captures": [ 2.0, 6.0 ]
+}

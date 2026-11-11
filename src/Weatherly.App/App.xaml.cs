@@ -81,6 +81,7 @@ public partial class App : Application
             Leaves = new EffectSettings { Intensity = (_smokeTest?.Leaves ?? false) ? SmokeLeavesIntensity : 0f },
             Fog = new EffectSettings { Intensity = (_smokeTest?.Fog ?? false) ? 1f : 0f },
             Sun = new EffectSettings { Intensity = (_smokeTest?.Sun ?? false) ? 1f : 0f },
+            Grass = new EffectSettings { Intensity = (_smokeTest?.Grass ?? false) ? 1f : 0f },
         };
 
         UserSettings settings = new();
@@ -155,6 +156,7 @@ public partial class App : Application
                     SetLeaves: window.SetLeaves,
                     SetFog: window.SetFog,
                     SetSun: window.SetSun,
+                    SetGrass: window.SetGrass,
                     SetSound: window.SetSound,
                     SetPaused: window.SetPaused,
                     Quit: Quit)),
@@ -260,6 +262,12 @@ public partial class App : Application
                 diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetSun, s_atmosphereIdleStopTimeout));
             }
 
+            if (smokeTest.Grass)
+            {
+                // Grass withers in 3 s once it is off.
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetGrass, s_atmosphereIdleStopTimeout));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -300,7 +308,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
-            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun)
+            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun || smokeTest.Grass)
             {
                 // Window to the top, weather still off: the script takes a clear screenshot first.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
@@ -344,6 +352,13 @@ public partial class App : Application
                 {
                     window.SetSun(1f);
                 }
+            }
+
+            if (smokeTest.Grass)
+            {
+                // Then grass: it sprouts on the edge right away and grows a few pixels before the screenshot.
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                window.SetGrass(1f);
             }
 
             // Stays on screen so the calling script can take its screenshot of the desktop.

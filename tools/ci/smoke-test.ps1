@@ -377,6 +377,7 @@ Invoke-WeatherRun -Name 'snow'
 Invoke-WeatherRun -Name 'leaves'
 Invoke-WeatherRun -Name 'fog'
 Invoke-WeatherRun -Name 'sun'
+Invoke-WeatherRun -Name 'grass'
 Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'
