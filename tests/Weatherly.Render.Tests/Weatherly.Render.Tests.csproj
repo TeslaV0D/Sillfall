@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\tools\Weatherly.FrameDump\Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+    <None Include="Goldens\*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Goldens" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="AwesomeAssertions" />
     <Using Include="Xunit" />
   </ItemGroup>

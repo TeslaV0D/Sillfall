@@ -82,6 +82,11 @@ jobs:
           WEATHERLY_PREVIEW_DIR: ${{ runner.temp }}/previews/render
         run: dotnet test --project tests/Weatherly.Render.Tests -c Release --no-build
 
+      # Preview frames of every scene in tools/Weatherly.FrameDump/Scenes, rendered headless with WARP.
+      - name: Render FrameDump previews
+        if: always() && matrix.platform == 'x64'
+        run: dotnet run --project tools/Weatherly.FrameDump -c Release -p:Platform=x64 -- --out "${{ runner.temp }}/previews/framedump"
+
       - name: Smoke test the app
         if: matrix.platform == 'x64'
         shell: pwsh

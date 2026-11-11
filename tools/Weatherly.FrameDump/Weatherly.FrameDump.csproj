@@ -13,4 +13,8 @@
     <ProjectReference Include="..\..\src\Weatherly.Render\Weatherly.Render.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+  </ItemGroup>
+
 </Project>

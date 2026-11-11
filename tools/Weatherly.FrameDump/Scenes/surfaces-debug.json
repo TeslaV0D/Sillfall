@@ -1,0 +1,14 @@
+{
+  // Surface debug layer of a cascade of three windows plus a maximized-height window at the side.
+  "name": "surfaces-debug",
+  "seed": 1,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 3, "x": 180, "y": 160, "width": 260, "height": 170 },
+    { "id": 2, "x": 120, "y": 110, "width": 260, "height": 170 },
+    { "id": 1, "x": 60, "y": 60, "width": 260, "height": 170 },
+    { "id": 4, "x": 500, "y": 30, "width": 120, "height": 340 }
+  ],
+  "showSurfaces": true,
+  "captures": [ 0.0 ]
+}
