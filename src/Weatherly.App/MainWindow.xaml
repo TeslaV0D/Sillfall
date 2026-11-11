@@ -25,7 +25,7 @@
                 <TextBlock x:Name="HeadingText" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock
                     Style="{StaticResource BodyTextBlockStyle}"
-                    Text="Milestones M1 to M3. Every monitor gets a transparent, click-through overlay. It can show a calibration pattern (magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp, a half-transparent black block) and the surfaces the weather will interact with: window top edges in green, window sides in orange, the floor above the taskbar in blue. Calibration drops test the render loop: they fall, rest on window edges, move with their window and fall off when it is shaken or closed. There are no weather effects yet."
+                    Text="Milestones M1 to M4. Every monitor gets a transparent, click-through overlay. It can show a calibration pattern (magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp, a half-transparent black block) and the surfaces the weather will interact with: window top edges in green, window sides in orange, the floor above the taskbar in blue. Calibration drops test the render loop: they fall, rest on window edges, move with their window and fall off when it is shaken or closed. Rain is the first weather effect: drops at different depths, splashes, puddles on window edges, drips down the sides and, in heavy rain, waterfalls from the corners."
                     TextWrapping="Wrap" />
 
                 <StackPanel Spacing="4">
@@ -41,6 +41,25 @@
                         x:Name="DropsSwitch"
                         Header="Calibration drops (render loop test)"
                         Toggled="OnOptionToggled" />
+                    <Slider
+                        x:Name="RainSlider"
+                        Width="320"
+                        HorizontalAlignment="Left"
+                        Header="Rain intensity"
+                        Maximum="100"
+                        Minimum="0"
+                        StepFrequency="5"
+                        ValueChanged="OnSliderChanged" />
+                    <Slider
+                        x:Name="RainDepthSlider"
+                        Width="320"
+                        HorizontalAlignment="Left"
+                        Header="Rain depth: share of drops that hit windows"
+                        Maximum="100"
+                        Minimum="0"
+                        StepFrequency="5"
+                        Value="50"
+                        ValueChanged="OnSliderChanged" />
                     <ToggleSwitch
                         x:Name="SurfacesSwitch"
                         Header="Show detected surfaces (debug layer)"

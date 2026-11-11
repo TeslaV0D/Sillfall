@@ -99,6 +99,7 @@ public sealed class OverlayHost : IDisposable
     private readonly WindowSnapshot _capture = new();
     private readonly SimulationEngine _engine = new();
     private readonly TestDropsEffect _testDrops = new();
+    private readonly Core.Effects.Rain.RainEffect _rain = new();
     private bool _trackingPending;
 
     // Render loop state and statistics, only touched on the overlay thread.
@@ -121,6 +122,7 @@ public sealed class OverlayHost : IDisposable
         _windowProcedure = WindowProcedure;
         _winEventCallback = OnWinEvent;
         _engine.Add(_testDrops);
+        _engine.Add(_rain);
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -621,6 +623,8 @@ public sealed class OverlayHost : IDisposable
         _monitors = MonitorService.GetMonitors();
         _engine.SetMonitors(_monitors);
         _testDrops.Intensity = Math.Clamp(_options.TestDrops, 0f, 1f);
+        _rain.Settings = _options.Rain;
+        _rain.Depth = Math.Clamp(_options.RainDepth, 0f, 1f);
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);

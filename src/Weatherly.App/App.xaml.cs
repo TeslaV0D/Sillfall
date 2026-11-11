@@ -5,6 +5,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Weatherly.Core.Diagnostics;
+using Weatherly.Core.Effects;
 using Weatherly.Core.Overlay;
 using Weatherly.Platform.Overlay;
 using Weatherly.Render;
@@ -29,6 +30,11 @@ public partial class App : Application
     private static readonly TimeSpan s_animationObservation = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan s_idleStopTimeout = TimeSpan.FromSeconds(8);
 
+    /// <summary>Rain needs longer to stop: the drips run off and the edges dry first.</summary>
+    private static readonly TimeSpan s_rainIdleStopTimeout = TimeSpan.FromSeconds(45);
+
+    private const float SmokeRainIntensity = 0.8f;
+
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
 
@@ -48,6 +54,7 @@ public partial class App : Application
             ExcludeFromCapture = _smokeTest?.ExcludeFromCapture ?? false,
             ShowSurfaces = _smokeTest?.ShowSurfaces ?? false,
             TestDrops = (_smokeTest?.TestDrops ?? false) ? 1f : 0f,
+            Rain = new EffectSettings { Intensity = (_smokeTest?.Rain ?? false) ? SmokeRainIntensity : 0f },
         };
 
         // The window owns the overlay from here on and disposes it when it closes.
@@ -89,7 +96,12 @@ public partial class App : Application
 
             if (smokeTest.TestDrops)
             {
-                diagnostics.AddRange(await CheckRenderLoopAsync(window));
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetTestDrops, s_idleStopTimeout));
+            }
+
+            if (smokeTest.Rain)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetRain, s_rainIdleStopTimeout));
             }
 
             OverlayStatus? before = window.Refresh();
@@ -125,7 +137,22 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
+            if (smokeTest.Rain)
+            {
+                // Window to the top, rain still off: the script takes a dry screenshot first.
+                RectInt32 workArea = DisplayArea.Primary.WorkArea;
+                window.AppWindow.Move(new PointInt32(window.AppWindow.Position.X, workArea.Y + 12));
+                await Task.Delay(TimeSpan.FromMilliseconds(300));
+            }
+
             int exitCode = smokeTest.WriteReport(diagnostics, [.. window.MonitorLines, handleLine]);
+
+            if (smokeTest.Rain)
+            {
+                // Then rain, so the wet screenshot shows streaks, splashes and the water film on the edge.
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                window.SetRain(SmokeRainIntensity);
+            }
 
             // Stays on screen so the calling script can take its screenshot of the desktop.
             await Task.Delay(smokeTest.Hold);
@@ -143,10 +170,10 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// With the drops running: the loop renders steadily and allocates nothing. Then the drops are
-    /// switched off, and the loop has to stop by itself once the last drop has faded.
+    /// With an effect running: the loop renders steadily and allocates nothing. Then the effect is
+    /// switched off, and the loop has to stop by itself once the last particle has faded.
     /// </summary>
-    private static async Task<List<DiagnosticResult>> CheckRenderLoopAsync(MainWindow window)
+    private static async Task<List<DiagnosticResult>> CheckRenderLoopAsync(MainWindow window, Action<float> setEffect, TimeSpan idleStopTimeout)
     {
         var results = new List<DiagnosticResult>();
         OverlayStatus? start = window.Refresh();
@@ -161,10 +188,10 @@ public partial class App : Application
         results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds));
         results.Add(AnimationDiagnostics.EvaluateLoopAllocations(running));
 
-        window.SetTestDrops(0f);
+        setEffect(0f);
         var waited = Stopwatch.StartNew();
         OverlayStatus? status = window.Refresh();
-        while (status is { IsAnimating: true } && waited.Elapsed < s_idleStopTimeout)
+        while (status is { IsAnimating: true } && waited.Elapsed < idleStopTimeout)
         {
             await Task.Delay(250);
             status = window.Refresh();

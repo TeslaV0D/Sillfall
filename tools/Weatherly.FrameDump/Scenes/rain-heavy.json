@@ -1,0 +1,21 @@
+{
+  // Heavy rain with wind from the left: slanted streaks, puddles, drips down the sides and waterfalls
+  // from the corners. Window 2 is shaken at 4.0 s (its water spills) and window 1 closes at 5.0 s.
+  "name": "rain-heavy",
+  "seed": 12,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 380, "y": 120, "width": 200, "height": 150 },
+    { "id": 1, "x": 50, "y": 170, "width": 300, "height": 170 }
+  ],
+  "effects": { "rain": 1.0, "rainDepth": 0.6 },
+  "wind": { "x": 140, "gustiness": 0.5 },
+  "captures": [ 1.0, 3.0, 3.95, 4.3, 5.4, 6.0 ],
+  "events": [
+    { "at": 4.0, "window": 2, "x": 420, "y": 120 },
+    { "at": 4.05, "window": 2, "x": 340, "y": 120 },
+    { "at": 4.1, "window": 2, "x": 420, "y": 120 },
+    { "at": 4.15, "window": 2, "x": 380, "y": 120 },
+    { "at": 5.0, "window": 1, "close": true }
+  ]
+}

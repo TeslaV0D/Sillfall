@@ -77,6 +77,12 @@ public sealed record PreviewEffects
 {
     /// <summary>Calibration drops, 0 to 1.</summary>
     public float TestDrops { get; set; }
+
+    /// <summary>Rain intensity, 0 to 1.</summary>
+    public float Rain { get; set; }
+
+    /// <summary>Share of rain drops that interact with windows, 0 to 1.</summary>
+    public float RainDepth { get; set; } = 0.5f;
 }
 
 public sealed record PreviewWind

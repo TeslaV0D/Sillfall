@@ -1,0 +1,12 @@
+{
+  // A small area at 200 % scaling for judging single drops, ripples, the water film and drips up close.
+  "name": "rain-close-up",
+  "seed": 13,
+  "monitor": { "width": 320, "height": 240, "taskbar": 0, "scale": 2.0 },
+  "windows": [
+    { "id": 1, "x": 40, "y": 110, "width": 240, "height": 130 }
+  ],
+  "effects": { "rain": 0.7, "rainDepth": 0.7 },
+  "wind": { "x": 30 },
+  "captures": [ 3.0, 6.0 ]
+}

@@ -42,6 +42,11 @@ public static class PreviewSceneRunner
         var engine = new SimulationEngine(scene.Seed);
         var drops = new TestDropsEffect(seed: scene.Seed) { Intensity = scene.Effects.TestDrops };
         engine.Add(drops);
+        engine.Add(new Effects.Rain.RainEffect(seed: scene.Seed)
+        {
+            Settings = new EffectSettings { Intensity = scene.Effects.Rain },
+            Depth = scene.Effects.RainDepth,
+        });
         engine.Context.Wind.Base = new Vector2(scene.Wind.X, scene.Wind.Y);
         engine.Context.Wind.Gustiness = scene.Wind.Gustiness;
         engine.SetMonitors([MonitorOf(scene)]);

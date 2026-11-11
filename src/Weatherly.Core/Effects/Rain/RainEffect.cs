@@ -62,6 +62,9 @@ public sealed class RainEffect : IEffectSystem
     private Pcg32 _random;
     private float _spawnDebt;
 
+    /// <summary>Pixel scale of the current step (<see cref="SimulationContext.PixelScale"/>).</summary>
+    private float _scale = 1f;
+
     // Falling drops.
     private readonly float[] _dropX = new float[MaxDrops];
     private readonly float[] _dropY = new float[MaxDrops];
@@ -131,6 +134,7 @@ public sealed class RainEffect : IEffectSystem
     public void Simulate(float dt, SimulationContext context)
     {
         float intensity = Settings.ClampedIntensity;
+        _scale = context.PixelScale;
         Spawn(dt, intensity, context);
 
         int hits = SimulateDrops(dt, context);
@@ -174,6 +178,7 @@ public sealed class RainEffect : IEffectSystem
     public void Emit(RenderFrame frame, SimulationContext context)
     {
         float brightness = Settings.ClampedBrightness;
+        _scale = context.PixelScale;
         Vector3 rainColor = Settings.Color ?? s_rainColor;
         Vector3 waterColor = Settings.Color ?? s_waterColor;
 
@@ -220,8 +225,9 @@ public sealed class RainEffect : IEffectSystem
         }
 
         // Wind blows drops in from the side: spawn wider than the desktop, on the windward side.
-        float windX = context.Wind.Current.X;
-        float fallTime = desktop.Height / TerminalVelocity(0.5f);
+        float scale = context.PixelScale;
+        float windX = context.Wind.Current.X * scale;
+        float fallTime = desktop.Height / (TerminalVelocity(0.5f) * scale);
         float margin = MathF.Abs(windX) * fallTime;
         float left = desktop.Left - (windX > 0 ? margin : 0f);
         float width = desktop.Width + margin;
@@ -234,8 +240,8 @@ public sealed class RainEffect : IEffectSystem
             float z = _random.NextFloat();
             _dropZ[i] = z;
             _dropX[i] = left + (_random.NextFloat() * width);
-            _dropY[i] = desktop.Top - (_random.NextFloat() * 60f);
-            _dropVy[i] = TerminalVelocity(z) * _random.NextFloat(0.9f, 1f);
+            _dropY[i] = desktop.Top - (_random.NextFloat() * 60f * scale);
+            _dropVy[i] = TerminalVelocity(z) * scale * _random.NextFloat(0.9f, 1f);
             _dropVx[i] = windX * (0.5f + (0.5f * z));
         }
 
@@ -248,7 +254,8 @@ public sealed class RainEffect : IEffectSystem
     private int SimulateDrops(float dt, SimulationContext context)
     {
         float threshold = 1f - Math.Clamp(Depth, 0f, 1f);
-        float windX = context.Wind.Current.X;
+        float scale = context.PixelScale;
+        float windX = context.Wind.Current.X * scale;
         float bottom = context.DesktopBounds.Bottom + 20f;
         int hits = 0;
 
@@ -256,7 +263,7 @@ public sealed class RainEffect : IEffectSystem
         while (i < _drops)
         {
             float z = _dropZ[i];
-            _dropVy[i] = MathF.Min(_dropVy[i] + (Gravity * dt), TerminalVelocity(z));
+            _dropVy[i] = MathF.Min(_dropVy[i] + (Gravity * scale * dt), TerminalVelocity(z) * scale);
             float targetVx = windX * (0.5f + (0.5f * z));
             _dropVx[i] += (targetVx - _dropVx[i]) * MathF.Min(1f, 3f * dt);
 
@@ -266,7 +273,7 @@ public sealed class RainEffect : IEffectSystem
             if (z >= threshold && context.SurfaceIndex.TryFindLanding(nextX, _dropY[i], nextY, out SurfaceHit hit))
             {
                 SurfaceSegment segment = context.Surfaces.Segments[hit.Segment];
-                Hit(nextX, hit.Row, z, segment, context);
+                Hit(nextX, hit.Row, z, segment, context, scale);
                 hits++;
                 RemoveDrop(i);
                 continue;
@@ -286,17 +293,17 @@ public sealed class RainEffect : IEffectSystem
         return hits;
     }
 
-    private void Hit(float x, int row, float z, in SurfaceSegment segment, SimulationContext context)
+    private void Hit(float x, int row, float z, in SurfaceSegment segment, SimulationContext context, float scale)
     {
         int droplets = 3 + _random.NextInt(4);
-        float speed = 120f + (180f * z);
+        float speed = (120f + (180f * z)) * scale;
         for (int d = 0; d < droplets && _splashes < MaxSplashes; d++)
         {
             int s = _splashes++;
             float angle = -MathF.PI * _random.NextFloat(0.15f, 0.85f);
             float v = speed * _random.NextFloat(0.5f, 1f);
             _splashX[s] = x;
-            _splashY[s] = row - 1f;
+            _splashY[s] = row - scale;
             _splashVx[s] = MathF.Cos(angle) * v;
             _splashVy[s] = MathF.Sin(angle) * v;
             _splashLife[s] = _random.NextFloat(0.15f, 0.35f);
@@ -306,9 +313,9 @@ public sealed class RainEffect : IEffectSystem
         {
             int r = _ripples++;
             _rippleX[r] = x;
-            _rippleY[r] = row - 1f;
+            _rippleY[r] = row - scale;
             _rippleAge[r] = 0f;
-            _rippleSize[r] = 3f + (4f * z);
+            _rippleSize[r] = (3f + (4f * z)) * scale;
         }
 
         if (segment.Key.Edge == SurfaceEdge.Top)
@@ -322,14 +329,15 @@ public sealed class RainEffect : IEffectSystem
     {
         if (!_puddles.TryGetValue(windowId, out WaterField? field))
         {
-            int width = BinWidth;
+            int binWidth = Math.Max(1, (int)MathF.Round(BinWidth * context.PixelScale));
+            int width = binWidth;
             int index = context.Windows.IndexOf(windowId);
             if (index >= 0)
             {
                 width = context.Windows[index].Bounds.Width;
             }
 
-            field = new WaterField(width, BinWidth);
+            field = new WaterField(width, binWidth);
             _puddles.Add(windowId, field);
         }
 
@@ -353,7 +361,7 @@ public sealed class RainEffect : IEffectSystem
                 continue;
             }
 
-            _splashVy[i] += Gravity * dt;
+            _splashVy[i] += Gravity * _scale * dt;
             _splashX[i] += _splashVx[i] * dt;
             _splashY[i] += _splashVy[i] * dt;
             i++;
@@ -450,7 +458,7 @@ public sealed class RainEffect : IEffectSystem
             _dropX[i] = x + _random.NextFloat(-1.5f, 1.5f);
             _dropY[i] = y + 1f;
             _dropVx[i] = 0f;
-            _dropVy[i] = _random.NextFloat(20f, 80f);
+            _dropVy[i] = _random.NextFloat(20f, 80f) * _scale;
 
             // Just below "near": falls past the window it pours from, still in front of everything else.
             _dropZ[i] = 0.98f;
@@ -467,7 +475,7 @@ public sealed class RainEffect : IEffectSystem
         int i = _drips++;
         _dripX[i] = column + 0.5f;
         _dripY[i] = top;
-        _dripVy[i] = 10f;
+        _dripVy[i] = 10f * _scale;
         _dripPhase[i] = _random.NextFloat(0f, 100f);
         _dripOwner[i] = owner;
         _dripColumn[i] = column;
@@ -487,17 +495,17 @@ public sealed class RainEffect : IEffectSystem
             }
 
             PixelRect bounds = context.Windows[index].Bounds;
-            _dripVy[i] = MathF.Min(_dripVy[i] + (220f * dt), DripMaxSpeed);
+            _dripVy[i] = MathF.Min(_dripVy[i] + (220f * _scale * dt), DripMaxSpeed * _scale);
             _dripY[i] += _dripVy[i] * dt;
 
             // Meander: the drip wobbles a little around the side column as it runs down.
             _dripPhase[i] += dt * 1.7f;
-            _dripX[i] = _dripColumn[i] + 0.5f + (1.2f * Noise1D.Sample(_dripPhase[i], 11));
+            _dripX[i] = _dripColumn[i] + 0.5f + (1.2f * _scale * Noise1D.Sample(_dripPhase[i], 11));
 
             // A new trail point every few pixels of travel.
             int trail = i * TrailLength;
             int count = _trailCount[i];
-            if (count == 0 || _dripY[i] - _trailY[trail + ((count - 1) % TrailLength)] >= TrailSpacing)
+            if (count == 0 || _dripY[i] - _trailY[trail + ((count - 1) % TrailLength)] >= TrailSpacing * _scale)
             {
                 int slot = count % TrailLength;
                 _trailX[trail + slot] = _dripX[i];
@@ -594,10 +602,10 @@ public sealed class RainEffect : IEffectSystem
             }
 
             int i = _drops++;
-            _dropX[i] = bounds.Left + ((b + 0.5f) * BinWidth);
+            _dropX[i] = bounds.Left + ((b + 0.5f) * field.BinWidth);
             _dropY[i] = bounds.Top + 2f;
-            _dropVx[i] = _random.NextFloat(-30f, 30f);
-            _dropVy[i] = _random.NextFloat(0f, 120f);
+            _dropVx[i] = _random.NextFloat(-30f, 30f) * _scale;
+            _dropVy[i] = _random.NextFloat(0f, 120f) * _scale;
             _dropZ[i] = 0.98f;
         }
 
@@ -636,15 +644,15 @@ public sealed class RainEffect : IEffectSystem
                 }
 
                 // Clip the bin to the visible part of the edge.
-                float left = MathF.Max(segment.Origin + (b * BinWidth), segment.Start);
-                float right = MathF.Min(segment.Origin + ((b + 1) * BinWidth), segment.End);
+                float left = MathF.Max(segment.Origin + (b * field.BinWidth), segment.Start);
+                float right = MathF.Min(segment.Origin + ((b + 1) * field.BinWidth), segment.End);
                 if (right <= left)
                 {
                     continue;
                 }
 
                 // A thin film, thicker where more water stands, shimmering slowly.
-                float height = 1f + (2.5f * water);
+                float height = (1f + (2.5f * water)) * _scale;
                 float shimmer = 0.85f + (0.15f * Noise1D.Sample((time * 1.3f) + (b * 0.37f), 5));
                 float alpha = MathF.Min(1f, (0.25f + (0.45f * water)) * shimmer * brightness);
                 var center = new Vector2((left + right) / 2f, segment.Position - (height / 2f));
@@ -652,7 +660,7 @@ public sealed class RainEffect : IEffectSystem
 
                 // Highlight along the water surface.
                 var highlight = new Vector2(center.X, segment.Position - height);
-                frame.Add(new Sprite(highlight, new Vector2((right - left) / 2f, 0.5f), 0f, SpriteShape.Rectangle, Sprite.Premultiply(Vector3.One, MathF.Min(1f, 0.35f * water * shimmer * brightness))));
+                frame.Add(new Sprite(highlight, new Vector2((right - left) / 2f, 0.5f * _scale), 0f, SpriteShape.Rectangle, Sprite.Premultiply(Vector3.One, MathF.Min(1f, 0.35f * water * shimmer * brightness))));
             }
         }
     }
@@ -683,7 +691,7 @@ public sealed class RainEffect : IEffectSystem
                     float alpha = 0.45f * (1f - (n / (float)TrailLength)) * brightness;
                     frame.Add(new Sprite(
                         (previous + point) / 2f,
-                        new Vector2((length / 2f) + 0.8f, 0.8f),
+                        new Vector2((length / 2f) + (0.8f * _scale), 0.8f * _scale),
                         MathF.Atan2(delta.Y, delta.X),
                         SpriteShape.Streak,
                         Sprite.Premultiply(color, MathF.Min(1f, alpha))));
@@ -692,7 +700,7 @@ public sealed class RainEffect : IEffectSystem
                 previous = point;
             }
 
-            frame.Add(new Sprite(new Vector2(_dripX[i], _dripY[i]), new Vector2(1.8f, 2.2f), 0f, SpriteShape.Disc, Sprite.Premultiply(color, MathF.Min(1f, 0.85f * brightness))));
+            frame.Add(new Sprite(new Vector2(_dripX[i], _dripY[i]), new Vector2(1.8f, 2.2f) * _scale, 0f, SpriteShape.Disc, Sprite.Premultiply(color, MathF.Min(1f, 0.85f * brightness))));
         }
     }
 
@@ -712,7 +720,7 @@ public sealed class RainEffect : IEffectSystem
         for (int i = 0; i < _splashes; i++)
         {
             float alpha = MathF.Min(1f, MathF.Min(1f, _splashLife[i] / 0.15f) * 0.7f * brightness);
-            frame.Add(new Sprite(new Vector2(_splashX[i], _splashY[i]), new Vector2(1.1f, 1.1f), 0f, SpriteShape.Disc, Sprite.Premultiply(color, alpha)));
+            frame.Add(new Sprite(new Vector2(_splashX[i], _splashY[i]), new Vector2(1.1f, 1.1f) * _scale, 0f, SpriteShape.Disc, Sprite.Premultiply(color, alpha)));
         }
     }
 
@@ -725,7 +733,7 @@ public sealed class RainEffect : IEffectSystem
             float speed = velocity.Length();
 
             // Motion-stretched: length grows with speed and nearness, width and opacity with nearness.
-            float radius = 0.5f + (0.9f * z);
+            float radius = (0.5f + (0.9f * z)) * _scale;
             float halfLength = MathF.Max(radius, speed * 0.009f * (0.6f + (0.4f * z)));
             float alpha = MathF.Min(1f, (0.16f + (0.42f * z)) * brightness);
             // The drop's position is the tip of the streak; the tail trails behind along the flight direction.

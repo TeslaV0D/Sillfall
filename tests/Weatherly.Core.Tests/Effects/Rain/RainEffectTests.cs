@@ -259,12 +259,28 @@ public class RainEffectTests
         (stopwatch.Elapsed.TotalMilliseconds / Frames).Should().BeLessThan(4.0);
     }
 
-    private static (SimulationEngine Engine, RainEffect Rain) Create(float intensity, float depth = 0.5f)
+    [Fact]
+    public void HighDpi_ScalesDropsAndPuddleBins()
+    {
+        (SimulationEngine normal, _) = Create(intensity: 0.5f);
+        (SimulationEngine doubled, RainEffect rain) = Create(intensity: 0.5f, monitor: s_monitor with { Dpi = 192 });
+
+        Run(normal, seconds: 1);
+        Run(doubled, seconds: 1);
+
+        static float Width(SimulationEngine engine) =>
+            engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Streak).Max(s => s.HalfSize.Y);
+
+        Width(doubled).Should().BeApproximately(2 * Width(normal), 0.01f);
+        rain.PuddleOf(s_window.Id)!.BinWidth.Should().Be(2 * RainEffect.BinWidth);
+    }
+
+    private static (SimulationEngine Engine, RainEffect Rain) Create(float intensity, float depth = 0.5f, MonitorInfo? monitor = null)
     {
         var engine = new SimulationEngine(seed: 5);
         var rain = new RainEffect(seed: 5) { Settings = new EffectSettings { Intensity = intensity }, Depth = depth };
         engine.Add(rain);
-        engine.SetMonitors([s_monitor]);
+        engine.SetMonitors([monitor ?? s_monitor]);
         engine.SetWindows(WindowSnapshot.Of(0, s_window));
         return (engine, rain);
     }

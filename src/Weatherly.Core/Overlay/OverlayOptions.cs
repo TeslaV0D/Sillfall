@@ -26,4 +26,10 @@ public sealed record OverlayOptions
 
     /// <summary>Intensity of the calibration drops (milestone M3), 0 to 1. 0 switches them off.</summary>
     public float TestDrops { get; init; }
+
+    /// <summary>Rain (milestone M4).</summary>
+    public Effects.EffectSettings Rain { get; init; } = new();
+
+    /// <summary>Share of rain drops that interact with windows, 0 to 1 (PLAN.md: "Depth").</summary>
+    public float RainDepth { get; init; } = 0.5f;
 }

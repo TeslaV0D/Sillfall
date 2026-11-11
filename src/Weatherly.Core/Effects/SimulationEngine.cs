@@ -78,6 +78,7 @@ public sealed class SimulationEngine
         ArgumentNullException.ThrowIfNull(monitors);
         Context.Monitors = monitors;
         Context.DesktopBounds = Union(monitors);
+        Context.PixelScale = PrimaryScale(monitors);
         _surfacesDirty = true;
     }
 
@@ -165,6 +166,19 @@ public sealed class SimulationEngine
         _extractor.Extract(Context.Windows, Context.Monitors, Context.Surfaces);
         Context.SurfaceIndex.Build(Context.Surfaces);
         _surfacesDirty = false;
+    }
+
+    private static float PrimaryScale(IReadOnlyList<MonitorInfo> monitors)
+    {
+        foreach (MonitorInfo monitor in monitors)
+        {
+            if (monitor.IsPrimary)
+            {
+                return monitor.ScaleFactor;
+            }
+        }
+
+        return monitors.Count > 0 ? monitors[0].ScaleFactor : 1f;
     }
 
     private static PixelRect Union(IReadOnlyList<MonitorInfo> monitors)
