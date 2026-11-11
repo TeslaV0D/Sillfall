@@ -1,0 +1,23 @@
+namespace Weatherly.Core.Overlay;
+
+/// <summary>What an overlay draws.</summary>
+public enum OverlayContent
+{
+    /// <summary>Nothing. The overlay is fully transparent.</summary>
+    None,
+
+    /// <summary>Calibration pattern that makes monitor bounds, DPI scaling and alpha blending visible.</summary>
+    TestPattern,
+}
+
+/// <summary>User-facing switches of the overlay.</summary>
+public sealed record OverlayOptions
+{
+    /// <summary>Whether overlays exist at all. When off, no overlay window and no swap chain is alive.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>Hides the overlay from screenshots and screen recordings.</summary>
+    public bool ExcludeFromCapture { get; init; }
+
+    public OverlayContent Content { get; init; } = OverlayContent.None;
+}
