@@ -89,6 +89,12 @@ public sealed record PreviewEffects
 
     /// <summary>Snow already lying on every window and the floor at the start, in pixels at 100 %.</summary>
     public float SnowFill { get; set; }
+
+    /// <summary>Leaf intensity, 0 to 1.</summary>
+    public float Leaves { get; set; }
+
+    /// <summary>Leaves already lying on every window and the floor at the start, per 100 px.</summary>
+    public float LeavesScatter { get; set; }
 }
 
 public sealed record PreviewWind
@@ -101,7 +107,10 @@ public sealed record PreviewWind
     public float Gustiness { get; set; } = 0.5f;
 }
 
-/// <summary>At <see cref="At"/> seconds, window <see cref="Window"/> moves to (<see cref="X"/>, <see cref="Y"/>), or disappears.</summary>
+/// <summary>
+/// At <see cref="At"/> seconds, window <see cref="Window"/> moves to (<see cref="X"/>, <see cref="Y"/>), or disappears,
+/// or the cursor moves to (<see cref="CursorX"/>, <see cref="CursorY"/>).
+/// </summary>
 public sealed record PreviewEvent
 {
     public double At { get; set; }
@@ -114,6 +123,11 @@ public sealed record PreviewEvent
 
     /// <summary>Closes the window instead of moving it.</summary>
     public bool Close { get; set; }
+
+    /// <summary>Moves the cursor here instead of moving a window (with <see cref="CursorY"/>).</summary>
+    public float? CursorX { get; set; }
+
+    public float? CursorY { get; set; }
 }
 
 [JsonSourceGenerationOptions(

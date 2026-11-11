@@ -1,18 +1,21 @@
 using Weatherly.Sandbox;
 
 // Debug app: the effects in a normal window, over fake windows that can be dragged with the mouse.
-// Keys: D drops on/off, R rain on/off, W snow on/off, F fill all windows with snow, S surfaces on/off,
-//       N new window, Delete close top window, Left/Right wind, Escape quit.
+// Keys: D drops on/off, R rain on/off, W snow on/off, F fill all windows with snow, L leaves on/off,
+//       K scatter leaves on all windows, S surfaces on/off, N new window, Delete close top window,
+//       Left/Right wind, Escape quit.
 // Snow demo: press F, then shake a window (drag it quickly back and forth), fling it, or close it with Delete:
 // the snow slides off and piles up wherever it lands.
+// Leaf demo: press K, then sweep the mouse quickly over a window edge (the gust lifts the leaves) or shake a window.
 //
-//   Weatherly.Sandbox [--effect=drops|rain|snow] [--fill-snow] [--exit-after=<seconds>]
+//   Weatherly.Sandbox [--effect=drops|rain|snow|leaves] [--fill-snow] [--scatter-leaves] [--exit-after=<seconds>]
 //
 // --exit-after closes the sandbox after the given time and returns 0 if it rendered frames: a CI self-check.
 
 double? exitAfter = null;
 string effect = "drops";
 bool fillSnow = false;
+bool scatterLeaves = false;
 foreach (string arg in args)
 {
     if (arg.StartsWith("--exit-after=", StringComparison.Ordinal)
@@ -28,9 +31,13 @@ foreach (string arg in args)
     {
         fillSnow = true;
     }
+    else if (arg == "--scatter-leaves")
+    {
+        scatterLeaves = true;
+    }
 }
 
-using var sandbox = new SandboxWindow(effect, fillSnow);
+using var sandbox = new SandboxWindow(effect, fillSnow, scatterLeaves);
 long frames = sandbox.Run(exitAfter);
 Console.WriteLine($"Rendered {frames} frame(s).");
 return frames > 0 ? 0 : 1;

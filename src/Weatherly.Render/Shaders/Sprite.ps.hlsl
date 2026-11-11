@@ -1,4 +1,4 @@
-// Shades a sprite quad: solid rectangle, soft disc, streak (capsule), ring or snow flake. Premultiplied output.
+// Shades a sprite quad: solid rectangle, soft disc, streak (capsule), ring, snow flake or leaf. Premultiplied output.
 
 struct PixelInput
 {
@@ -69,6 +69,42 @@ float FlakeDistance(float2 p, float r, uint variant)
     return d;
 }
 
+// Signed distance to a leaf in units of the half length. n is the position in the quad, -1..1 on both
+// axes; the blade spans x = -0.8..1, the stem the rest towards -1.
+float LeafDistance(float2 n, uint variant)
+{
+    float2 b = float2((n.x - 0.1) / 0.9, n.y); // blade: -1..1 along its length
+    float d;
+    if (variant == 1)
+    {
+        // Maple: five pointed lobes around the stem end.
+        float2 p = b - float2(-0.25, 0.0);
+        float angle = atan2(p.y, p.x);
+        float lobes = pow(abs(cos(2.5 * angle)), 0.5);
+        d = length(p * float2(0.85, 1.0)) - (0.45 + 0.55 * lobes) * 0.95;
+    }
+    else if (variant == 2)
+    {
+        // Oak: an oval with a wavy edge.
+        float angle = atan2(b.y, b.x);
+        float r = length(float2(b.x, b.y * 1.25));
+        d = r - (0.92 + 0.08 * cos(9.0 * angle));
+    }
+    else
+    {
+        // Pointed oval (0) or narrow (3): the lens between two circles, tips at x = -1 and 1.
+        float h = variant == 3 ? 0.35 : 0.62;
+        float c = (1.0 - h * h) / (2.0 * h);
+        float2 q = float2(b.x, b.y * h);
+        d = max(length(q - float2(0.0, c)), length(q + float2(0.0, c))) - (c + h);
+        d /= h;
+    }
+
+    // Stem: a thin line from the blade to the end of the quad.
+    float stem = max(abs(n.y) - 0.07, max(n.x - (-0.6), -1.0 - n.x));
+    return min(d, stem);
+}
+
 float4 main(PixelInput input) : SV_Target
 {
     if (input.Shape == 1)
@@ -97,6 +133,18 @@ float4 main(PixelInput input) : SV_Target
         float2 normalized = input.Local / max(input.HalfSize, 0.001);
         float distance = abs(length(normalized) - 1.0) * min(input.HalfSize.x, input.HalfSize.y) - 0.6;
         return input.Color * Coverage(distance);
+    }
+
+    if (input.Shape == 5)
+    {
+        // Leaf: blade with a darker midrib. Distances in units of the half width, so the edge stays one pixel soft.
+        float2 n = input.Local / max(input.HalfSize, 0.001);
+        float scale = max(min(input.HalfSize.x, input.HalfSize.y), 0.5);
+        float distance = LeafDistance(n, input.Variant) * scale;
+        float rib = abs(input.Local.y) < 0.6 && n.x > -0.6 && n.x < 0.85 ? 0.72 : 1.0;
+        float4 color = input.Color;
+        color.rgb *= rib;
+        return color * Coverage(distance);
     }
 
     if (input.Shape == 4)

@@ -1,0 +1,139 @@
+{
+  // Wind and many leaves lying on two windows. A quick cursor sweep along window 1's edge at 3.0 s blows
+  // its leaves away, window 2 is shaken at 5.0 s and closed at 7.0 s (its leaves fall to the floor).
+  "name": "leaves-windy",
+  "seed": 32,
+  "monitor": {
+    "width": 640,
+    "height": 400,
+    "taskbar": 30
+  },
+  "windows": [
+    {
+      "id": 2,
+      "x": 400,
+      "y": 110,
+      "width": 200,
+      "height": 150
+    },
+    {
+      "id": 1,
+      "x": 60,
+      "y": 170,
+      "width": 280,
+      "height": 160
+    }
+  ],
+  "effects": {
+    "leaves": 1.0,
+    "leavesScatter": 3
+  },
+  "wind": {
+    "x": 60,
+    "gustiness": 0.6
+  },
+  "captures": [
+    2.9,
+    3.4,
+    4.9,
+    5.4,
+    7.4,
+    10.0
+  ],
+  "events": [
+    {
+      "at": 3.0,
+      "cursorX": 70,
+      "cursorY": 165
+    },
+    {
+      "at": 3.0167,
+      "cursorX": 92,
+      "cursorY": 165
+    },
+    {
+      "at": 3.0333,
+      "cursorX": 114,
+      "cursorY": 165
+    },
+    {
+      "at": 3.05,
+      "cursorX": 136,
+      "cursorY": 165
+    },
+    {
+      "at": 3.0667,
+      "cursorX": 158,
+      "cursorY": 165
+    },
+    {
+      "at": 3.0833,
+      "cursorX": 180,
+      "cursorY": 165
+    },
+    {
+      "at": 3.1,
+      "cursorX": 202,
+      "cursorY": 165
+    },
+    {
+      "at": 3.1167,
+      "cursorX": 224,
+      "cursorY": 165
+    },
+    {
+      "at": 3.1333,
+      "cursorX": 246,
+      "cursorY": 165
+    },
+    {
+      "at": 3.15,
+      "cursorX": 268,
+      "cursorY": 165
+    },
+    {
+      "at": 3.1667,
+      "cursorX": 290,
+      "cursorY": 165
+    },
+    {
+      "at": 3.1833,
+      "cursorX": 312,
+      "cursorY": 165
+    },
+    {
+      "at": 3.2,
+      "cursorX": 334,
+      "cursorY": 165
+    },
+    {
+      "at": 5.0,
+      "window": 2,
+      "x": 430,
+      "y": 110
+    },
+    {
+      "at": 5.05,
+      "window": 2,
+      "x": 370,
+      "y": 110
+    },
+    {
+      "at": 5.1,
+      "window": 2,
+      "x": 430,
+      "y": 110
+    },
+    {
+      "at": 5.15,
+      "window": 2,
+      "x": 400,
+      "y": 110
+    },
+    {
+      "at": 7.0,
+      "window": 2,
+      "close": true
+    }
+  ]
+}

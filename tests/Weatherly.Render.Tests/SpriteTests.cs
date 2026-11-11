@@ -77,6 +77,29 @@ public sealed class SpriteTests : IDisposable
     }
 
     [Fact]
+    public void Leaf_DrawsEveryVariantAlongItsAxis()
+    {
+        // One leaf per variant, 14 px long and 7 px wide, lying along x, side by side.
+        var sprites = new Sprite[Sprite.LeafVariants];
+        for (int v = 0; v < sprites.Length; v++)
+        {
+            sprites[v] = new Sprite(new Vector2(8 + (v * 16), 24), new Vector2(7f, 3.5f), 0f, SpriteShape.Leaf, new Vector4(0.9f, 0.4f, 0.1f, 1f)) { Variant = v };
+        }
+
+        RenderedImage image = Render("sprite-leaf", sprites);
+
+        for (int v = 0; v < sprites.Length; v++)
+        {
+            int cx = 8 + (v * 16);
+            image[cx + 2, 23].Alpha.Should().BeGreaterThan(200, $"variant {v} is solid in its blade");
+            image[cx, 24 - 6].Alpha.Should().Be(0, $"variant {v} is narrower than it is long");
+        }
+
+        // The midrib is darker than the blade beside it (pointed oval).
+        ((int)image[10, 24].Red).Should().BeLessThan(image[10, 22].Red);
+    }
+
+    [Fact]
     public void HalfTransparentSprites_BlendOverEachOther()
     {
         RenderedImage image = Render(

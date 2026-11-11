@@ -44,6 +44,11 @@ public partial class App : Application
 
     private const float SmokeSnowIntensity = 1f;
 
+    private const float SmokeLeavesIntensity = 1f;
+
+    /// <summary>Leaves: the last ones need about ten seconds to fall, then the lying ones fade.</summary>
+    private static readonly TimeSpan s_leavesIdleStopTimeout = TimeSpan.FromSeconds(60);
+
     /// <summary>Settings are written this long after the last change, so dragging a slider does not write a file per step.</summary>
     private static readonly TimeSpan s_saveDelay = TimeSpan.FromMilliseconds(500);
 
@@ -70,6 +75,7 @@ public partial class App : Application
             TestDrops = (_smokeTest?.TestDrops ?? false) ? 1f : 0f,
             Rain = new EffectSettings { Intensity = (_smokeTest?.Rain ?? false) ? SmokeRainIntensity : 0f },
             Snow = new EffectSettings { Intensity = (_smokeTest?.Snow ?? false) ? SmokeSnowIntensity : 0f },
+            Leaves = new EffectSettings { Intensity = (_smokeTest?.Leaves ?? false) ? SmokeLeavesIntensity : 0f },
         };
 
         UserSettings settings = new();
@@ -141,6 +147,7 @@ public partial class App : Application
                     Open: window.ShowAndActivate,
                     SetRain: window.SetRain,
                     SetSnow: window.SetSnow,
+                    SetLeaves: window.SetLeaves,
                     SetSound: window.SetSound,
                     SetPaused: window.SetPaused,
                     Quit: Quit)),
@@ -231,6 +238,11 @@ public partial class App : Application
                 diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetSnow, s_snowIdleStopTimeout));
             }
 
+            if (smokeTest.Leaves)
+            {
+                diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetLeaves, s_leavesIdleStopTimeout));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -271,7 +283,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
-            if (smokeTest.Rain || smokeTest.Snow)
+            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves)
             {
                 // Window to the top, weather still off: the script takes a clear screenshot first.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
@@ -293,6 +305,13 @@ public partial class App : Application
                 // Then snow, so the second screenshot shows flakes and the first snow on the edge.
                 await Task.Delay(TimeSpan.FromMilliseconds(1500));
                 window.SetSnow(SmokeSnowIntensity);
+            }
+
+            if (smokeTest.Leaves)
+            {
+                // Then leaves: they fall slowly, the screenshot catches them on the way and on the edge.
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                window.SetLeaves(SmokeLeavesIntensity);
             }
 
             // Stays on screen so the calling script can take its screenshot of the desktop.

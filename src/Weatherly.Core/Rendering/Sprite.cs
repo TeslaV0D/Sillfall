@@ -23,6 +23,12 @@ public enum SpriteShape : uint
     /// <see cref="Sprite.Variant"/>: soft blob, star, branched star, plate, broad star, cluster.
     /// </summary>
     Flake = 4,
+
+    /// <summary>
+    /// Leaf, long along its x axis with the stem at -x, in one of <see cref="Sprite.LeafVariants"/> forms chosen
+    /// by <see cref="Sprite.Variant"/>: pointed oval, maple, oak, narrow. A darker midrib runs along the axis.
+    /// </summary>
+    Leaf = 5,
 }
 
 /// <summary>
@@ -43,7 +49,10 @@ public readonly record struct Sprite(Vector2 Center, Vector2 HalfSize, float Rot
     /// <summary>Number of forms <see cref="SpriteShape.Flake"/> knows.</summary>
     public const int FlakeVariants = 6;
 
-    /// <summary>Which form a shape with variants takes (<see cref="SpriteShape.Flake"/>). Ignored by the others.</summary>
+    /// <summary>Number of forms <see cref="SpriteShape.Leaf"/> knows.</summary>
+    public const int LeafVariants = 4;
+
+    /// <summary>Which form a shape with variants takes (<see cref="SpriteShape.Flake"/>, <see cref="SpriteShape.Leaf"/>). Ignored by the others.</summary>
     public float Variant { get; init; }
 
     // Pads the struct to 48 bytes, so instances are 16-byte aligned in the GPU buffer.

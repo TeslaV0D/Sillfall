@@ -35,4 +35,7 @@ public sealed record OverlayOptions
 
     /// <summary>Snow (milestone M5).</summary>
     public Effects.EffectSettings Snow { get; init; } = new();
+
+    /// <summary>Leaves (milestone M6).</summary>
+    public Effects.EffectSettings Leaves { get; init; } = new();
 }

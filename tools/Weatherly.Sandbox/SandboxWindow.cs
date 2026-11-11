@@ -28,6 +28,9 @@ internal sealed class SandboxWindow : IDisposable
     private readonly TestDropsEffect _drops = new() { Intensity = 1f };
     private readonly Core.Effects.Rain.RainEffect _rain = new(seed: 3);
     private readonly Core.Effects.Snow.SnowEffect _snow = new(seed: 3);
+    private readonly Core.Effects.Leaves.LeafEffect _leaves = new(seed: 3);
+    private readonly Core.Simulation.CursorMotion _cursor = new();
+    private Vector2 _mouse = new(-10_000, -10_000);
     private readonly FakeDesktop _desktop = new();
     private readonly WindowSnapshot _snapshot = new();
     private readonly RenderFrame _scene = new();
@@ -36,21 +39,26 @@ internal sealed class SandboxWindow : IDisposable
     private PixelSize _size;
     private bool _showSurfaces;
     private bool _fillSnow;
+    private bool _scatterLeaves;
     private bool _closed;
 
-    /// <param name="effect">Effect to start with: "drops", "rain" or "snow".</param>
+    /// <param name="effect">Effect to start with: "drops", "rain", "snow" or "leaves".</param>
     /// <param name="fillSnow">Start with snow lying on every window, ready to slide off.</param>
-    public SandboxWindow(string effect = "drops", bool fillSnow = false)
+    /// <param name="scatterLeaves">Start with leaves lying on every window, ready to be blown or shaken off.</param>
+    public SandboxWindow(string effect = "drops", bool fillSnow = false, bool scatterLeaves = false)
     {
         PInvoke.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         _windowProcedure = WindowProcedure;
         _drops.Intensity = effect == "drops" ? 1f : 0f;
         _rain.Settings = new EffectSettings { Intensity = effect == "rain" ? 0.7f : 0f };
         _snow.Settings = new EffectSettings { Intensity = effect == "snow" ? 0.7f : 0f };
+        _leaves.Settings = new EffectSettings { Intensity = effect == "leaves" ? 0.7f : 0f };
         _fillSnow = fillSnow;
+        _scatterLeaves = scatterLeaves;
         _engine.Add(_drops);
         _engine.Add(_rain);
         _engine.Add(_snow);
+        _engine.Add(_leaves);
         _window = CreateWindow();
 
         _desktop.Add(PixelRect.FromSize(80, 120, 460, 300));
@@ -95,7 +103,15 @@ internal sealed class SandboxWindow : IDisposable
                 _snow.Fill(_engine.Context, 18f);
             }
 
+            if (_scatterLeaves)
+            {
+                _scatterLeaves = false;
+                _leaves.Scatter(_engine.Context, 3f);
+            }
+
             _snow.RainIntensity = _rain.Settings.ClampedIntensity;
+            _cursor.Update(_mouse, now);
+            _engine.SetCursor(_cursor.Position, _cursor.Velocity);
             _engine.Advance(now - last);
             last = now;
 
@@ -175,7 +191,8 @@ internal sealed class SandboxWindow : IDisposable
                 return new LRESULT(0);
 
             case PInvoke.WM_MOUSEMOVE:
-                _desktop.Drag(PointOf(lParam));
+                _mouse = PointOf(lParam);
+                _desktop.Drag(_mouse);
                 return new LRESULT(0);
 
             case PInvoke.WM_LBUTTONUP:
@@ -212,6 +229,12 @@ internal sealed class SandboxWindow : IDisposable
             case VIRTUAL_KEY.VK_F:
                 _fillSnow = true;
                 break;
+            case VIRTUAL_KEY.VK_L:
+                _leaves.Settings = new EffectSettings { Intensity = _leaves.Settings.Intensity > 0 ? 0f : 0.7f };
+                break;
+            case VIRTUAL_KEY.VK_K:
+                _scatterLeaves = true;
+                break;
             case VIRTUAL_KEY.VK_S:
                 _showSurfaces = !_showSurfaces;
                 break;
@@ -238,7 +261,7 @@ internal sealed class SandboxWindow : IDisposable
     private void UpdateTitle()
     {
         static string OnOff(bool on) => on ? "on" : "off";
-        string title = $"{AppInfo.Name} Sandbox  |  drops {OnOff(_drops.Intensity > 0)}  |  rain {OnOff(_rain.Settings.Intensity > 0)}  |  snow {OnOff(_snow.Settings.Intensity > 0)}  |  surfaces {OnOff(_showSurfaces)}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D R W F S N Del Left Right Esc";
+        string title = $"{AppInfo.Name} Sandbox  |  drops {OnOff(_drops.Intensity > 0)}  |  rain {OnOff(_rain.Settings.Intensity > 0)}  |  snow {OnOff(_snow.Settings.Intensity > 0)}  |  leaves {OnOff(_leaves.Settings.Intensity > 0)}  |  surfaces {OnOff(_showSurfaces)}  |  wind {_engine.Context.Wind.Base.X:0} px/s  |  D R W F L K S N Del Left Right Esc";
         PInvoke.SetWindowText(_window, title);
     }
 

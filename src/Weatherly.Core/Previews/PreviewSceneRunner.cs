@@ -53,6 +53,11 @@ public static class PreviewSceneRunner
             RainIntensity = scene.Effects.Rain,
         };
         engine.Add(snow);
+        var leaves = new Effects.Leaves.LeafEffect(seed: scene.Seed)
+        {
+            Settings = new EffectSettings { Intensity = scene.Effects.Leaves },
+        };
+        engine.Add(leaves);
         engine.Context.Wind.Base = new Vector2(scene.Wind.X, scene.Wind.Y);
         engine.Context.Wind.Gustiness = scene.Wind.Gustiness;
         engine.SetMonitors([MonitorOf(scene)]);
@@ -65,6 +70,15 @@ public static class PreviewSceneRunner
         {
             snow.Fill(engine.Context, scene.Effects.SnowFill);
         }
+
+        if (scene.Effects.LeavesScatter > 0f)
+        {
+            leaves.Scatter(engine.Context, scene.Effects.LeavesScatter);
+        }
+
+        // The cursor rests far away until an event moves it; its velocity comes from the positions, frame by frame.
+        var cursor = new Simulation.CursorMotion();
+        var cursorPosition = new Vector2(-10_000, -10_000);
 
         var events = scene.Events.OrderBy(e => e.At).ToList();
         var captures = scene.Captures.Select((time, index) => (time, index)).OrderBy(capture => capture.time).ToList();
@@ -81,6 +95,12 @@ public static class PreviewSceneRunner
             while (nextEvent < events.Count && events[nextEvent].At <= time + 1e-9)
             {
                 PreviewEvent e = events[nextEvent++];
+                if (e.CursorX is { } cursorX && e.CursorY is { } cursorY)
+                {
+                    cursorPosition = new Vector2(cursorX, cursorY);
+                    continue;
+                }
+
                 if (e.Close)
                 {
                     windows.Remove(e.Window);
@@ -99,6 +119,8 @@ public static class PreviewSceneRunner
                 Publish(engine, snapshot, windows, order, time);
             }
 
+            cursor.Update(cursorPosition, time);
+            engine.SetCursor(cursor.Position, cursor.Velocity);
             engine.Advance(frame == 0 ? 0 : frameTime);
 
             while (nextCapture < captures.Count && captures[nextCapture].time <= time + 1e-9)

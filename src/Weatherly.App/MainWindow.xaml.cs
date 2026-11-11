@@ -53,6 +53,7 @@ public sealed partial class MainWindow : Window
         RainSlider.Value = Math.Round(options.Rain.Intensity * 100);
         RainDepthSlider.Value = Math.Round(options.RainDepth * 100);
         SnowSlider.Value = Math.Round(options.Snow.Intensity * 100);
+        LeavesSlider.Value = Math.Round(options.Leaves.Intensity * 100);
         OverlaySwitch.IsEnabled = PatternSwitch.IsEnabled = CaptureSwitch.IsEnabled = SurfacesSwitch.IsEnabled = DropsSwitch.IsEnabled = startError is null;
         _initialized = true;
 
@@ -164,6 +165,7 @@ public sealed partial class MainWindow : Window
             Rain = _options.Rain with { Intensity = (float)(RainSlider.Value / 100) },
             RainDepth = (float)(RainDepthSlider.Value / 100),
             Snow = _options.Snow with { Intensity = (float)(SnowSlider.Value / 100) },
+            Leaves = _options.Leaves with { Intensity = (float)(LeavesSlider.Value / 100) },
         };
 
         try
@@ -195,6 +197,12 @@ public sealed partial class MainWindow : Window
     public void SetSnow(float intensity)
     {
         SnowSlider.Value = Math.Round(intensity * 100);
+    }
+
+    /// <summary>Sets the leaf intensity (0 to 1), like the slider does.</summary>
+    public void SetLeaves(float intensity)
+    {
+        LeavesSlider.Value = Math.Round(intensity * 100);
     }
 
     /// <summary>Switches the calibration drops on or off, like the switch does.</summary>

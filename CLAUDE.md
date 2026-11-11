@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **MVP-Cut (M0–M5 plus Tray, ADR-0008)**, als Nächstes M6. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M6 (Laub)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -56,8 +56,10 @@ Schritt und baut ein `RenderFrame` aus `Sprite`s. Effekte implementieren `IEffec
 aktiv ist. Werkzeuge: Sandbox (Fake-Desktop im Fenster), FrameDump (JSON-Szenen als PNG) und
 Golden-Images (`tests/Weatherly.Render.Tests/Goldens/`, nur nach Sichtprüfung aktualisieren).
 
-Effekte: `TestDropsEffect` (Kalibrierung), `RainEffect` (M4, ADR-0006) und `SnowEffect` (M5, ADR-0007)
-in `src/Weatherly.Core/Effects/`. Schnee nutzt die Sprite-Form `Flake` (Variante in `Sprite.Variant`). Größen und Geschwindigkeiten immer mit `SimulationContext.PixelScale`
+Effekte: `TestDropsEffect` (Kalibrierung), `RainEffect` (M4, ADR-0006), `SnowEffect` (M5, ADR-0007) und
+`LeafEffect` (M6, ADR-0009) in `src/Weatherly.Core/Effects/`. Schnee und Laub nutzen die Sprite-Formen
+`Flake` und `Leaf` (Variante in `Sprite.Variant`). Den Cursor liest `OverlayHost` pro Frame, `CursorMotion`
+glättet ihn (`SimulationContext.Cursor`, `CursorVelocity`). Größen und Geschwindigkeiten immer mit `SimulationContext.PixelScale`
 multiplizieren. Für die Sichtprüfung FrameDump-Frames über einen nachgebauten Desktop legen: Die
 PNGs enthalten nur das Overlay.
 
@@ -105,7 +107,7 @@ Hinweise:
   währenddessen den Desktop und prüft Pixel: Testmuster sichtbar, mit `--exclude-from-capture`
   unsichtbar, und mit `--show-surfaces --no-test-pattern` liegen die Debug-Linien genau am
   App-Fenster. Mit `--test-drops` prüft die App ihren Render-Loop (fps, 0 Allokationen, Idle-Stopp),
-  und das Skript sucht ruhende Tropfen über dem App-Fenster. `--rain` und `--snow` prüfen dasselbe mit Wetter,
+  und das Skript sucht ruhende Tropfen über dem App-Fenster. `--rain`, `--snow` und `--leaves` prüfen dasselbe mit Wetter,
   das Skript vergleicht dazu einen Screenshot ohne und einen mit Wetter. Zum Schluss läuft die Sandbox kurz
   mit Schnee (`--effect=snow --fill-snow`).
   Neue Schichten tragen sich in `StartupDiagnostics` ein.

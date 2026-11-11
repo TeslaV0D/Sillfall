@@ -374,6 +374,7 @@ Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test
 Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-DropProbes $b $w }
 Invoke-WeatherRun -Name 'rain'
 Invoke-WeatherRun -Name 'snow'
+Invoke-WeatherRun -Name 'leaves'
 Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'

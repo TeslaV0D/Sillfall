@@ -42,11 +42,12 @@ public class TrayMenuTests
         menu[0].Invoke!();
         menu.Single(item => item.Text.StartsWith("Rain", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Heavy").Invoke!();
         menu.Single(item => item.Text.StartsWith("Snow", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Light").Invoke!();
+        menu.Single(item => item.Text.StartsWith("Leaves", StringComparison.Ordinal)).Children!.Single(item => item.Text == "Medium").Invoke!();
         menu.Single(item => item.Text == "Sound").Invoke!();
         menu.Single(item => item.Text == "Pause all effects").Invoke!();
         menu[^1].Invoke!();
 
-        calls.Should().Equal("open", "rain 1", "snow 0.3", "sound False", "paused True", "quit");
+        calls.Should().Equal("open", "rain 1", "snow 0.3", "leaves 0.6", "sound False", "paused True", "quit");
     }
 
     [Fact]
@@ -81,10 +82,19 @@ public class TrayMenuTests
         TrayMenu.Tooltip(options).Should().Be($"{AppInfo.Name}: {expected}");
     }
 
+    [Fact]
+    public void Tooltip_NamesTheLeaves()
+    {
+        var options = new OverlayOptions { Leaves = new EffectSettings { Intensity = 0.6f } };
+
+        TrayMenu.Tooltip(options).Should().Be($"{AppInfo.Name}: leaves 60 %");
+    }
+
     private static TrayCommands Commands(List<string> calls) => new(
         Open: () => calls.Add("open"),
         SetRain: value => calls.Add($"rain {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         SetSnow: value => calls.Add($"snow {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
+        SetLeaves: value => calls.Add($"leaves {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}"),
         SetSound: on => calls.Add($"sound {on}"),
         SetPaused: paused => calls.Add($"paused {paused}"),
         Quit: () => calls.Add("quit"));

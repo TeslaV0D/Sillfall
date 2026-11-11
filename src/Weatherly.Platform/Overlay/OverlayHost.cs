@@ -101,6 +101,8 @@ public sealed class OverlayHost : IDisposable
     private readonly TestDropsEffect _testDrops = new();
     private readonly Core.Effects.Rain.RainEffect _rain = new();
     private readonly Core.Effects.Snow.SnowEffect _snow = new();
+    private readonly Core.Effects.Leaves.LeafEffect _leaves = new();
+    private readonly Core.Simulation.CursorMotion _cursor = new();
     private bool _trackingPending;
     private float _rainHitsPerSecond;
 
@@ -126,6 +128,7 @@ public sealed class OverlayHost : IDisposable
         _engine.Add(_testDrops);
         _engine.Add(_rain);
         _engine.Add(_snow);
+        _engine.Add(_leaves);
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -353,6 +356,13 @@ public sealed class OverlayHost : IDisposable
         _lastFrameTimestamp = start;
         bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
         long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
+
+        // The cursor once per frame, for the leaves' gust: polling needs no hook (PLAN.md, section 4.3).
+        if (PInvoke.GetCursorPos(out System.Drawing.Point cursor))
+        {
+            _cursor.Update(new System.Numerics.Vector2(cursor.X, cursor.Y), start / (double)Stopwatch.Frequency);
+            _engine.SetCursor(_cursor.Position, _cursor.Velocity);
+        }
 
         _engine.Advance(elapsed);
         Volatile.Write(ref _rainHitsPerSecond, _rain.HitsPerSecond);
@@ -635,6 +645,7 @@ public sealed class OverlayHost : IDisposable
         _rain.Depth = Math.Clamp(_options.RainDepth, 0f, 1f);
         _snow.Settings = _options.Snow;
         _snow.RainIntensity = _options.Rain.ClampedIntensity;
+        _leaves.Settings = _options.Leaves;
 
         IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);
