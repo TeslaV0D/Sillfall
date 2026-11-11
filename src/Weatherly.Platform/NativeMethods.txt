@@ -1,0 +1,5 @@
+// Win32 APIs that CsWin32 generates P/Invokes for. One name per line, kept sorted.
+// Privacy invariant: GetWindowText* must never appear here (enforced by PrivacyInvariantTests).
+AreDpiAwarenessContextsEqual
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+GetThreadDpiAwarenessContext

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(WeatherlyWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(WeatherlyWindowsMinVersion)</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Weatherly.Sandbox</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Weatherly.Core\Weatherly.Core.csproj" />
+    <ProjectReference Include="..\..\src\Weatherly.Platform\Weatherly.Platform.csproj" />
+    <ProjectReference Include="..\..\src\Weatherly.Render\Weatherly.Render.csproj" />
+  </ItemGroup>
+
+</Project>

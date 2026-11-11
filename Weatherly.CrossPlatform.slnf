@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "Weatherly.slnx",
+    "projects": [
+      "src/Weatherly.Audio/Weatherly.Audio.csproj",
+      "src/Weatherly.Core/Weatherly.Core.csproj",
+      "src/Weatherly.Platform/Weatherly.Platform.csproj",
+      "src/Weatherly.Render/Weatherly.Render.csproj",
+      "tests/Weatherly.Core.Tests/Weatherly.Core.Tests.csproj",
+      "tests/Weatherly.Render.Tests/Weatherly.Render.Tests.csproj",
+      "tools/Weatherly.FrameDump/Weatherly.FrameDump.csproj",
+      "tools/Weatherly.Sandbox/Weatherly.Sandbox.csproj"
+    ]
+  }
+}

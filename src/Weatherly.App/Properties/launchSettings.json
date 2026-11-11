@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Weatherly (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Weatherly (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

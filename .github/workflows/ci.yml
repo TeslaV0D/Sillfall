@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  core:
+    name: Core (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Everything except the WinUI app. The Windows libraries cross-compile on Linux,
+      # which catches most mistakes minutes before the Windows job reports.
+      - name: Restore
+        run: dotnet restore Weatherly.CrossPlatform.slnf
+
+      - name: Check formatting
+        run: dotnet format Weatherly.CrossPlatform.slnf --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build Weatherly.CrossPlatform.slnf -c Release --no-restore
+
+      - name: Test Weatherly.Core
+        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+
+  windows:
+    name: Windows (${{ matrix.platform }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Weatherly.slnx -p:Platform=${{ matrix.platform }}
+
+      - name: Build solution
+        run: dotnet build Weatherly.slnx -c Release -p:Platform=${{ matrix.platform }} --no-restore
+
+      # The runner is an x64 machine: tests and the app can only run in the x64 leg. ARM64 is build-only.
+      - name: Check formatting
+        if: matrix.platform == 'x64'
+        run: dotnet format Weatherly.slnx --verify-no-changes --no-restore
+
+      - name: Test Weatherly.Core
+        if: matrix.platform == 'x64'
+        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+
+      - name: Test Weatherly.Render (WARP)
+        if: matrix.platform == 'x64'
+        run: dotnet test --project tests/Weatherly.Render.Tests -c Release --no-build
+
+      - name: Smoke test the app
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: ./tools/ci/smoke-test.ps1 -Platform x64 -ReportPath "$env:RUNNER_TEMP/smoke-report.txt"
+
+      - name: Upload smoke test report
+        if: always() && matrix.platform == 'x64'
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report
+          path: ${{ runner.temp }}/smoke-report.txt
+          if-no-files-found: ignore
