@@ -1,5 +1,7 @@
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Weatherly.Audio;
 using Weatherly.Core;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Overlay;
@@ -18,7 +20,9 @@ public sealed partial class MainWindow : Window
     private readonly OverlayHost _overlay;
     private readonly string? _startError;
     private readonly bool _initialized;
+    private readonly DispatcherQueueTimer _soundTimer;
     private OverlayOptions _options;
+    private RainSoundPlayer? _sound;
 
     public MainWindow(OverlayHost overlay, OverlayOptions options, string? startError)
     {
@@ -50,6 +54,11 @@ public sealed partial class MainWindow : Window
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
         Closed += OnClosed;
+
+        // The rain sound follows the rain: intensity from the settings, drop density from the simulation.
+        _soundTimer = DispatcherQueue.CreateTimer();
+        _soundTimer.Interval = TimeSpan.FromMilliseconds(100);
+        _soundTimer.Tick += (_, _) => _sound?.Update(_options.Rain.ClampedIntensity, _overlay.RainHitsPerSecond, volume: 0.6f);
 
         Refresh();
     }
@@ -137,8 +146,31 @@ public sealed partial class MainWindow : Window
         DropsSwitch.IsOn = intensity > 0f;
     }
 
+    private void OnSoundToggled(object sender, RoutedEventArgs e)
+    {
+        if (SoundSwitch.IsOn && _sound is null)
+        {
+            _sound = RainSoundPlayer.TryCreate(out string? error);
+            SoundStatus.Text = error ?? "Procedural rain: pink noise and drop ticks that follow the splashes.";
+            if (_sound is not null)
+            {
+                _soundTimer.Start();
+            }
+        }
+        else if (!SoundSwitch.IsOn && _sound is not null)
+        {
+            _soundTimer.Stop();
+            _sound.Dispose();
+            _sound = null;
+            SoundStatus.Text = string.Empty;
+        }
+    }
+
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        _soundTimer.Stop();
+        _sound?.Dispose();
+        _sound = null;
         _overlay.LayoutChanged -= OnOverlayLayoutChanged;
         _overlay.Dispose();
     }

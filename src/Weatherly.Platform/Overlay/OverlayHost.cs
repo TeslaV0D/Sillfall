@@ -101,6 +101,7 @@ public sealed class OverlayHost : IDisposable
     private readonly TestDropsEffect _testDrops = new();
     private readonly Core.Effects.Rain.RainEffect _rain = new();
     private bool _trackingPending;
+    private float _rainHitsPerSecond;
 
     // Render loop state and statistics, only touched on the overlay thread.
     private bool _animating;
@@ -166,6 +167,9 @@ public sealed class OverlayHost : IDisposable
             return true;
         });
     }
+
+    /// <summary>Splashes per second of the rain in the last frame. Thread-safe, for the rain sound.</summary>
+    public float RainHitsPerSecond => Volatile.Read(ref _rainHitsPerSecond);
 
     /// <summary>Measures the current state of all overlays.</summary>
     public OverlayStatus GetStatus() => Invoke(CaptureStatus);
@@ -325,6 +329,7 @@ public sealed class OverlayHost : IDisposable
         else if (!shouldAnimate && _animating)
         {
             _animating = false;
+            Volatile.Write(ref _rainHitsPerSecond, 0f);
             _frameStatistics.Reset();
 
             // One last frame without sprites, so the last drops do not stay frozen on screen.
@@ -348,6 +353,7 @@ public sealed class OverlayHost : IDisposable
         long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
 
         _engine.Advance(elapsed);
+        Volatile.Write(ref _rainHitsPerSecond, _rain.HitsPerSecond);
         long simulated = Stopwatch.GetTimestamp();
         PresentAll();
 

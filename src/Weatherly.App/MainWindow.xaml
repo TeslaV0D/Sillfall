@@ -61,6 +61,14 @@
                         Value="50"
                         ValueChanged="OnSliderChanged" />
                     <ToggleSwitch
+                        x:Name="SoundSwitch"
+                        Header="Rain sound"
+                        Toggled="OnSoundToggled" />
+                    <TextBlock
+                        x:Name="SoundStatus"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap" />
+                    <ToggleSwitch
                         x:Name="SurfacesSwitch"
                         Header="Show detected surfaces (debug layer)"
                         Toggled="OnOptionToggled" />

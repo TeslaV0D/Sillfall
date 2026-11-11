@@ -4,6 +4,7 @@ using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Weatherly.Audio;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Effects;
 using Weatherly.Core.Overlay;
@@ -93,6 +94,7 @@ public partial class App : Application
         {
             await Task.Delay(s_settleTime);
             var diagnostics = new List<DiagnosticResult> { new("Window", true, "Activated") };
+            var monitorNotes = new List<string>();
 
             if (smokeTest.TestDrops)
             {
@@ -125,6 +127,13 @@ public partial class App : Application
                 diagnostics.Add(TrackingDiagnostics.EvaluateMoveEvents(after, moved));
             }
 
+            if (smokeTest.Rain)
+            {
+                // Audio is information only: CI runners usually have no sound device.
+                using RainSoundPlayer? player = RainSoundPlayer.TryCreate(out string? audioError);
+                monitorNotes.Add(audioError ?? "Audio output available for the rain sound");
+            }
+
             // The script measures the window itself (DWM) and needs the handle: the process owns overlay windows too.
             string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
             if (smokeTest.TestDrops)
@@ -145,7 +154,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromMilliseconds(300));
             }
 
-            int exitCode = smokeTest.WriteReport(diagnostics, [.. window.MonitorLines, handleLine]);
+            int exitCode = smokeTest.WriteReport(diagnostics, [.. window.MonitorLines, .. monitorNotes, handleLine]);
 
             if (smokeTest.Rain)
             {
