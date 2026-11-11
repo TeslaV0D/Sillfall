@@ -1,0 +1,72 @@
+<Project>
+
+  <!--
+    Compiles Shaders/*.hlsl at build time and embeds the bytecode into the assembly.
+
+      Name.vs.hlsl  ->  vertex shader (vs_5_0), resource "Shaders/Name.vs.cso"
+      Name.ps.hlsl  ->  pixel shader  (ps_5_0), resource "Shaders/Name.ps.cso"
+
+    The entry point is always "main". Warnings are errors, so a broken shader breaks the build.
+    fxc.exe comes from the Windows SDK and only runs on Windows. On other systems the step is
+    skipped: the assembly still compiles (useful for fast feedback on Linux) but cannot render.
+    Set the property FxcPath to use a specific fxc.exe.
+  -->
+
+  <ItemGroup>
+    <ShaderSource Include="Shaders\*.vs.hlsl" Profile="vs_5_0" />
+    <ShaderSource Include="Shaders\*.ps.hlsl" Profile="ps_5_0" />
+    <ShaderInclude Include="Shaders\*.hlsli" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ShaderOutputDirectory>$(IntermediateOutputPath)Shaders\</ShaderOutputDirectory>
+    <CanCompileShaders Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</CanCompileShaders>
+  </PropertyGroup>
+
+  <Target Name="LocateFxc" Condition="'$(CanCompileShaders)' == 'true' and '$(FxcPath)' == ''">
+    <PropertyGroup>
+      <WindowsKitsRoot>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots', 'KitsRoot10', null, RegistryView.Registry32, RegistryView.Registry64))</WindowsKitsRoot>
+      <FxcArchitecture>x64</FxcArchitecture>
+      <FxcArchitecture Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">arm64</FxcArchitecture>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(WindowsKitsRoot)' != ''">
+      <FxcCandidate Include="$(WindowsKitsRoot)bin\10.*\$(FxcArchitecture)\fxc.exe" />
+    </ItemGroup>
+    <!-- Batching assigns once per candidate, so the newest SDK version (last in sort order) wins. -->
+    <PropertyGroup>
+      <FxcPath>%(FxcCandidate.FullPath)</FxcPath>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="CompileShaders"
+          DependsOnTargets="LocateFxc"
+          Condition="'$(CanCompileShaders)' == 'true'"
+          Inputs="@(ShaderSource);@(ShaderInclude);$(MSBuildThisFileFullPath)"
+          Outputs="@(ShaderSource->'$(ShaderOutputDirectory)%(Filename).cso')">
+    <Error Condition="'$(FxcPath)' == '' or !Exists('$(FxcPath)')"
+           Text="fxc.exe was not found. Install the Windows SDK (Visual Studio Installer: 'Windows 11 SDK', or winget: Microsoft.WindowsSDK.10.0.26100), or set the property FxcPath." />
+    <MakeDir Directories="$(ShaderOutputDirectory)" />
+    <Exec Command="&quot;$(FxcPath)&quot; /nologo /T %(ShaderSource.Profile) /E main /O3 /WX /Qstrip_reflect /Qstrip_debug /Fo &quot;$(ShaderOutputDirectory)%(ShaderSource.Filename).cso&quot; &quot;%(ShaderSource.FullPath)&quot;"
+          StandardOutputImportance="low" />
+  </Target>
+
+  <Target Name="EmbedShaders"
+          BeforeTargets="PrepareResources"
+          DependsOnTargets="CompileShaders"
+          Condition="'$(CanCompileShaders)' == 'true'">
+    <ItemGroup>
+      <EmbeddedResource Include="$(ShaderOutputDirectory)%(ShaderSource.Filename).cso"
+                        LogicalName="Shaders/%(ShaderSource.Filename).cso"
+                        Type="Non-Resx"
+                        WithCulture="false" />
+      <FileWrites Include="$(ShaderOutputDirectory)%(ShaderSource.Filename).cso" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ReportSkippedShaders"
+          BeforeTargets="PrepareResources"
+          Condition="'$(CanCompileShaders)' != 'true'">
+    <Message Importance="normal" Text="Shaders are not compiled on this system (fxc.exe needs Windows). The assembly builds but cannot render." />
+  </Target>
+
+</Project>

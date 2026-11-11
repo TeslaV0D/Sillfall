@@ -3,7 +3,7 @@
     x:Class="Weatherly.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Weatherly.App">
+    xmlns:diagnostics="using:Weatherly.Core.Diagnostics">
     <Window.SystemBackdrop>
         <MicaBackdrop />
     </Window.SystemBackdrop>
@@ -20,34 +20,65 @@
             </TitleBar.IconSource>
         </TitleBar>
 
-        <StackPanel Grid.Row="1" Margin="32,16,32,32" Spacing="16">
-            <TextBlock x:Name="HeadingText" Style="{StaticResource TitleTextBlockStyle}" />
-            <TextBlock
-                Style="{StaticResource BodyTextBlockStyle}"
-                Text="Foundation build (milestone M0). There are no weather effects yet. The checks below confirm that the platform and rendering layers work on this PC."
-                TextWrapping="Wrap" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="32,16,32,32" Spacing="16">
+                <TextBlock x:Name="HeadingText" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock
+                    Style="{StaticResource BodyTextBlockStyle}"
+                    Text="Overlay spike (milestone M1). Every monitor gets a transparent, click-through overlay that shows a calibration pattern: a magenta frame on the monitor edges, colored corner markers, a grid with 100-pixel cells at 100 % scaling, a white alpha ramp and a half-transparent black block. There are no weather effects yet."
+                    TextWrapping="Wrap" />
 
-            <ItemsControl x:Name="DiagnosticsList">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="local:DiagnosticResult">
-                        <Grid Padding="0,6" ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="72" />
-                                <ColumnDefinition Width="200" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <!-- The state is always spelled out, it never relies on color alone. -->
-                            <TextBlock FontWeight="SemiBold" Text="{x:Bind StatusText}" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind Name}" />
-                            <TextBlock
-                                Grid.Column="2"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="{x:Bind Detail}"
-                                TextWrapping="Wrap" />
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
+                <StackPanel Spacing="4">
+                    <ToggleSwitch
+                        x:Name="OverlaySwitch"
+                        Header="Overlay with calibration pattern"
+                        Toggled="OnOptionToggled" />
+                    <ToggleSwitch
+                        x:Name="CaptureSwitch"
+                        Header="Hide the overlay from screenshots and screen recordings"
+                        Toggled="OnOptionToggled" />
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Monitors" />
+                    <ItemsControl x:Name="MonitorList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock
+                                    Padding="0,2"
+                                    Text="{x:Bind}"
+                                    TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Checks" />
+                    <ItemsControl x:Name="DiagnosticsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="diagnostics:DiagnosticResult">
+                                <Grid Padding="0,4" ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- The state is always spelled out, it never relies on color alone. -->
+                                    <TextBlock FontWeight="SemiBold" Text="{x:Bind StatusText}" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name}" />
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="{x:Bind Detail}"
+                                        TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Click="OnCheckAgainClicked" Content="Check again" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

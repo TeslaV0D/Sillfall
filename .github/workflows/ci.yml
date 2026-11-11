@@ -75,19 +75,34 @@ jobs:
         if: matrix.platform == 'x64'
         run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
 
+      # Each test that renders saves its frame as PNG into the preview folder.
       - name: Test Weatherly.Render (WARP)
         if: matrix.platform == 'x64'
+        env:
+          WEATHERLY_PREVIEW_DIR: ${{ runner.temp }}/previews/render
         run: dotnet test --project tests/Weatherly.Render.Tests -c Release --no-build
 
       - name: Smoke test the app
         if: matrix.platform == 'x64'
         shell: pwsh
-        run: ./tools/ci/smoke-test.ps1 -Platform x64 -ReportPath "$env:RUNNER_TEMP/smoke-report.txt"
+        run: >-
+          ./tools/ci/smoke-test.ps1 -Platform x64
+          -ReportDirectory "$env:RUNNER_TEMP/smoke"
+          -PreviewDirectory "$env:RUNNER_TEMP/previews/desktop"
 
-      - name: Upload smoke test report
+      - name: Upload smoke test reports
         if: always() && matrix.platform == 'x64'
         uses: actions/upload-artifact@v6
         with:
-          name: smoke-report
-          path: ${{ runner.temp }}/smoke-report.txt
+          name: smoke-reports
+          path: ${{ runner.temp }}/smoke/
+          if-no-files-found: ignore
+
+      # Rendered frames and desktop screenshots, for review without a Windows desktop.
+      - name: Upload previews
+        if: always() && matrix.platform == 'x64'
+        uses: actions/upload-artifact@v6
+        with:
+          name: previews
+          path: ${{ runner.temp }}/previews/
           if-no-files-found: ignore

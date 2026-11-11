@@ -3,8 +3,8 @@ using Weatherly.Core.Tests.Support;
 namespace Weatherly.Core.Tests.Invariants;
 
 /// <summary>
-/// Rule 4 of the project rules. Weatherly reads window geometry only: never titles or contents,
-/// and it talks to the network only through weather providers.
+/// Rule 4 of the project rules. Weatherly reads window geometry only: never titles, contents or
+/// the screen itself, and it talks to the network only through weather providers.
 /// </summary>
 public class PrivacyInvariantTests
 {
@@ -13,6 +13,20 @@ public class PrivacyInvariantTests
 
     /// <summary>Win32 ways to read a window title or its text content.</summary>
     private static readonly string[] s_windowTextApis = ["GetWindowText", "WM_GETTEXT"];
+
+    /// <summary>Ways to read pixels of the screen or of other windows.</summary>
+    private static readonly string[] s_screenCaptureApis =
+    [
+        "BitBlt",
+        "StretchBlt",
+        "PrintWindow",
+        "CopyFromScreen",
+        "GetPixel",
+        "Windows.Graphics.Capture",
+        "GraphicsCapture",
+        "DuplicateOutput",
+        "OutputDuplication",
+    ];
 
     private static readonly string[] s_networkApis =
     [
@@ -32,6 +46,13 @@ public class PrivacyInvariantTests
     {
         FindUsages(Repo.ProductSourceFiles(), s_windowTextApis)
             .Should().BeEmpty("only window geometry may be read, never titles or contents");
+    }
+
+    [Fact]
+    public void ProductCode_NeverReadsTheScreen()
+    {
+        FindUsages(Repo.ProductSourceFiles(), s_screenCaptureApis)
+            .Should().BeEmpty("the overlay draws on top of the desktop but never looks at it");
     }
 
     [Fact]
