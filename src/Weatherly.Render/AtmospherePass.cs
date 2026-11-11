@@ -62,7 +62,8 @@ internal sealed class AtmospherePass : IDisposable
     /// <param name="size">Size of <paramref name="target"/> in pixels.</param>
     /// <param name="area">The desktop area the target shows.</param>
     /// <param name="frame">The frame with the fog, the sun and the window rectangles.</param>
-    public void Draw(ID3D11RenderTargetView target, PixelSize size, PixelRect area, RenderFrame frame)
+    /// <param name="opacity">How strongly the weather shows on this monitor, 0 to 1.</param>
+    public void Draw(ID3D11RenderTargetView target, PixelSize size, PixelRect area, RenderFrame frame, float opacity = 1f)
     {
         var quarter = new PixelSize(Math.Max(1, (size.Width + Downscale - 1) / Downscale), Math.Max(1, (size.Height + Downscale - 1) / Downscale));
         Targets targets = TargetsFor(quarter);
@@ -105,7 +106,7 @@ internal sealed class AtmospherePass : IDisposable
         _context.Draw(3, 0);
 
         // 3. Up to full size, over whatever is already in the target.
-        var upsample = new Vector4(size.Width, size.Height, 0f, 0f);
+        var upsample = new Vector4(size.Width, size.Height, Math.Clamp(opacity, 0f, 1f), 0f);
         _context.UpdateSubresource(in upsample, _upsampleConstants);
         _context.PSSetShaderResource(0, null!);
         _context.OMSetRenderTargets(target);

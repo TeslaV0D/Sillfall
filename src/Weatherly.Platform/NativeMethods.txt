@@ -4,6 +4,7 @@ AppendMenu
 AreDpiAwarenessContextsEqual
 CheckMenuRadioItem
 CHILDID_SELF
+CloseHandle
 CreatePopupMenu
 CreateWindowEx
 DefWindowProc
@@ -36,11 +37,13 @@ GetMessage
 GetModuleHandle
 GetMonitorInfo
 GetSystemMetrics
+GetSystemPowerStatus
 GetThreadDpiAwarenessContext
 GetWindow
 GetWindowDisplayAffinity
 GetWindowLong
 GetWindowRect
+GetWindowThreadProcessId
 HTTRANSPARENT
 HWND_TOPMOST
 IDI_APPLICATION
@@ -53,9 +56,12 @@ LoadImage
 MA_NOACTIVATE
 MONITORINFOEXW
 OBJECT_IDENTIFIER
+OpenProcess
+PBT_APMPOWERSTATUSCHANGE
 PeekMessage
 PostMessage
 PostQuitMessage
+QueryFullProcessImageName
 RegisterClassEx
 RegisterWindowMessage
 SetForegroundWindow
@@ -68,6 +74,7 @@ SetWindowPos
 SetWinEventHook
 ShowWindow
 SYSTEM_PARAMETERS_INFO_ACTION
+SystemParametersInfo
 TRACK_POPUP_MENU_FLAGS
 TrackPopupMenuEx
 TranslateMessage
@@ -83,6 +90,7 @@ WM_DPICHANGED
 WM_MOUSEACTIVATE
 WM_NCHITTEST
 WM_NULL
+WM_POWERBROADCAST
 WM_QUIT
 WM_SETTINGCHANGE
 WM_TIMER

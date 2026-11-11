@@ -35,7 +35,7 @@ internal sealed class SpriteBatch : IDisposable
         _blendState = premultipliedOver;
         _vertexShader = device.CreateVertexShader(ShaderLibrary.Load("Sprite.vs"));
         _pixelShader = device.CreatePixelShader(ShaderLibrary.Load("Sprite.ps"));
-        _constants = device.CreateBuffer((uint)Marshal.SizeOf<Vector4>(), BindFlags.ConstantBuffer);
+        _constants = device.CreateBuffer((uint)Marshal.SizeOf<SpriteConstants>(), BindFlags.ConstantBuffer);
         _rasterizerState = device.CreateRasterizerState(RasterizerDescription.CullNone);
     }
 
@@ -43,7 +43,7 @@ internal sealed class SpriteBatch : IDisposable
     public int LastDrawnCount { get; private set; }
 
     /// <summary>Draws the sprites that overlap <paramref name="area"/> (desktop pixels) onto <paramref name="target"/>.</summary>
-    public void Draw(ID3D11RenderTargetView target, PixelSize size, PixelRect area, ReadOnlySpan<Sprite> sprites)
+    public void Draw(ID3D11RenderTargetView target, PixelSize size, PixelRect area, ReadOnlySpan<Sprite> sprites, float opacity = 1f)
     {
         int count = Cull(area, sprites);
         LastDrawnCount = count;
@@ -63,7 +63,7 @@ internal sealed class SpriteBatch : IDisposable
             _context.Unmap(_buffer!, 0);
         }
 
-        var constants = new Vector4(size.Width, size.Height, area.Left, area.Top);
+        var constants = new SpriteConstants(new Vector4(size.Width, size.Height, area.Left, area.Top), new Vector4(Math.Clamp(opacity, 0f, 1f), 0f, 0f, 0f));
         _context.UpdateSubresource(in constants, _constants);
 
         _context.OMSetRenderTargets(target);
@@ -87,6 +87,10 @@ internal sealed class SpriteBatch : IDisposable
         _pixelShader.Dispose();
         _vertexShader.Dispose();
     }
+
+    /// <summary>Mirror of the cbuffer in Sprite.vs.hlsl: target size and offset, then opacity.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly record struct SpriteConstants(Vector4 TargetAndOffset, Vector4 Opacity);
 
     private int Cull(PixelRect area, ReadOnlySpan<Sprite> sprites)
     {

@@ -74,10 +74,10 @@ public sealed class OverlayPainter : IDisposable
             // Sun and fog lie behind everything else (PLAN.md, section 4.7).
             if (scene.HasAtmosphere)
             {
-                _atmosphere.Draw(target, size, MonitorArea(frame, size), scene);
+                _atmosphere.Draw(target, size, MonitorArea(frame, size), scene, frame.Opacity);
             }
 
-            _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites);
+            _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites, frame.Opacity);
         }
 
         // The debug layer goes on top of everything, so it stays readable while effects run.

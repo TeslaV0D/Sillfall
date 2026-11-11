@@ -18,6 +18,8 @@ cbuffer SpriteConstants : register(b0)
 {
     float2 TargetSize;
     float2 Offset; // subtracted from desktop positions: the top left corner of the monitor
+    float Opacity; // how strongly the weather shows on this monitor
+    float3 Padding2;
 };
 
 struct VertexOutput
@@ -53,6 +55,6 @@ VertexOutput main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     output.Shape = sprite.Shape;
     output.Variant = (uint)max(sprite.Variant, 0.0);
     output.Bend = sprite.Variant;
-    output.Color = sprite.Color;
+    output.Color = sprite.Color * Opacity;
     return output;
 }

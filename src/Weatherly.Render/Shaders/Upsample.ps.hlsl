@@ -6,10 +6,11 @@ SamplerState Linear : register(s0);
 cbuffer UpsampleConstants : register(b0)
 {
     float2 TargetSize;
-    float2 Padding;
+    float Opacity;
+    float Padding;
 };
 
 float4 main(float4 position : SV_Position) : SV_Target
 {
-    return Layer.SampleLevel(Linear, position.xy / TargetSize, 0);
+    return Layer.SampleLevel(Linear, position.xy / TargetSize, 0) * Opacity;
 }

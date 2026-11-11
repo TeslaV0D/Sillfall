@@ -93,6 +93,9 @@ internal sealed class OverlayWindow : IDisposable
         _surface = null;
     }
 
+    /// <summary>How strongly the weather shows on this monitor, 0 to 1 (per-display intensity).</summary>
+    public float Opacity { get; set; } = 1f;
+
     public PresentResult Present(OverlayContent content, SurfaceSet? surfaces, Core.Rendering.RenderFrame? scene)
     {
         if (_surface is null)
@@ -100,7 +103,7 @@ internal sealed class OverlayWindow : IDisposable
             return PresentResult.DeviceLost;
         }
 
-        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor, Monitor.Bounds, surfaces, scene));
+        PresentResult result = _surface.Present(new OverlayFrame(content, Monitor.ScaleFactor, Monitor.Bounds, surfaces, scene, Opacity));
         if (result == PresentResult.Presented)
         {
             PresentedFrames++;

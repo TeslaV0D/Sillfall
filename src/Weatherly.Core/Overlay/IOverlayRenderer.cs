@@ -12,12 +12,14 @@ namespace Weatherly.Core.Overlay;
 /// </param>
 /// <param name="Surfaces">Surfaces for the debug layer, or <see langword="null"/> to draw none.</param>
 /// <param name="Scene">Sprites of the effects, or <see langword="null"/> while no effect runs.</param>
+/// <param name="Opacity">How strongly the weather shows on this monitor, 0 to 1 (PLAN.md: own intensity per display).</param>
 public readonly record struct OverlayFrame(
     OverlayContent Content,
     float ScaleFactor,
     PixelRect MonitorBounds = default,
     SurfaceSet? Surfaces = null,
-    RenderFrame? Scene = null);
+    RenderFrame? Scene = null,
+    float Opacity = 1f);
 
 /// <summary>Outcome of presenting a frame.</summary>
 public enum PresentResult

@@ -78,6 +78,9 @@ public sealed partial class MainWindow : Window
     /// <summary>The options the overlay runs with.</summary>
     public OverlayOptions Options => _options;
 
+    /// <summary>What the overlay host knows about the system (power, animations, foreground app).</summary>
+    public Core.Settings.SystemState SystemState => _overlay.SystemState;
+
     /// <summary>Whether the weather sound plays.</summary>
     public bool SoundOn => _sound is not null;
 

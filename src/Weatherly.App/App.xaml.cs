@@ -299,6 +299,12 @@ public partial class App : Application
                 monitorNotes.Add(audioError ?? "Audio output available for the rain sound");
             }
 
+            // What the runtime policy will see: power source, animations, foreground app (its name only).
+            SystemState system = window.SystemState;
+            monitorNotes.Add(string.Create(
+                CultureInfo.InvariantCulture,
+                $"System: {(system.OnBattery ? "on battery" : "on mains power")}, animations {(system.AnimationsEnabled ? "on" : "off")}, foreground app {system.ForegroundProcess ?? "unknown"}"));
+
             // The script measures the window itself (DWM) and needs the handle: the process owns overlay windows too.
             string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
             if (smokeTest.TestDrops)

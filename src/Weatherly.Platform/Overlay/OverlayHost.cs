@@ -92,6 +92,9 @@ public sealed class OverlayHost : IDisposable
     private readonly List<HWINEVENTHOOK> _hooks = [];
     private OverlayOptions _options;
     private IReadOnlyList<MonitorInfo> _monitors = [];
+    private readonly Lock _systemStateLock = new();
+    private Core.Settings.SystemState _systemState = Core.Settings.SystemState.Default;
+    private uint _foregroundProcessId;
     private string? _lastError;
 
     // Window tracking, only touched on the overlay thread. All buffers are reused.
@@ -148,6 +151,24 @@ public sealed class OverlayHost : IDisposable
     /// Runs on the overlay thread: handlers must not block and must marshal to their own thread.
     /// </summary>
     public event EventHandler? LayoutChanged;
+
+    /// <summary>
+    /// Raised when the power source, the "show animations" setting or the foreground app changed (see
+    /// <see cref="SystemState"/>). Runs on the overlay thread: handlers must not block and must marshal to their own thread.
+    /// </summary>
+    public event EventHandler? SystemStateChanged;
+
+    /// <summary>What the system reports right now, for the runtime policy. Safe to read from any thread.</summary>
+    public Core.Settings.SystemState SystemState
+    {
+        get
+        {
+            lock (_systemStateLock)
+            {
+                return _systemState;
+            }
+        }
+    }
 
     /// <summary>Starts the overlay thread and creates the overlays. Returns when they are on screen.</summary>
     public void Start()
@@ -267,6 +288,7 @@ public sealed class OverlayHost : IDisposable
             _module = GetModule();
             RegisterWindowClass();
             _controlWindow = CreateControlWindow();
+            UpdateSystemState(power: true, animations: true, foreground: PInvoke.GetForegroundWindow());
             HookWindowEvents();
             RefreshOverlays();
         }
@@ -354,7 +376,9 @@ public sealed class OverlayHost : IDisposable
     {
         long start = Stopwatch.GetTimestamp();
         double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
-        if (elapsed < MinimumFrameSeconds)
+        // Smoothness: a frame rate cap from the options. A little early is fine, vsync timing jitters.
+        double minimum = _options.FrameRateCap > 0 ? 0.92 / _options.FrameRateCap : MinimumFrameSeconds;
+        if (elapsed < minimum)
         {
             Thread.Sleep(1);
             return;
@@ -468,6 +492,14 @@ public sealed class OverlayHost : IDisposable
                     ScheduleRefresh();
                     break;
 
+                case PInvoke.WM_SETTINGCHANGE when isControlWindow && (uint)wParam.Value == (uint)SYSTEM_PARAMETERS_INFO_ACTION.SPI_SETCLIENTAREAANIMATION:
+                    UpdateSystemState(power: false, animations: true, foreground: HWND.Null);
+                    break;
+
+                case PInvoke.WM_POWERBROADCAST when isControlWindow && (uint)wParam.Value == PInvoke.PBT_APMPOWERSTATUSCHANGE:
+                    UpdateSystemState(power: true, animations: false, foreground: HWND.Null);
+                    return new LRESULT(1);
+
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == RefreshTimerId:
                     PInvoke.KillTimer(window, RefreshTimerId);
                     RefreshOverlays();
@@ -532,6 +564,47 @@ public sealed class OverlayHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Updates the parts of the system state that may have changed and raises <see cref="SystemStateChanged"/> when
+    /// something did. The foreground app's name is looked up only when its process changed.
+    /// </summary>
+    private void UpdateSystemState(bool power, bool animations, HWND foreground)
+    {
+        Core.Settings.SystemState state = SystemState;
+        Core.Settings.SystemState updated = state;
+        if (power)
+        {
+            updated = updated with { OnBattery = Shell.SystemInfo.IsOnBattery() };
+        }
+
+        if (animations)
+        {
+            updated = updated with { AnimationsEnabled = Shell.SystemInfo.AnimationsEnabled() };
+        }
+
+        if (!foreground.IsNull)
+        {
+            uint processId = Shell.SystemInfo.ProcessIdOf(foreground);
+            if (processId != 0 && processId != _foregroundProcessId)
+            {
+                _foregroundProcessId = processId;
+                updated = updated with { ForegroundProcess = Shell.SystemInfo.ProcessName(processId) };
+            }
+        }
+
+        if (updated == state)
+        {
+            return;
+        }
+
+        lock (_systemStateLock)
+        {
+            _systemState = updated;
+        }
+
+        SystemStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     private void OnWinEvent(HWINEVENTHOOK hook, uint winEvent, HWND window, int objectId, int childId, uint eventThread, uint eventTime)
     {
         try
@@ -544,6 +617,8 @@ public sealed class OverlayHost : IDisposable
                     {
                         overlay.BringToTop();
                     }
+
+                    UpdateSystemState(power: false, animations: false, foreground: window);
 
                     ScheduleWindowUpdate();
                     break;
@@ -661,7 +736,8 @@ public sealed class OverlayHost : IDisposable
         _engine.Context.Wind.Gustiness = Math.Clamp(_options.Gustiness, 0f, 1f);
         _grass.RainIntensity = _options.Rain.ClampedIntensity;
 
-        IReadOnlyList<MonitorInfo> target = _options.Enabled ? _monitors : [];
+        // Monitors switched off in the settings get no overlay at all.
+        IReadOnlyList<MonitorInfo> target = _options.Enabled ? [.. _monitors.Where(monitor => _options.Display(monitor.DeviceName).Enabled)] : [];
         OverlayLayoutPlan plan = OverlayLayoutPlanner.Plan([.. _overlays.Values.Select(overlay => overlay.Monitor)], target);
 
         foreach (string deviceName in plan.ToRemove)
@@ -680,6 +756,11 @@ public sealed class OverlayHost : IDisposable
         foreach (MonitorInfo monitor in plan.ToCreate)
         {
             CreateOverlay(monitor);
+        }
+
+        foreach (OverlayWindow overlay in _overlays.Values)
+        {
+            overlay.Opacity = Math.Clamp(_options.Display(overlay.Monitor.DeviceName).Intensity, 0f, 1f);
         }
 
         UpdatePolling();

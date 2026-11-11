@@ -56,4 +56,24 @@ public sealed record OverlayOptions
 
     /// <summary>Strength of the gusts relative to the steady wind, 0 to 1.</summary>
     public float Gustiness { get; init; } = 0.5f;
+
+    /// <summary>Highest frame rate of the render loop; 0 for the display's own rate (PLAN.md: Smoothness).</summary>
+    public int FrameRateCap { get; init; }
+
+    /// <summary>Per-monitor settings by device name. Monitors without an entry show the weather at full opacity.</summary>
+    public IReadOnlyList<Settings.DisplayConfig> Displays { get; init; } = [];
+
+    /// <summary>Settings of one monitor, or the defaults.</summary>
+    public Settings.DisplayConfig Display(string deviceName)
+    {
+        foreach (Settings.DisplayConfig display in Displays)
+        {
+            if (string.Equals(display.DeviceName, deviceName, StringComparison.OrdinalIgnoreCase))
+            {
+                return display;
+            }
+        }
+
+        return new Settings.DisplayConfig { DeviceName = deviceName };
+    }
 }
