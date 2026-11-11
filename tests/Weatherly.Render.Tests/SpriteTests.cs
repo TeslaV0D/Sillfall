@@ -73,7 +73,7 @@ public sealed class SpriteTests : IDisposable
         // Its centre is x = 16.5; pixel 16 has its centre there.
         image[16, 21].Alpha.Should().BeGreaterThan(150, "an arm points straight up");
         image[19, 24].Alpha.Should().BeLessThan(110, "no arm points to the right");
-        image[63, 24].Should().Be(Pixel.Transparent);
+        image[32, 5].Should().Be(Pixel.Transparent, "far above the row of flakes");
     }
 
     [Fact]

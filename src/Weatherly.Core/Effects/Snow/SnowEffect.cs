@@ -690,7 +690,7 @@ public sealed class SnowEffect : IEffectSystem
                 }
 
                 // A light blue shade towards the bottom gives the pile some volume.
-                float shade = MathF.Min(whole, MathF.Max(1f, height * 0.4f));
+                float shade = MathF.Min(whole, MathF.Max(1f, height * 0.3f));
                 if (shade >= 1f)
                 {
                     frame.Add(new Sprite(new Vector2(centerX, bottom - (shade / 2f)), new Vector2(halfWidth, shade / 2f), 0f, SpriteShape.Rectangle, shadow));
@@ -741,11 +741,11 @@ public sealed class SnowEffect : IEffectSystem
                 continue;
             }
 
-            float radius = (0.8f + (2.6f * z * z)) * _scale;
+            float radius = (0.8f + (3.2f * z * z)) * _scale;
             float alpha = MathF.Min(1f, (0.35f + (0.6f * z)) * brightness);
 
             // Small flakes cannot show a shape: they are soft blobs.
-            int variant = radius >= 2.2f * _scale ? _flakeVariant[i] : 0;
+            int variant = radius >= 2f * _scale ? _flakeVariant[i] : 0;
             frame.Add(new Sprite(
                 new Vector2(_flakeX[i], _flakeY[i]),
                 new Vector2(radius, radius),
