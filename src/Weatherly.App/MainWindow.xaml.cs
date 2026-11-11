@@ -7,6 +7,7 @@ using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Overlay;
 using Weatherly.Platform.Desktop;
 using Weatherly.Platform.Overlay;
+using Weatherly.Platform.Shell;
 
 namespace Weatherly.App;
 
@@ -24,6 +25,7 @@ public sealed partial class MainWindow : Window
     private OverlayOptions _options;
     private RainSoundPlayer? _sound;
     private bool _quitting;
+    private TrayIcon? _tray;
 
     public MainWindow(OverlayHost overlay, OverlayOptions options, string? startError)
     {
@@ -79,6 +81,17 @@ public sealed partial class MainWindow : Window
     /// Closing the window only hides it (the app lives on in the tray). <see cref="Quit"/> really closes it.
     /// </summary>
     public bool HideOnClose { get; set; }
+
+    /// <summary>The tray icon, once attached.</summary>
+    public TrayIcon? Tray => _tray;
+
+    /// <summary>Hands the tray icon to the window, which removes it when it really closes.</summary>
+    public void AttachTray(TrayIcon tray)
+    {
+        ArgumentNullException.ThrowIfNull(tray);
+        _tray?.Dispose();
+        _tray = tray;
+    }
 
     /// <summary>Shows the window (also after it was hidden to the tray) and brings it to the front.</summary>
     public void ShowAndActivate()
@@ -229,6 +242,8 @@ public sealed partial class MainWindow : Window
         _sound = null;
         _overlay.LayoutChanged -= OnOverlayLayoutChanged;
         _overlay.Dispose();
+        _tray?.Dispose();
+        _tray = null;
     }
 
     /// <summary>Called on the overlay thread when monitors were added, removed or changed.</summary>

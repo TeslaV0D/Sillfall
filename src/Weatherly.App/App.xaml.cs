@@ -49,7 +49,6 @@ public partial class App : Application
 
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
-    private TrayIcon? _tray;
     private SettingsStore? _settings;
     private DispatcherQueueTimer? _saveTimer;
 
@@ -106,7 +105,6 @@ public partial class App : Application
 
         // With a tray icon, closing the window keeps the weather running; the tray's Quit ends the app.
         _window.HideOnClose = trayShown && _smokeTest is null;
-        _window.Closed += (_, _) => _tray?.Dispose();
         if (_settings is not null)
         {
             if (settings.Sound)
@@ -133,9 +131,10 @@ public partial class App : Application
     /// <summary>Adds the tray icon. Returns whether the shell shows it; without it the app behaves like a normal window.</summary>
     private bool ShowTrayIcon(MainWindow window)
     {
+        TrayIcon? tray = null;
         try
         {
-            _tray = new TrayIcon(
+            tray = new TrayIcon(
                 Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
                 TrayMenu.Tooltip(window.Options),
                 () => TrayMenu.Build(window.Options, window.SoundOn, new TrayCommands(
@@ -146,14 +145,21 @@ public partial class App : Application
                     SetPaused: window.SetPaused,
                     Quit: Quit)),
                 window.ShowAndActivate);
-            return _tray.Show();
+            if (!tray.Show())
+            {
+                tray.Dispose();
+                return false;
+            }
+
+            // The window owns the icon from here on and removes it when it really closes.
+            window.AttachTray(tray);
+            return true;
         }
 #pragma warning disable CA1031 // No tray icon is no reason not to start: the window stays the way to control the app.
         catch (Exception)
 #pragma warning restore CA1031
         {
-            _tray?.Dispose();
-            _tray = null;
+            tray?.Dispose();
             return false;
         }
     }
@@ -165,7 +171,7 @@ public partial class App : Application
             return;
         }
 
-        _tray?.SetTooltip(TrayMenu.Tooltip(_window.Options));
+        _window.Tray?.SetTooltip(TrayMenu.Tooltip(_window.Options));
         if (_saveTimer is not null)
         {
             _saveTimer.Stop();
@@ -194,8 +200,6 @@ public partial class App : Application
     {
         _saveTimer?.Stop();
         SaveSettings();
-        _tray?.Dispose();
-        _tray = null;
         _window?.Quit();
         Exit();
     }
