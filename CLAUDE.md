@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M3 (Engine und Tooling)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M4 (Regen)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -55,6 +55,11 @@ Schritt und baut ein `RenderFrame` aus `Sprite`s. Effekte implementieren `IEffec
 `Simulate`/`Emit` nichts allokieren. Der Render-Loop im `OverlayHost` läuft nur, solange ein Effekt
 aktiv ist. Werkzeuge: Sandbox (Fake-Desktop im Fenster), FrameDump (JSON-Szenen als PNG) und
 Golden-Images (`tests/Weatherly.Render.Tests/Goldens/`, nur nach Sichtprüfung aktualisieren).
+
+Effekte: `TestDropsEffect` (Kalibrierung) und `RainEffect` (M4, Details in ADR-0006) in
+`src/Weatherly.Core/Effects/`. Größen und Geschwindigkeiten immer mit `SimulationContext.PixelScale`
+multiplizieren. Für die Sichtprüfung FrameDump-Frames über einen nachgebauten Desktop legen: Die
+PNGs enthalten nur das Overlay.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.
