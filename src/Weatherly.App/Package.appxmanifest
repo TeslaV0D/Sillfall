@@ -3,9 +3,10 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 rescap">
+  IgnorableNamespaces="uap uap5 uap10 rescap">
 
   <!-- Development identity. Name and Publisher are replaced with the Store reservation in M14. -->
   <Identity
@@ -43,6 +44,18 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <Extensions>
+        <!-- Scene links: weatherly://scene?d=... (ADR-0012). -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="weatherly">
+            <uap:DisplayName>Weatherly scene</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+        <!-- Autostart, off until the user switches it on in the settings. -->
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="WeatherlyStartup" Enabled="false" DisplayName="Weatherly" />
+        </uap5:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

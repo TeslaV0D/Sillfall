@@ -5,9 +5,11 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Weatherly.Audio;
+using Weatherly.Core;
 using Weatherly.Core.Diagnostics;
 using Weatherly.Core.Effects;
 using Weatherly.Core.Overlay;
+using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
 using Weatherly.Core.Tray;
 using Weatherly.Platform.Overlay;
@@ -85,6 +87,24 @@ public partial class App : Application
             Grass = new EffectSettings { Intensity = (_smokeTest?.Grass ?? false) ? 1f : 0f },
         };
 
+        // One app per session: a second start hands its scene link (if any) to the first one and ends.
+        string? sceneLink = _smokeTest is null ? FindSceneLink() : null;
+        SingleInstance? instance = null;
+        if (_smokeTest is null)
+        {
+            instance = SingleInstance.TryClaim();
+            if (instance is null)
+            {
+                SingleInstance.SendToRunning(sceneLink ?? string.Empty);
+                Exit();
+                return;
+            }
+
+            RegisterProtocolIfUnpackaged();
+        }
+
+        bool background = Environment.GetCommandLineArgs().Contains(Integration.BackgroundSwitch, StringComparer.OrdinalIgnoreCase);
+
         AppSettings settings = new();
         if (_smokeTest is null)
         {
@@ -133,7 +153,22 @@ public partial class App : Application
         }
 
         _window.OptionsChanged += OnOptionsChanged;
-        _window.Activate();
+        if (instance is not null)
+        {
+            _window.Own(instance);
+            instance.MessageReceived += (_, message) => OnInstanceMessage(message);
+        }
+
+        // An autostart opens in the notification area; without a tray icon the window is the only way in.
+        if (!background || !trayShown)
+        {
+            _window.Activate();
+        }
+
+        if (sceneLink is not null)
+        {
+            ApplySceneLink(sceneLink);
+        }
 
         if (_smokeTest is not null)
         {
@@ -213,6 +248,80 @@ public partial class App : Application
         {
             // Not being able to remember a setting is no reason to interrupt the user. It is tried again on the next change.
         }
+    }
+
+    /// <summary>A scene link from the command line (unpackaged) or from a protocol activation (packaged).</summary>
+    private static string? FindSceneLink()
+    {
+        string? fromCommandLine = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("weatherly:", StringComparison.OrdinalIgnoreCase));
+        if (fromCommandLine is not null)
+        {
+            return fromCommandLine;
+        }
+
+        try
+        {
+            Microsoft.Windows.AppLifecycle.AppActivationArguments activation = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+            return activation.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol
+                && activation.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocol
+                ? protocol.Uri.OriginalString
+                : null;
+        }
+#pragma warning disable CA1031 // No activation details (unpackaged start): there is no link.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            return null;
+        }
+    }
+
+    private static void RegisterProtocolIfUnpackaged()
+    {
+        try
+        {
+            if (!Integration.IsPackaged() && Environment.ProcessPath is { } path)
+            {
+                Integration.RegisterProtocol(AppInfo.Name, path);
+            }
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            // Links just do not open the app then; everything else works.
+        }
+    }
+
+    /// <summary>A later start handed over its command line: show the window, and apply a scene link if there is one.</summary>
+    private void OnInstanceMessage(string message)
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
+        if (message.StartsWith("weatherly:", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySceneLink(message);
+        }
+
+        _window.ShowAndActivate();
+    }
+
+    /// <summary>Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized).</summary>
+    private void ApplySceneLink(string link)
+    {
+        if (_window is null || !SceneCodec.TryFromLink(link, out Scene scene, out _))
+        {
+            return;
+        }
+
+        _savedSettings = scene.ApplyTo(_savedSettings);
+        if (!_savedSettings.Templates.Any(template => template.Name == scene.Name))
+        {
+            _savedSettings = _savedSettings with { Templates = [.. _savedSettings.Templates, scene] };
+        }
+
+        _window.ApplyOptions(_savedSettings.ToOverlayOptions(_window.Options));
+        SaveSettings();
     }
 
     private void Quit()

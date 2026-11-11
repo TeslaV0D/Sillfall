@@ -1,10 +1,12 @@
 // Win32 APIs that CsWin32 generates P/Invokes for. One name per line, kept sorted.
 // Privacy invariant: GetWindowText* must never appear here (enforced by PrivacyInvariantTests).
+AllowSetForegroundWindow
 AppendMenu
 AreDpiAwarenessContextsEqual
 CheckMenuRadioItem
 CHILDID_SELF
 CloseHandle
+COPYDATASTRUCT
 CreatePopupMenu
 CreateWindowEx
 DefWindowProc
@@ -29,7 +31,9 @@ EVENT_SYSTEM_MINIMIZEEND
 EVENT_SYSTEM_MINIMIZESTART
 EVENT_SYSTEM_MOVESIZEEND
 EVENT_SYSTEM_MOVESIZESTART
+FindWindow
 GetClassName
+GetCurrentPackageFullName
 GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
@@ -64,6 +68,7 @@ PostQuitMessage
 QueryFullProcessImageName
 RegisterClassEx
 RegisterWindowMessage
+SendMessageTimeout
 SetForegroundWindow
 SetLayeredWindowAttributes
 SetMenuDefaultItem
@@ -80,11 +85,13 @@ TrackPopupMenuEx
 TranslateMessage
 UnhookWinEvent
 UnregisterClass
+WIN32_ERROR
 WindowFromPoint
 WINEVENT_OUTOFCONTEXT
 WINEVENT_SKIPOWNPROCESS
 WM_APP
 WM_CONTEXTMENU
+WM_COPYDATA
 WM_DISPLAYCHANGE
 WM_DPICHANGED
 WM_MOUSEACTIVATE

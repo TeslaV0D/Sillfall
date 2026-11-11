@@ -20,7 +20,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly OverlayHost _overlay;
     private readonly string? _startError;
-    private readonly bool _initialized;
+    private bool _initialized;
     private readonly DispatcherQueueTimer _soundTimer;
     private OverlayOptions _options;
     private RainSoundPlayer? _sound;
@@ -88,6 +88,53 @@ public sealed partial class MainWindow : Window
     /// Closing the window only hides it (the app lives on in the tray). <see cref="Quit"/> really closes it.
     /// </summary>
     public bool HideOnClose { get; set; }
+
+    private readonly List<IDisposable> _owned = [];
+
+    /// <summary>Hands a resource to the window, which disposes it when it really closes.</summary>
+    public void Own(IDisposable resource)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+        _owned.Add(resource);
+    }
+
+    /// <summary>
+    /// Shows new options at once (a scene was applied): the switches and sliders follow, the overlay gets them,
+    /// and <see cref="OptionsChanged"/> is raised once.
+    /// </summary>
+    public void ApplyOptions(OverlayOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _initialized = false;
+        try
+        {
+            _options = options;
+            OverlaySwitch.IsOn = options.Enabled;
+            RainSlider.Value = Math.Round(options.Rain.Intensity * 100);
+            RainDepthSlider.Value = Math.Round(options.RainDepth * 100);
+            SnowSlider.Value = Math.Round(options.Snow.Intensity * 100);
+            LeavesSlider.Value = Math.Round(options.Leaves.Intensity * 100);
+            FogSlider.Value = Math.Round(options.Fog.Intensity * 100);
+            SunSlider.Value = Math.Round(options.Sun.Intensity * 100);
+            GrassSlider.Value = Math.Round(options.Grass.Intensity * 100);
+        }
+        finally
+        {
+            _initialized = true;
+        }
+
+        try
+        {
+            _overlay.Apply(_options);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Refresh reports the stopped overlay thread.
+        }
+
+        Refresh();
+        OptionsChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>The tray icon, once attached.</summary>
     public TrayIcon? Tray => _tray;
@@ -270,6 +317,12 @@ public sealed partial class MainWindow : Window
         _overlay.Dispose();
         _tray?.Dispose();
         _tray = null;
+        foreach (IDisposable resource in _owned)
+        {
+            resource.Dispose();
+        }
+
+        _owned.Clear();
     }
 
     /// <summary>Called on the overlay thread when monitors were added, removed or changed.</summary>
