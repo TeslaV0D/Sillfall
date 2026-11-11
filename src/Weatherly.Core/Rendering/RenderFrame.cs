@@ -11,7 +11,13 @@ public sealed class RenderFrame
     private Sprite[] _sprites;
     private int _count;
 
-    public RenderFrame(int initialCapacity = 4096)
+    /// <summary>
+    /// The default capacity holds the full particle budget of PLAN.md, section 4 (12k rain drops plus splashes,
+    /// drips with trails and puddles) without growing during play.
+    /// </summary>
+    public const int DefaultCapacity = 32_768;
+
+    public RenderFrame(int initialCapacity = DefaultCapacity)
     {
         _sprites = new Sprite[Math.Max(initialCapacity, 16)];
     }

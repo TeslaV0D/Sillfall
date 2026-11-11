@@ -87,8 +87,10 @@ jobs:
         if: always() && matrix.platform == 'x64'
         run: dotnet run --project tools/Weatherly.FrameDump -c Release -p:Platform=x64 -- --out "${{ runner.temp }}/previews/framedump"
 
+      # Runs even when a render test failed (for example a golden still waiting for review), so every
+      # push gets the full picture.
       - name: Smoke test the app
-        if: matrix.platform == 'x64'
+        if: always() && matrix.platform == 'x64'
         shell: pwsh
         run: >-
           ./tools/ci/smoke-test.ps1 -Platform x64

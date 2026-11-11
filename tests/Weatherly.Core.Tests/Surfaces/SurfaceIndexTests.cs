@@ -99,8 +99,12 @@ public class SurfaceIndexTests
             }
         }
 
-        // Warm-up runs the measured body, so first-use costs land before the measurement.
-        Round();
+        // Warm-up runs the measured body often enough for the runtime to finish tiering it up,
+        // so first-use costs land before the measurement.
+        for (int warmUp = 0; warmUp < 100; warmUp++)
+        {
+            Round();
+        }
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         for (int round = 0; round < 50; round++)

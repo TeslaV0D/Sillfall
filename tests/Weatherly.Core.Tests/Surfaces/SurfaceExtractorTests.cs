@@ -361,7 +361,10 @@ public class SurfaceExtractorTests
         MonitorInfo[] monitors = [s_primary, s_right, s_leftAbove];
         var extractor = new SurfaceExtractor();
         var output = new SurfaceSet();
-        extractor.Extract(snapshot, monitors, output);
+        for (int warmUp = 0; warmUp < 100; warmUp++)
+        {
+            extractor.Extract(snapshot, monitors, output);
+        }
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 100; i++)

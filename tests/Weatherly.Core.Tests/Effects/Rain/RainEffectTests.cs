@@ -75,8 +75,38 @@ public class RainEffectTests
         rain.DripCount.Should().BePositive();
         Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.8f, 2.2f))];
         heads.Should().NotBeEmpty();
-        heads.Should().OnlyContain(s => Math.Abs(s.Center.X - 399.5f) < 2.5f || Math.Abs(s.Center.X - 1400.5f) < 2.5f, "drips run down the columns just outside the window");
+        heads.Should().OnlyContain(s => (s.Center.X < 400 - s.HalfSize.X + 0.5f && s.Center.X > 394) || (s.Center.X > 1400 + s.HalfSize.X - 0.5f && s.Center.X < 1406), "drips run just outside the frame, never over the window");
         heads.Should().OnlyContain(s => s.Center.Y >= 300 && s.Center.Y <= 800);
+    }
+
+    [Fact]
+    public void FarDrops_AreHiddenBehindWindows()
+    {
+        (SimulationEngine engine, _) = Create(intensity: 1f, depth: 0.3f);
+
+        Run(engine, seconds: 2);
+
+        // Far drops (thin streaks) are drawn only while their tip is outside every window.
+        static Vector2 Tip(Sprite s) => s.Center + (new Vector2(MathF.Cos(s.Rotation), MathF.Sin(s.Rotation)) * s.HalfSize.X);
+        engine.Frame.Sprites.ToArray()
+            .Where(s => s.Shape == SpriteShape.Streak && s.HalfSize.Y < 1.1f)
+            .Select(Tip)
+            .Where(tip => s_window.Bounds.Contains((int)MathF.Floor(tip.X), (int)MathF.Floor(tip.Y)))
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Splashes_NeverFallIntoTheWindow()
+    {
+        (SimulationEngine engine, _) = Create(intensity: 1f, depth: 1f);
+
+        for (int i = 0; i < 180; i++)
+        {
+            engine.Advance(FrameTime);
+            Sprite[] splashes = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.1f, 1.1f))];
+            splashes.Where(s => s.Center.X > 405 && s.Center.X < 1395 && s.Center.Y > 300.5f && s.Center.Y < 800)
+                .Should().BeEmpty("droplets that fall back onto the edge are absorbed");
+        }
     }
 
     [Fact]
@@ -121,7 +151,7 @@ public class RainEffectTests
         engine.Advance(1.0 / 120);
 
         Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.8f, 2.2f))];
-        heads.Should().OnlyContain(s => Math.Abs(s.Center.X - 599.5f) < 2.5f || Math.Abs(s.Center.X - 1600.5f) < 2.5f);
+        heads.Should().OnlyContain(s => (s.Center.X < 600 && s.Center.X > 594) || (s.Center.X > 1600 && s.Center.X < 1606));
     }
 
     [Fact]
