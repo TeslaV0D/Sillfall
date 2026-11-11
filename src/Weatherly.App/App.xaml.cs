@@ -56,7 +56,7 @@ public partial class App : Application
         }
     }
 
-    private async Task RunSmokeTestAsync(SmokeTest smokeTest, MainWindow window)
+    private static async Task RunSmokeTestAsync(SmokeTest smokeTest, MainWindow window)
     {
         try
         {
