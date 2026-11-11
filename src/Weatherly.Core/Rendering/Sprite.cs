@@ -14,6 +14,9 @@ public enum SpriteShape : uint
 
     /// <summary>Capsule with soft ends, long along its x axis: rain drops in motion.</summary>
     Streak = 2,
+
+    /// <summary>Thin elliptic ring: the ripple where a drop hits a surface.</summary>
+    Ring = 3,
 }
 
 /// <summary>

@@ -1,4 +1,4 @@
-// Shades a sprite quad: solid rectangle, soft disc or streak (capsule). Premultiplied output.
+// Shades a sprite quad: solid rectangle, soft disc, streak (capsule) or ring. Premultiplied output.
 
 struct PixelInput
 {
@@ -35,6 +35,14 @@ float4 main(PixelInput input) : SV_Target
         float distance = length(p) - radius;
         float core = 1.0 - saturate(abs(input.Local.y) / radius) * 0.5;
         return input.Color * Coverage(distance) * core;
+    }
+
+    if (input.Shape == 3)
+    {
+        // Ring: the outline of the ellipse, about 1.2 px thick.
+        float2 normalized = input.Local / max(input.HalfSize, 0.001);
+        float distance = abs(length(normalized) - 1.0) * min(input.HalfSize.x, input.HalfSize.y) - 0.6;
+        return input.Color * Coverage(distance);
     }
 
     return input.Color;
