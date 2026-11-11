@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M0 (Fundament)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M1 (Overlay-Spike)**. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -17,6 +17,7 @@ Stand: **M0 (Fundament)**. Den Fortschritt pro Meilenstein dokumentieren die Che
    - kein `GetWindowText`/`WM_GETTEXT` im ganzen Produktcode, es wird nur Fenstergeometrie gelesen,
    - Netzwerkzugriffe ausschließlich in `src/Weatherly.Core/Weather/Providers/` (Implementierungen
      von `IWeatherProvider`),
+   - kein Lesen des Bildschirms (`BitBlt`, `PrintWindow`, Graphics Capture, Desktop Duplication),
    - Koordinaten werden vor dem Senden auf eine Dezimale gerundet (Test kommt mit M10).
 5. **IP-Invariante:** Jedes Asset hat einen Eintrag in [ASSETS.md](ASSETS.md) (Quelle, Lizenz, Autor).
    Fehlt er, schlägt `AssetRegistryTests` fehl. Keine Charaktere, Namen, Grafiken, Sounds oder Texte
@@ -40,6 +41,10 @@ Stand: **M0 (Fundament)**. Den Fortschritt pro Meilenstein dokumentieren die Che
 | `tools/ci` | PowerShell | Skripte für CI, lokal genauso ausführbar |
 | `tests/Weatherly.Core.Tests` | `net10.0` | Läuft auf Linux und Windows |
 | `tests/Weatherly.Render.Tests` | Windows | WARP-Tests, laufen nur im Windows-CI-Job |
+
+Overlay-Aufbau (Details in ADR-0003): `OverlayHost` (Platform) besitzt einen eigenen Thread mit
+Message-Loop und ein Fenster pro Monitor. Gezeichnet wird über den Vertrag `IOverlayRenderer`
+(Core), den `CompositionOverlayRenderer` (Render) mit D3D11 und DirectComposition erfüllt.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.
@@ -75,9 +80,14 @@ Hinweise:
   statt des Pfads als Positionsargument.
 - Die WinUI-App baut nur unter Windows, weil der XAML-Compiler eine Windows-Exe ist. Unter Linux
   ist der Windows-CI-Job die Prüfung dafür.
-- `tools/ci/smoke-test.ps1` startet die App mit `--smoke-test=<Datei>`. Die App zeigt ihr Fenster,
-  schreibt die Start-Diagnose in die Datei und beendet sich. So wird im CI geprüft, dass die App
-  auf echtem Windows startet. Neue Schichten sollten sich in `StartupDiagnostics` eintragen.
+- `tools/ci/smoke-test.ps1` startet die App zweimal mit `--smoke-test=<Datei>`. Die App zeigt ihr
+  Fenster und die Overlays, prüft sich selbst (`OverlayDiagnostics`) und schreibt das Ergebnis in die
+  Datei. Das Skript fotografiert währenddessen den Desktop und prüft, ob das Testmuster wirklich zu
+  sehen ist (bzw. mit `--exclude-from-capture` nicht). Neue Schichten tragen sich in
+  `StartupDiagnostics` ein.
+- Shader liegen in `src/Weatherly.Render/Shaders/` (`Name.vs.hlsl`, `Name.ps.hlsl`) und werden beim
+  Build unter Windows mit `fxc` kompiliert und eingebettet (`Shaders.targets`). Unter Linux wird das
+  übersprungen: Render kompiliert, kann aber nicht zeichnen.
 
 ## CI (`.github/workflows/ci.yml`)
 
@@ -86,10 +96,13 @@ Hinweise:
 | `core` | ubuntu-latest | Format, Build der Cross-Platform-Projekte, Core-Tests (inkl. Architektur-, Privacy- und Asset-Invarianten) |
 | `windows` | windows-latest, x64 und ARM64 | Build der ganzen Solution. Nur x64: Format, Core-Tests, Render-Tests (WARP), Smoke-Test der App |
 
+Jeder Render-Test speichert sein Bild als PNG, das Smoke-Skript seine Desktop-Screenshots. Beides
+lädt der Job als Artefakt `previews` hoch. So lässt sich die Optik ohne Windows-Desktop prüfen
+(Artefakt herunterladen, PNGs mit dem Read-Tool ansehen).
+
 Noch nicht eingerichtet, weil der Inhalt dafür erst später entsteht:
 
-- Shader-Kompilierung zur Build-Zeit (mit dem ersten Shader in M1),
-- FrameDump-Previews als Artifact und auf dem Branch `ci-previews/<branch>` (M3),
+- FrameDump-Previews und der Branch `ci-previews/<branch>` (M3),
 - Job `package` für MSIX-Build und Signierung bei Tags (M14).
 
 ## Code-Konventionen
