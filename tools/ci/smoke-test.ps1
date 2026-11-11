@@ -141,8 +141,14 @@ function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [scriptbloc
     $screenFailures = @()
     if ((Test-Path $report) -and -not $process.HasExited) {
         Start-Sleep -Milliseconds 500
-        $process.Refresh()
-        $window = Get-WindowBounds $process.MainWindowHandle
+        # The app names its window handle in the report. Process.MainWindowHandle is not reliable here:
+        # the process also owns the (visible, topmost) overlay windows.
+        $pattern = '^INFO\tApp window handle (\d+)$'
+        $handleLine = Get-Content $report | Where-Object { $_ -match $pattern } | Select-Object -First 1
+        if (-not ($handleLine -match $pattern)) {
+            throw "Smoke run '$Name': the report names no app window handle."
+        }
+        $window = Get-WindowBounds ([IntPtr][long]$Matches[1])
         Write-Host "App window: ($($window.Left), $($window.Top)) - ($($window.Right), $($window.Bottom))"
         $bitmap = Get-PrimaryScreenshot $screenshot
         try {

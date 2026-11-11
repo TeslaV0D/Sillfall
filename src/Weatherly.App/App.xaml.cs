@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -99,7 +101,9 @@ public partial class App : Application
                 diagnostics.Add(TrackingDiagnostics.EvaluateMoveEvents(after, moved));
             }
 
-            int exitCode = smokeTest.WriteReport(diagnostics, window.MonitorLines);
+            // The script measures the window itself (DWM) and needs the handle: the process owns overlay windows too.
+            string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
+            int exitCode = smokeTest.WriteReport(diagnostics, [.. window.MonitorLines, handleLine]);
 
             // Stays on screen so the calling script can take its screenshot of the desktop.
             await Task.Delay(smokeTest.Hold);
