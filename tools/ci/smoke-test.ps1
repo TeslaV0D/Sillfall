@@ -142,7 +142,9 @@ function Invoke-SmokeRun([string] $Name, [string[]] $ExtraArguments, [bool] $Exp
 New-Item -ItemType Directory -Force -Path $ReportDirectory, $PreviewDirectory | Out-Null
 
 # Unpackaged, so the exe starts without MSIX deployment and brings the Windows App SDK runtime along.
-dotnet build $project -c $Configuration -p:Platform=$Platform -p:WindowsPackageType=None
+# --no-incremental: the packaged build writes to the same folders. Reusing its output leaves the
+# unpackaged exe without the WinUI resources (XamlParseException for themeresources.xaml).
+dotnet build $project -c $Configuration -p:Platform=$Platform -p:WindowsPackageType=None --no-incremental
 if ($LASTEXITCODE -ne 0) {
     throw "Building the unpackaged app failed with exit code $LASTEXITCODE."
 }
