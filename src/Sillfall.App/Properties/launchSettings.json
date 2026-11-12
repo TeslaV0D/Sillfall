@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Sillfall (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Sillfall (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

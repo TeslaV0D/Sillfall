@@ -1,6 +1,6 @@
 # Weather mapping
 
-How forecast data becomes effects (PLAN.md, section 5). Code: `WeatherMapper` in `src/Weatherly.Core/Weather/`. Each row has a test in `WeatherMapperTests`.
+How forecast data becomes effects (PLAN.md, section 5). Code: `WeatherMapper` in `src/Sillfall.Core/Weather/`. Each row has a test in `WeatherMapperTests`.
 
 Source is MET Norway, `locationforecast/2.0/compact`. The step containing the current time is used. Precipitation and symbol come from `next_1_hours`, otherwise from `next_6_hours` (amount divided by 6).
 

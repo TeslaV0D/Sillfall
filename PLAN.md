@@ -65,18 +65,18 @@ GPU-bound work dominates. CPU simulation (≤ 20k particles) stays under ~1 ms w
 ## 2. Architecture
 
 ```
-┌──────────────────────── Weatherly.App (WinUI 3) ────────────────────────┐
+┌──────────────────────── Sillfall.App (WinUI 3) ────────────────────────┐
 │ Tray flyout · Settings · Scenes · Onboarding · Composition root         │
 └───────────────┬───────────────────────────────┬───────────────────────────┘
                 │                               │
 ┌───────────────▼──────────────┐  ┌─────────────▼────────────┐  ┌───────────▼─────────────┐
-│ Weatherly.Platform (Win32)   │  │ Weatherly.Render (D3D11) │  │ Weatherly.Audio          │
+│ Sillfall.Platform (Win32)   │  │ Sillfall.Render (D3D11) │  │ Sillfall.Audio          │
 │ Overlay per monitor          │  │ Device / swapchain / DComp│  │ XAudio2, rain synth     │
 │ WindowTracker, monitors, DPI │  │ Pipelines per effect     │  └──────────────────────────┘
 │ Power / fullscreen / cursor  │  │ D2D for visitors / text  │
 └───────────────┬──────────────┘  └─────────────▲────────────┘
                 │ WindowSnapshot                │ RenderFrame
-                └────────────────► Weatherly.Core (net10.0)
+                └────────────────► Sillfall.Core (net10.0)
                                   SurfaceExtractor · Simulation · Effects · Weather sync · Scenes · Visitors
 ```
 

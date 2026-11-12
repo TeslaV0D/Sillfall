@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(SillfallWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(SillfallWindowsMinVersion)</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sillfall.FrameDump</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sillfall.Core\Sillfall.Core.csproj" />
+    <ProjectReference Include="..\..\src\Sillfall.Render\Sillfall.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+  </ItemGroup>
+
+</Project>

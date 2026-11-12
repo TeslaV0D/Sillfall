@@ -20,7 +20,7 @@ Sign-off: Accessibility Insights with no critical findings.
 
 ### 1. Strings: `.resw` without Windows MRT
 
-All UI strings live in `src/Weatherly.Core/Localization/Strings/{en-US,de-DE}/Resources.resw`. `Texts` (Core) reads them with a small ResX reader from embedded files. We do not use WinUI MRT because:
+All UI strings live in `src/Sillfall.Core/Localization/Strings/{en-US,de-DE}/Resources.resw`. `Texts` (Core) reads them with a small ResX reader from embedded files. We do not use WinUI MRT because:
 
 - same behavior packaged, unpackaged, and in tests,
 - Core strings are translatable too (tray menu, pause reasons, template names, achievements),

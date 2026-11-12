@@ -18,12 +18,12 @@ param(
     [ValidateSet('x64', 'ARM64')]
     [string] $Platform = 'x64',
     [string] $Configuration = 'Release',
-    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'weatherly-soak')
+    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-soak')
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
-$project = Join-Path $repoRoot 'src' 'Weatherly.App' 'Weatherly.App.csproj'
+$project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
 dotnet build $project -c $Configuration -p:Platform=$Platform -p:WindowsPackageType=None
 if ($LASTEXITCODE -ne 0) {
@@ -31,11 +31,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $rid = if ($Platform -eq 'x64') { 'win-x64' } else { 'win-arm64' }
-$exe = Get-ChildItem (Join-Path $repoRoot 'src' 'Weatherly.App' 'bin') -Recurse -Filter 'Weatherly.App.exe' |
+$exe = Get-ChildItem (Join-Path $repoRoot 'src' 'Sillfall.App' 'bin') -Recurse -Filter 'Sillfall.App.exe' |
     Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" -and $_.FullName -match "[\\/]$rid[\\/]" } |
     Select-Object -First 1
 if (-not $exe) {
-    throw "Weatherly.App.exe for $Configuration/$rid was not found."
+    throw "Sillfall.App.exe for $Configuration/$rid was not found."
 }
 
 New-Item -ItemType Directory -Force -Path $ReportDirectory | Out-Null

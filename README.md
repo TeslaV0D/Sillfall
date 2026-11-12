@@ -32,15 +32,15 @@ Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). The WinUI app
 
 ```bash
 # Full solution (Windows)
-dotnet build Weatherly.slnx -p:Platform=x64
-dotnet run --project src/Weatherly.App -p:WindowsPackageType=None
+dotnet build Sillfall.slnx -p:Platform=x64
+dotnet run --project src/Sillfall.App -p:WindowsPackageType=None
 
 # Effect sandbox with fake windows (Windows)
-dotnet run --project tools/Weatherly.Sandbox
+dotnet run --project tools/Sillfall.Sandbox
 
 # Core on Linux (simulation & tests)
-dotnet build Weatherly.CrossPlatform.slnf
-dotnet test --project tests/Weatherly.Core.Tests
+dotnet build Sillfall.CrossPlatform.slnf
+dotnet test --project tests/Sillfall.Core.Tests
 ```
 
 ## Gallery
@@ -53,19 +53,19 @@ dotnet test --project tests/Weatherly.Core.Tests
 |---|---|---|
 | ![Leaves](docs/media/leaves.png) | ![Fog](docs/media/fog.png) | ![Sun and fog](docs/media/sun-and-fog.png) |
 
-These frames are deterministic WARP renders from `tools/Weatherly.FrameDump` (overlay only, transparent background shown as black).
+These frames are deterministic WARP renders from `tools/Sillfall.FrameDump` (overlay only, transparent background shown as black).
 
 ## Architecture (short)
 
 | Project | Role |
 |---|---|
-| `Weatherly.Core` | Simulation, surfaces, weather mapping, settings (platform-neutral) |
-| `Weatherly.Platform` | Win32 overlays, window tracking, tray, shell integration |
-| `Weatherly.Render` | Direct3D 11 / DirectComposition / Direct2D |
-| `Weatherly.Audio` | XAudio2 |
-| `Weatherly.App` | WinUI 3 tray, settings, MSIX packaging |
+| `Sillfall.Core` | Simulation, surfaces, weather mapping, settings (platform-neutral) |
+| `Sillfall.Platform` | Win32 overlays, window tracking, tray, shell integration |
+| `Sillfall.Render` | Direct3D 11 / DirectComposition / Direct2D |
+| `Sillfall.Audio` | XAudio2 |
+| `Sillfall.App` | WinUI 3 tray, settings, MSIX packaging |
 
-Product display name and URI scheme come from `AppInfo` (`Sillfall`, `sillfall://`). Assembly / project names still use the historical `Weatherly.*` identifiers until a bulk rename in packaging work.
+Product display name and URI scheme come from `AppInfo` (`Sillfall`, `sillfall://`). Assembly / project names still use the historical `Sillfall.*` identifiers until a bulk rename in packaging work.
 
 ## Privacy
 

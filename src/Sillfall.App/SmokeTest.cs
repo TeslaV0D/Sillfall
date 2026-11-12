@@ -1,0 +1,163 @@
+using System.Globalization;
+using System.Text;
+using Sillfall.Core.Diagnostics;
+
+namespace Sillfall.App;
+
+/// <summary>
+/// Headless self-check for CI. <c>Sillfall.App.exe --smoke-test=&lt;report file&gt;</c> starts the app with
+/// the overlay test pattern, writes all diagnostics to the report file and exits with code 0 when
+/// every check passed. This is how changes get verified on Windows runners without anyone sitting
+/// in front of a desktop.
+/// <list type="bullet">
+/// <item><c>--smoke-hold=&lt;ms&gt;</c> keeps the app on screen after the report is written, so a script can take a screenshot.</item>
+/// <item><c>--exclude-from-capture</c> starts with the overlay hidden from screenshots.</item>
+/// <item><c>--show-surfaces</c> starts with the surface debug layer on.</item>
+/// <item><c>--no-test-pattern</c> starts without the calibration pattern.</item>
+/// <item><c>--rain</c> starts with rain and checks the render loop like <c>--test-drops</c>. Before the
+/// screenshot the rain is off for a moment, so the script can compare a dry and a wet desktop.</item>
+/// <item><c>--snow</c> does the same with snow: render loop check (including melting until the loop stops),
+/// then a snow-free and a snowy screenshot.</item>
+/// <item><c>--leaves</c>, <c>--fog</c>, <c>--sun</c> and <c>--grass</c> do the same with leaves, fog, sunlight and grass.</item>
+/// <item><c>--visitors</c> invites a visitor onto the app window, collects it by keyboard and invites one for the screenshot.</item>
+/// <item><c>--settings-tour=&lt;folder&gt;</c> shows every page of the settings window and the flyout and writes
+/// each as a PNG into the folder, instead of the overlay checks.</item>
+/// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
+/// zero allocations, and that it stops once the drops are switched off.</item>
+/// </list>
+/// In smoke test mode the app also moves its own window once and checks that the tracking follows.
+/// </summary>
+internal sealed class SmokeTest
+{
+    private const string ReportSwitch = "--smoke-test=";
+    private const string HoldSwitch = "--smoke-hold=";
+    private const string ExcludeSwitch = "--exclude-from-capture";
+    private const string SurfacesSwitch = "--show-surfaces";
+    private const string NoPatternSwitch = "--no-test-pattern";
+    private const string DropsSwitch = "--test-drops";
+    private const string RainSwitch = "--rain";
+    private const string SnowSwitch = "--snow";
+    private const string LeavesSwitch = "--leaves";
+    private const string FogSwitch = "--fog";
+    private const string SunSwitch = "--sun";
+    private const string GrassSwitch = "--grass";
+    private const string VisitorsSwitch = "--visitors";
+    private const string SoakSwitch = "--soak=";
+    private const string SettingsTourSwitch = "--settings-tour=";
+
+    private readonly string _reportPath;
+
+    private SmokeTest(string reportPath, TimeSpan hold, bool excludeFromCapture, bool showSurfaces, bool testPattern, bool testDrops, bool rain, bool snow, bool leaves, bool fog, bool sun, bool grass)
+    {
+        Grass = grass;
+        Fog = fog;
+        Sun = sun;
+        Leaves = leaves;
+        TestDrops = testDrops;
+        Rain = rain;
+        Snow = snow;
+        _reportPath = reportPath;
+        Hold = hold;
+        ExcludeFromCapture = excludeFromCapture;
+        ShowSurfaces = showSurfaces;
+        TestPattern = testPattern;
+    }
+
+    /// <summary>How long the app stays on screen after the report was written.</summary>
+    public TimeSpan Hold { get; }
+
+    public bool ExcludeFromCapture { get; }
+
+    public bool ShowSurfaces { get; }
+
+    public bool TestPattern { get; }
+
+    public bool TestDrops { get; }
+
+    public bool Rain { get; }
+
+    public bool Snow { get; }
+
+    public bool Leaves { get; }
+
+    public bool Fog { get; }
+
+    public bool Sun { get; }
+
+    public bool Grass { get; }
+
+    /// <summary>Minutes of the soak test (M13) instead of the usual checks; 0 runs the smoke test.</summary>
+    public double SoakMinutes { get; private init; }
+
+    /// <summary>Where the report goes (the soak test puts its samples next to it).</summary>
+    public string ReportPath => _reportPath;
+
+    /// <summary>Invites a visitor onto the app window: checks spawning, the render loop and the keyboard collect.</summary>
+    public bool Visitors { get; private init; }
+
+    /// <summary>Folder for the pictures of the settings tour, or <see langword="null"/> for the overlay checks.</summary>
+    public string? SettingsTour { get; private init; }
+
+    /// <summary>Returns the smoke test when the switch is present, otherwise <see langword="null"/>.</summary>
+    public static SmokeTest? FromCommandLine(IReadOnlyList<string> args)
+    {
+        string? report = ValueOf(args, ReportSwitch);
+        if (report is null)
+        {
+            return null;
+        }
+
+        TimeSpan hold = int.TryParse(ValueOf(args, HoldSwitch), NumberStyles.None, CultureInfo.InvariantCulture, out int milliseconds)
+            ? TimeSpan.FromMilliseconds(milliseconds)
+            : TimeSpan.Zero;
+
+        return new SmokeTest(
+            Path.GetFullPath(report),
+            hold,
+            args.Contains(ExcludeSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(SurfacesSwitch, StringComparer.OrdinalIgnoreCase),
+            !args.Contains(NoPatternSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(DropsSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(RainSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(SnowSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(LeavesSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(FogSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(SunSwitch, StringComparer.OrdinalIgnoreCase),
+            args.Contains(GrassSwitch, StringComparer.OrdinalIgnoreCase))
+        {
+            SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
+            Visitors = args.Contains(VisitorsSwitch, StringComparer.OrdinalIgnoreCase),
+            SoakMinutes = double.TryParse(ValueOf(args, SoakSwitch), NumberStyles.Float, CultureInfo.InvariantCulture, out double soak) ? Math.Max(soak, 0) : 0,
+        };
+    }
+
+    /// <summary>Writes the report. Returns the exit code: 0 when every check passed, otherwise 1.</summary>
+    public int WriteReport(IEnumerable<DiagnosticResult> diagnostics, IEnumerable<string> information)
+    {
+        var report = new StringBuilder();
+        bool passed = true;
+        foreach (DiagnosticResult result in diagnostics)
+        {
+            report.AppendLine(result.ToString());
+            passed &= result.Passed;
+        }
+
+        foreach (string line in information)
+        {
+            report.Append("INFO\t").AppendLine(line);
+        }
+
+        File.WriteAllText(_reportPath, report.ToString());
+        return passed ? 0 : 1;
+    }
+
+    /// <summary>Records a crash and ends the process.</summary>
+    public void Fail(Exception exception)
+    {
+        File.WriteAllText(_reportPath, $"FAILED\tUnhandled exception\t{exception}{Environment.NewLine}");
+        Environment.Exit(2);
+    }
+
+    private static string? ValueOf(IReadOnlyList<string> args, string name) =>
+        args.FirstOrDefault(arg => arg.StartsWith(name, StringComparison.OrdinalIgnoreCase))?[name.Length..];
+}

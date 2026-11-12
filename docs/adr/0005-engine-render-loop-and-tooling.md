@@ -36,9 +36,9 @@ Effects write struct-of-arrays with fixed capacity so the frame loop allocates n
 
 ### 5. Tooling
 
-- **Sandbox** (`tools/Weatherly.Sandbox`): normal window with fake desktop and draggable fake windows, same engine and renderer as the app.
-- **FrameDump** (`tools/Weatherly.FrameDump`): plays JSON scenes (`Scenes/*.json`) deterministically and renders capture times with WARP to PNG plus contact sheet.
-- **Golden images:** `GoldenImageTests` render the same scenes and compare to `tests/Weatherly.Render.Tests/Goldens/` (tolerance 2 per channel, at most 0.1% of pixels). Missing a golden fails the test and drops the image in previews. Adoption only after visual review.
+- **Sandbox** (`tools/Sillfall.Sandbox`): normal window with fake desktop and draggable fake windows, same engine and renderer as the app.
+- **FrameDump** (`tools/Sillfall.FrameDump`): plays JSON scenes (`Scenes/*.json`) deterministically and renders capture times with WARP to PNG plus contact sheet.
+- **Golden images:** `GoldenImageTests` render the same scenes and compare to `tests/Sillfall.Render.Tests/Goldens/` (tolerance 2 per channel, at most 0.1% of pixels). Missing a golden fails the test and drops the image in previews. Adoption only after visual review.
 
 ### 6. Deviation: no `ci-previews/<branch>` branch
 

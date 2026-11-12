@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
-$project = Join-Path $repoRoot 'src\Weatherly.App\Weatherly.App.csproj'
+$project = Join-Path $repoRoot 'src\Sillfall.App\Sillfall.App.csproj'
 
 Write-Host "Publishing Sillfall ($Configuration, $Platform)"
 dotnet publish $project `
@@ -23,7 +23,7 @@ dotnet publish $project `
     -p:UapAppxPackageBuildMode=SideloadOnly
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
 
-$bin = Join-Path $repoRoot "src\Weatherly.App\bin\$Platform\$Configuration"
+$bin = Join-Path $repoRoot "src\Sillfall.App\bin\$Platform\$Configuration"
 $packages = @(Get-ChildItem $bin -Recurse -Include *.msix, *.msixbundle, *.msixupload -File -ErrorAction SilentlyContinue)
 if ($packages.Count -eq 0) {
     throw "No MSIX was produced under $bin."

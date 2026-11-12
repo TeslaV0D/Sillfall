@@ -3,7 +3,7 @@
     Builds the app unpackaged and runs its built-in smoke test, including a look at the real screen.
 
 .DESCRIPTION
-    Three runs of Weatherly.App.exe with --smoke-test=<report>. In each run the app checks itself
+    Three runs of Sillfall.App.exe with --smoke-test=<report>. In each run the app checks itself
     (overlay windows, click-through, z-order, focus, first frame, idle rendering, window tracking
     after moving its own window) and holds its window while this script takes a screenshot:
 
@@ -31,19 +31,19 @@ param(
 
     [string] $Configuration = 'Release',
 
-    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'weatherly-smoke'),
+    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-smoke'),
 
-    [string] $PreviewDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'weatherly-smoke'),
+    [string] $PreviewDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-smoke'),
 
     [int] $TimeoutSeconds = 150
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
-$project = Join-Path $repoRoot 'src' 'Weatherly.App' 'Weatherly.App.csproj'
+$project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
 Add-Type -AssemblyName System.Drawing
-Add-Type -Namespace Weatherly.Ci -Name Native -MemberDefinition @'
+Add-Type -Namespace Sillfall.Ci -Name Native -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
 [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr window, int attribute, int[] rect, int size);
@@ -52,18 +52,18 @@ Add-Type -Namespace Weatherly.Ci -Name Native -MemberDefinition @'
 # Visible frame of a window in physical pixels (DWMWA_EXTENDED_FRAME_BOUNDS = 9): left, top, right, bottom.
 function Get-WindowBounds([IntPtr] $Window) {
     $rect = [int[]]::new(4)
-    $result = [Weatherly.Ci.Native]::DwmGetWindowAttribute($Window, 9, $rect, 16)
+    $result = [Sillfall.Ci.Native]::DwmGetWindowAttribute($Window, 9, $rect, 16)
     if ($result -ne 0) {
         throw "DwmGetWindowAttribute failed with 0x$($result.ToString('X8'))."
     }
     return @{ Left = $rect[0]; Top = $rect[1]; Right = $rect[2]; Bottom = $rect[3] }
 }
 # Physical pixels, like the overlay itself (-4 = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2).
-[void][Weatherly.Ci.Native]::SetProcessDpiAwarenessContext([IntPtr]::new(-4))
+[void][Sillfall.Ci.Native]::SetProcessDpiAwarenessContext([IntPtr]::new(-4))
 
 function Get-PrimaryScreenshot([string] $Path) {
-    $width = [Weatherly.Ci.Native]::GetSystemMetrics(0)   # SM_CXSCREEN
-    $height = [Weatherly.Ci.Native]::GetSystemMetrics(1)  # SM_CYSCREEN
+    $width = [Sillfall.Ci.Native]::GetSystemMetrics(0)   # SM_CXSCREEN
+    $height = [Sillfall.Ci.Native]::GetSystemMetrics(1)  # SM_CYSCREEN
     $bitmap = [System.Drawing.Bitmap]::new($width, $height)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
     try {
@@ -358,11 +358,11 @@ function Invoke-SettingsTour {
 # The sandbox renders fake windows with snow on them into a normal window. It exits by itself and returns 0 if it rendered.
 function Invoke-SandboxRun {
     Write-Host '=== Sandbox ==='
-    $sandbox = Get-ChildItem (Join-Path $repoRoot 'tools' 'Weatherly.Sandbox' 'bin') -Recurse -Filter 'Weatherly.Sandbox.exe' |
+    $sandbox = Get-ChildItem (Join-Path $repoRoot 'tools' 'Sillfall.Sandbox' 'bin') -Recurse -Filter 'Sillfall.Sandbox.exe' |
         Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" } |
         Select-Object -First 1
     if (-not $sandbox) {
-        throw 'Weatherly.Sandbox.exe was not found. Build the solution first.'
+        throw 'Sillfall.Sandbox.exe was not found. Build the solution first.'
     }
 
     $process = Start-Process -FilePath $sandbox.FullName -ArgumentList @('--exit-after=6', '--effect=snow', '--fill-snow') -PassThru
@@ -391,11 +391,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $rid = "win-$($Platform.ToLowerInvariant())"
-$script:exe = Get-ChildItem (Join-Path $repoRoot 'src' 'Weatherly.App' 'bin') -Recurse -Filter 'Weatherly.App.exe' |
+$script:exe = Get-ChildItem (Join-Path $repoRoot 'src' 'Sillfall.App' 'bin') -Recurse -Filter 'Sillfall.App.exe' |
     Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" -and $_.FullName -match "[\\/]$rid[\\/]" } |
     Select-Object -First 1
 if (-not $script:exe) {
-    throw "Weatherly.App.exe for $Configuration/$rid was not found."
+    throw "Sillfall.App.exe for $Configuration/$rid was not found."
 }
 
 Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true }

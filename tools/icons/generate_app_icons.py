@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Generates the Weatherly app icons (MSIX logos, splash screen, AppIcon.ico).
+"""Generates the Sillfall app icons (MSIX logos, splash screen, AppIcon.ico).
 
 The mark is drawn procedurally: a cloud with three rain drops on a rounded gradient plate.
 No external artwork is involved, see ASSETS.md.
 
 Usage:  python3 tools/icons/generate_app_icons.py        (requires Pillow)
-Output: src/Weatherly.App/Assets/
+Output: src/Sillfall.App/Assets/
 """
 
 from pathlib import Path
@@ -13,7 +13,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 SUPERSAMPLE = 4
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "src" / "Weatherly.App" / "Assets"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "src" / "Sillfall.App" / "Assets"
 
 PLATE_TOP = (38, 84, 168)
 PLATE_BOTTOM = (22, 150, 172)

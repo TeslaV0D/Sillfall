@@ -6,7 +6,7 @@ Fill these into Partner Center after the name **Sillfall** is reserved. Screensh
 
 1. Partner Center → Apps and games → New product → MSIX or PWA app.
 2. Reserve the name **Sillfall**.
-3. Copy the reserved package identity into `src/Weatherly.App/Package.appxmanifest` (`Identity Name` and `Publisher`). The checked-in identity (`Sillfall.Dev` / `CN=Sillfall Development`) is for local builds only.
+3. Copy the reserved package identity into `src/Sillfall.App/Package.appxmanifest` (`Identity Name` and `Publisher`). The checked-in identity (`Sillfall.Dev` / `CN=Sillfall Development`) is for local builds only.
 
 ## Listing copy (en-US)
 

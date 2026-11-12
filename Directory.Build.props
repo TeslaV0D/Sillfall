@@ -22,8 +22,8 @@
       Minimum is Windows 10 2004 (19041): first build with WDA_EXCLUDEFROMCAPTURE.
       CA1416 flags every API newer than the minimum, so those calls need an OS version guard.
     -->
-    <WeatherlyWindowsTargetFramework>net10.0-windows10.0.26100.0</WeatherlyWindowsTargetFramework>
-    <WeatherlyWindowsMinVersion>10.0.19041.0</WeatherlyWindowsMinVersion>
+    <SillfallWindowsTargetFramework>net10.0-windows10.0.26100.0</SillfallWindowsTargetFramework>
+    <SillfallWindowsMinVersion>10.0.19041.0</SillfallWindowsMinVersion>
   </PropertyGroup>
 
   <PropertyGroup>

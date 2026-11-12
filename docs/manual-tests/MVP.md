@@ -5,7 +5,7 @@ Already automated: menu model (checks, commands, pause), tooltip, save and load 
 ## Start
 
 ```bash
-dotnet run --project src/Weatherly.App -p:WindowsPackageType=None
+dotnet run --project src/Sillfall.App -p:WindowsPackageType=None
 ```
 
 ## 1. Tray icon

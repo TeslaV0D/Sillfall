@@ -26,7 +26,7 @@ These items refine the plan or deviate slightly.
 | Target framework for Windows projects | `net10.0-windows10.0.26100.0`, minimum version 10.0.19041 (instead of `net10.0-windows`) | `net10.0-windows` implies Windows 7. Analyzer CA1416 then rejects APIs like `GetThreadDpiAwarenessContext` immediately. With minimum version 19041 (first version with `WDA_EXCLUDEFROMCAPTURE`) it flags exactly the APIs that need a version check. |
 | Windows App SDK | 2.6.5 | Current stable line. Project file follows the official template `Microsoft.WindowsAppSDK.WinUI.CSharp.Templates`. |
 | Platforms | x64 and ARM64, no x86 | As in the plan (CI builds x64 and ARM64). |
-| Solution format | `Weatherly.slnx` | Standard format of the .NET 10 SDK. `Weatherly.CrossPlatform.slnf` filters out the WinUI app for Linux. |
+| Solution format | `Sillfall.slnx` | Standard format of the .NET 10 SDK. `Sillfall.CrossPlatform.slnf` filters out the WinUI app for Linux. |
 | Test runner | xUnit v3 on Microsoft.Testing.Platform | xUnit v3 builds on this under .NET 10; the old VSTest path is no longer supported. |
 | Assertions | AwesomeAssertions instead of FluentAssertions | Licensing; see ADR-0002. |
 | `Vortice.D3DCompiler` | Not referenced yet | Shaders are compiled at build time per the plan. The package is added only if runtime compilation is needed. |

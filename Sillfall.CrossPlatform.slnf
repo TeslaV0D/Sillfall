@@ -1,0 +1,15 @@
+{
+  "solution": {
+    "path": "Sillfall.slnx",
+    "projects": [
+      "src/Sillfall.Audio/Sillfall.Audio.csproj",
+      "src/Sillfall.Core/Sillfall.Core.csproj",
+      "src/Sillfall.Platform/Sillfall.Platform.csproj",
+      "src/Sillfall.Render/Sillfall.Render.csproj",
+      "tests/Sillfall.Core.Tests/Sillfall.Core.Tests.csproj",
+      "tests/Sillfall.Render.Tests/Sillfall.Render.Tests.csproj",
+      "tools/Sillfall.FrameDump/Sillfall.FrameDump.csproj",
+      "tools/Sillfall.Sandbox/Sillfall.Sandbox.csproj"
+    ]
+  }
+}
