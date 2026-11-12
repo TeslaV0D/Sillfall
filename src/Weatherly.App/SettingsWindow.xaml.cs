@@ -611,8 +611,7 @@ public sealed partial class SettingsWindow : Window
 
         VisitorAlbum album = _controller.Album;
         Add(Ui.Heading(Texts.Get("Visitors.Collection")));
-        Add(Ui.Note(string.Create(CultureInfo.CurrentCulture,
-            Texts.Format("Visitors.Summary", album.TotalCollected, album.Points, album.BestCombo))));
+        Add(Ui.Note(Texts.Format("Visitors.Summary", album.TotalCollected, album.Points, album.BestCombo)));
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 158, ItemHeight = 214 };
         foreach (VisitorProfile profile in VisitorCatalog.All)
         {
