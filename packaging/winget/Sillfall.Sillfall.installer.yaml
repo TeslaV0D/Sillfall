@@ -9,11 +9,11 @@ MinimumOSVersion: 10.0.19041.0
 InstallerType: msix
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/TeslaV0D/weatherly_windows/releases/download/v0.1.0/Sillfall-0.1.0-x64.msix
+    InstallerUrl: https://github.com/TeslaV0D/Sillfall/releases/download/v0.1.0/Sillfall-0.1.0-x64.msix
     InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
     SignatureSha256: 0000000000000000000000000000000000000000000000000000000000000000
   - Architecture: arm64
-    InstallerUrl: https://github.com/TeslaV0D/weatherly_windows/releases/download/v0.1.0/Sillfall-0.1.0-arm64.msix
+    InstallerUrl: https://github.com/TeslaV0D/Sillfall/releases/download/v0.1.0/Sillfall-0.1.0-arm64.msix
     InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
     SignatureSha256: 0000000000000000000000000000000000000000000000000000000000000000
 ManifestType: installer

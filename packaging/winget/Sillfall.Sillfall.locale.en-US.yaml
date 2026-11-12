@@ -3,11 +3,11 @@ PackageIdentifier: Sillfall.Sillfall
 PackageVersion: 0.1.0
 PackageLocale: en-US
 Publisher: Sillfall
-PublisherUrl: https://github.com/TeslaV0D/weatherly_windows
+PublisherUrl: https://github.com/TeslaV0D/Sillfall
 PackageName: Sillfall
-PackageUrl: https://github.com/TeslaV0D/weatherly_windows
+PackageUrl: https://github.com/TeslaV0D/Sillfall
 License: MIT
-LicenseUrl: https://github.com/TeslaV0D/weatherly_windows/blob/main/LICENSE
+LicenseUrl: https://github.com/TeslaV0D/Sillfall/blob/main/LICENSE
 ShortDescription: Animated weather that settles on the edges of your open windows.
 Description: |-
   Sillfall draws rain, snow, fog, leaves, sunlight, and grass on the edges of open Windows windows.

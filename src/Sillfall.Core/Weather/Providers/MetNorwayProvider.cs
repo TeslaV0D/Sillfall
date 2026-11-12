@@ -26,7 +26,7 @@ public sealed class MetNorwayProvider : IWeatherProvider, IDisposable
     }
 
     /// <summary>Identifies the app and where to reach its makers, as MET Norway's terms require. Nothing about the user.</summary>
-    public static string UserAgent => $"{AppInfo.Name}/{AppInfo.DisplayVersion} github.com/TeslaV0D/weatherly_windows";
+    public static string UserAgent => $"{AppInfo.Name}/{AppInfo.DisplayVersion} github.com/TeslaV0D/Sillfall";
 
     public string Attribution => "Weather data: MET Norway (CC BY 4.0)";
 

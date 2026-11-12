@@ -23,7 +23,7 @@ PLAN.md, section 5: Effects should follow real weather. Required:
 `IWeatherProvider` (Core) is the contract. `MetNorwayProvider` in `Weather/Providers/` is the only class with network code (privacy test).
 
 - **Rounding:** The provider rounds location to one decimal (~11 km) before building the URL. Tested in `PrivacyInvariantTests` and `WeatherSyncTests`.
-- **User-Agent:** `<AppInfo.Name>/<Version> github.com/TeslaV0D/weatherly_windows`. MET terms require an identifier with contact. Nothing about the user is included.
+- **User-Agent:** `<AppInfo.Name>/<Version> github.com/TeslaV0D/Sillfall`. MET terms require an identifier with contact. Nothing about the user is included.
 - **Caching:** `If-Modified-Since` with last `Last-Modified`. On 304 the forecast is kept. Errors return as results, never as exceptions.
 
 ### 2. Polling as a state machine without a clock
