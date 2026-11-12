@@ -79,6 +79,9 @@ Sillfall reads **window geometry** only. It does not read titles or contents, do
 - [docs/adr](docs/adr) — architecture decisions
 - [docs/manual-tests](docs/manual-tests) — Windows checklists
 - [docs/weather-mapping.md](docs/weather-mapping.md) — forecast → effect mapping
+- [docs/PRIVACY.md](docs/PRIVACY.md) — privacy policy
+- [docs/release/STORE.md](docs/release/STORE.md) — Microsoft Store listing checklist
+- [docs/release/WINGET.md](docs/release/WINGET.md) — winget submission
 
 ## License
 

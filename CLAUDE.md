@@ -89,8 +89,9 @@ Use `dotnet test --project <path>` (Microsoft.Testing.Platform via `global.json`
 | `core` | ubuntu-latest | Format, cross-platform build, Core tests |
 | `windows` | windows-latest, x64 + ARM64 | Full solution build; x64 also format, Core + Render tests, smoke test |
 | `soak` | windows-latest, x64 | 5-minute app soak (`tools/ci/soak-test.ps1`) |
+| `package` | windows-latest, x64 and ARM64 | Unsigned MSIX (`tools/ci/package.ps1`) |
 
-Not yet: `package` job for tagged MSIX builds (M14).
+`package` publishes an unsigned MSIX per architecture (`tools/ci/package.ps1`, artifact `msix-*`). Store signing and winget submission are documented in `docs/release/`.
 
 ## Code conventions
 

@@ -148,3 +148,30 @@ jobs:
           name: soak
           path: ${{ runner.temp }}/soak/
           if-no-files-found: ignore
+
+  # Unsigned MSIX for x64 and ARM64 (M14). Microsoft Store or a trusted cert signs the bits that ship.
+  package:
+    name: MSIX (${{ matrix.platform }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Publish MSIX
+        shell: pwsh
+        run: ./tools/ci/package.ps1 -Platform ${{ matrix.platform }} -OutputDirectory artifacts/msix
+
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v6
+        with:
+          name: msix-${{ matrix.platform }}
+          path: artifacts/msix/
+          if-no-files-found: error

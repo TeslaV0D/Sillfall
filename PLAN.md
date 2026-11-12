@@ -172,7 +172,7 @@ XAudio2 mastering + category submixes. Procedural rain. Default: muted.
 - `core` (ubuntu): format, cross-platform build, Core tests
 - `windows` (windows-latest): full solution, WARP render tests, smoke test, preview artifact
 - `soak`: short soak each push; longer via workflow_dispatch
-- Future `package` (tags): MSIX build + signing (M14)
+- `package`: unsigned MSIX (x64 and ARM64) via `tools/ci/package.ps1`. Store signing is a Partner Center step (`docs/release/STORE.md`).
 
 ---
 
