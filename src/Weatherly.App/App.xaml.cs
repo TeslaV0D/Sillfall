@@ -186,7 +186,7 @@ public partial class App : Application
 
         if (_smokeTest is { SettingsTour: { } tourDirectory })
         {
-            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSettingsTourAsync(_smokeTest, tourDirectory, _settingsWindow, _flyout, _window));
+            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSettingsTourAsync(_smokeTest, tourDirectory, _controller, _settingsWindow, _flyout, _window));
         }
         else if (_smokeTest is not null)
         {
@@ -341,7 +341,8 @@ public partial class App : Application
     /// Smoke test of the settings window and the flyout: every page is shown and written as a PNG, so the pages can be
     /// looked at without a Windows desktop. Fails when a page throws or renders nothing.
     /// </summary>
-    private static async Task RunSettingsTourAsync(SmokeTest smokeTest, string directory, SettingsWindow settings, FlyoutWindow flyout, MainWindow window)
+    private static async Task RunSettingsTourAsync(
+        SmokeTest smokeTest, string directory, AppController controller, SettingsWindow settings, FlyoutWindow flyout, MainWindow window)
     {
         try
         {
@@ -355,6 +356,24 @@ public partial class App : Application
                 (int width, int height) = await settings.SavePageAsync(Path.Combine(directory, string.Create(CultureInfo.InvariantCulture, $"settings-{index:00}-{key}.png")));
                 diagnostics.Add(new DiagnosticResult($"Settings page {title}", width > 0 && height > 0, string.Create(CultureInfo.InvariantCulture, $"{width} x {height}")));
             }
+
+            // The sync page once more with the sync switched on (in memory only: this run has no weather service, so
+            // nothing is sent), a city and a paused element, to show all of its parts.
+            AppSettings before = controller.Settings;
+            controller.Update(s => s with
+            {
+                WeatherSync = s.WeatherSync with
+                {
+                    Enabled = true,
+                    City = new CityChoice { Name = "Berlin", Country = "DE", Latitude = 52.52, Longitude = 13.41 },
+                    Paused = [SyncElement.Rain],
+                },
+            });
+            settings.ShowPage("sync");
+            await Task.Delay(TimeSpan.FromMilliseconds(700));
+            (int syncWidth, int syncHeight) = await settings.SavePageAsync(Path.Combine(directory, "settings-02-sync-on.png"));
+            diagnostics.Add(new DiagnosticResult("Settings page Weather sync (on)", syncWidth > 0 && syncHeight > 0, string.Create(CultureInfo.InvariantCulture, $"{syncWidth} x {syncHeight}")));
+            controller.Update(_ => before);
 
             flyout.StayOpen = true;
             flyout.ShowNearTray();
