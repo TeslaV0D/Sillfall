@@ -125,7 +125,8 @@ jobs:
   soak:
     name: Soak (x64)
     runs-on: windows-latest
-    timeout-minutes: ${{ fromJSON(inputs.soak_minutes || '5') + 30 }}
+    # Expressions have no arithmetic: a run started by hand may take up to GitHub's limit, a push run 40 minutes.
+    timeout-minutes: ${{ inputs.soak_minutes && 360 || 40 }}
     steps:
       - uses: actions/checkout@v5
 
