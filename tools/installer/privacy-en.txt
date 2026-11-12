@@ -1,0 +1,18 @@
+﻿Sillfall – privacy in short
+
+Sillfall draws animated weather on top of your open windows.
+
+What stays on this PC
+- The app reads where windows are and how big they are. It never reads window titles or window contents, and it does not record the screen.
+- Settings, the visitor collection and error reports are stored in %LOCALAPPDATA%\Sillfall. Error reports are not uploaded.
+
+What is sent
+- Nothing, unless you switch weather sync on in the settings.
+- With weather sync on, a location rounded to about 11 km is sent to MET Norway (api.met.no) every 15 to 60 minutes. You can switch it off at any time.
+- No telemetry, no advertising, no account.
+
+Changes to your system
+- Setup adds a Start menu entry and registers sillfall:// links. Autostart is off until you switch it on in the settings.
+- Uninstall from Settings > Apps removes the app, the link registration and the autostart entry. Your settings stay in %LOCALAPPDATA%\Sillfall until you delete that folder.
+
+Full privacy policy: https://github.com/TeslaV0D/Sillfall/blob/main/docs/privacy.md

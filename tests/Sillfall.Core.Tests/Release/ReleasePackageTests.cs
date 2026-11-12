@@ -131,6 +131,20 @@ public class ReleasePackageTests
         Repo.ReadText("tools/ci/installer.ps1").Should().Contain("Sillfall.App.exe").And.Contain("WindowsPackageType=None");
     }
 
+    [Fact]
+    public void Installer_MeetsTheSignPathTerms()
+    {
+        Repo.ReadText("tools/installer/privacy-en.txt").Should().Contain("api.met.no").And.Contain("window titles");
+        Repo.ReadText("tools/installer/privacy-de.txt").Should().Contain("api.met.no").And.Contain("Fenstertitel");
+        Repo.ReadText("tools/installer/signpath-artifact-configuration.xml")
+            .Should().Contain($"product-name=\"{AppInfo.Name}\"").And.Contain("Sillfall-Setup-*.exe");
+
+        string readme = Repo.ReadText("README.md");
+        readme.Should().Contain("## Code signing policy");
+        readme.Should().Contain("SignPath.io").And.Contain("SignPath Foundation");
+        readme.Should().Contain("will not transfer any information to other networked systems");
+    }
+
     private static string ProductVersion()
     {
         XElement version = Repo.LoadXml("Directory.Build.props").Descendants("Version").Single();

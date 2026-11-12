@@ -30,7 +30,7 @@ Animated weather for Windows — rain, snow, fog, leaves, sunlight, and grass th
 
 Get the latest **Sillfall-Setup-…-x64.exe** (or **…-arm64.exe** for ARM PCs) from [Releases](https://github.com/TeslaV0D/Sillfall/releases/latest) and run it. It installs for the current user without administrator rights and adds a Start menu entry; uninstall from *Settings > Apps*. Requires **Windows 10 2004** or newer.
 
-The setup is not code-signed yet, so SmartScreen may show *Windows protected your PC*. Choose *More info* > *Run anyway*. Checksums are in `SHA256SUMS-setup-*.txt` next to the download.
+Until the first signed release, SmartScreen may show *Windows protected your PC*. Choose *More info* > *Run anyway*. Checksums are in `SHA256SUMS-setup-*.txt` next to the download. See the [code signing policy](#code-signing-policy).
 
 ## Build from source
 
@@ -82,6 +82,28 @@ Product display name and URI scheme come from `AppInfo` (`Sillfall`, `sillfall:/
 ## Privacy
 
 Sillfall reads **window geometry** only. It does not read titles or contents, does not capture the screen, and ships without telemetry. Crash reports stay on disk under `%LOCALAPPDATA%\Sillfall\logs`. These rules are enforced by automated invariant tests.
+
+## Code signing policy
+
+Windows setups are signed through the open-source program of SignPath, once the project is accepted there:
+free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Releases published before that are unsigned and say so in their release notes.
+
+- Only binaries built by this repository's GitHub Actions workflow (`.github/workflows/ci.yml`, GitHub-hosted runners)
+  from the tagged source are signed. Nothing built on a local machine is submitted.
+- Every signing request is approved by hand before it is signed.
+
+Team roles:
+
+| Role | Members |
+|---|---|
+| Authors (committers) | [@TeslaV0D](https://github.com/TeslaV0D) |
+| Reviewers | [@TeslaV0D](https://github.com/TeslaV0D) — changes from contributors and coding agents are reviewed in pull requests before merge |
+| Approvers | [@TeslaV0D](https://github.com/TeslaV0D) |
+
+Privacy: this program will not transfer any information to other networked systems unless specifically requested
+by the user or the person installing or operating it. The only such request is the optional weather sync, which sends
+a location rounded to about 11 km to MET Norway. Details in the [privacy policy](docs/privacy.md).
 
 ## Documentation
 

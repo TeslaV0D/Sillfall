@@ -31,6 +31,10 @@ AppPublisherURL={#AppUrl}
 AppSupportURL={#AppUrl}/issues
 AppUpdatesURL={#AppUrl}/releases
 VersionInfoVersion={#AppVersion}
+; Product name and version are checked by the SignPath artifact configuration (signpath-artifact-configuration.xml).
+VersionInfoProductName={#AppName}
+VersionInfoProductTextVersion={#AppVersion}
+VersionInfoDescription={#AppName} Setup
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -60,8 +64,9 @@ CloseApplications=yes
 RestartApplications=no
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+; The privacy summary is shown before installing (SignPath Foundation terms; full text in docs/privacy.md).
+Name: "english"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "privacy-en.txt"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"; InfoBeforeFile: "privacy-de.txt"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
