@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M9 (Oberfläche)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M10 (Wetter-Sync)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -72,6 +72,12 @@ Oberfläche (ADR-0008, ADR-0012): `AppSettings` (Core, versioniert, migriert) is
 `Ui`), `FlyoutWindow` (Tray-Linksklick), `MainWindow` (Diagnose, besitzt Overlay-Host, Tray-Icon und
 `SingleInstance`). Vorlagen: `Scene`, `ScenePresets`, `SceneCodec` (`.wscene`, `weatherly://`). Der Smoke-Test
 fasst keine Einstellungen an; `--settings-tour=<Ordner>` speichert jede Einstellungsseite als PNG.
+
+Wetter-Sync (ADR-0013, `docs/weather-mapping.md`): `MetNorwayProvider` (einziger Netzwerk-Code, in
+`Weather/Providers/`) liefert eine `WeatherForecast`. `WeatherSync` plant die Abfragen ohne eigene Uhr, `WeatherMapper`
+macht daraus `WeatherTargets`, und `WeatherBlend` mischt sie pro Element mit den eigenen Werten (Gewicht, Pause bei
+Handeingriff). Städtesuche offline über `CityIndex` (GeoNames, gebaut von `tools/cities/build_cities.py`). In der App
+steuert `AppController` den Sync, `DeviceLocation` liefert die Ortung. Der Smoke-Test hat keinen Provider.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.

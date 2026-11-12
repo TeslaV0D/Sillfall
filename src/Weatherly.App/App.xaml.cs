@@ -12,6 +12,7 @@ using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
 using Weatherly.Core.Tray;
+using Weatherly.Core.Weather.Providers;
 using Weatherly.Platform.Overlay;
 using Weatherly.Platform.Shell;
 using Weatherly.Render;
@@ -138,8 +139,15 @@ public partial class App : Application
             CenterOnPrimaryMonitor(_window);
         }
 
-        // The smoke test sets its own state: the controller then neither follows the system nor saves anything.
-        _controller = new AppController(_window, store, settings, followSystem: _smokeTest is null);
+        // The smoke test sets its own state: the controller then neither follows the system, nor saves anything, nor
+        // talks to the weather service. Otherwise the diagnostics window owns the provider (it lives as long as the app).
+        MetNorwayProvider? weather = _smokeTest is null ? new MetNorwayProvider() : null;
+        if (weather is not null)
+        {
+            _window.Own(weather);
+        }
+
+        _controller = new AppController(_window, store, settings, followSystem: _smokeTest is null, weather);
         _settingsWindow = new SettingsWindow(_controller);
         _flyout = new FlyoutWindow(_controller, () => _settingsWindow.ShowPage("effects"));
 

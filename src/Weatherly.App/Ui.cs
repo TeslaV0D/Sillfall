@@ -57,6 +57,38 @@ internal static class Ui
         _ => "M2,2 H14 V14 H2 Z",
     };
 
+    public static string Name(SyncElement element) =>
+        WeatherBlend.EffectOf(element) is { } kind ? Name(kind) : "Wind";
+
+    /// <summary>
+    /// The banner for a weather sync that the user paused for some elements by moving their sliders, with "Resume sync".
+    /// <see langword="null"/> when nothing is paused.
+    /// </summary>
+    public static InfoBar? SyncPausedBar(AppController controller, Action resumed)
+    {
+        ArgumentNullException.ThrowIfNull(controller);
+        WeatherSyncConfig sync = controller.Settings.WeatherSync;
+        if (!sync.Enabled || sync.Paused.Count == 0)
+        {
+            return null;
+        }
+
+        var bar = new InfoBar
+        {
+            IsOpen = true,
+            IsClosable = false,
+            Severity = InfoBarSeverity.Warning,
+            Title = "Weather sync paused",
+            Message = $"{string.Join(", ", sync.Paused.Select(Name))} keep{(sync.Paused.Count == 1 ? "s" : string.Empty)} the value you set by hand.",
+        };
+        bar.ActionButton = ActionButton("Resume sync", () =>
+        {
+            controller.ResumeSync();
+            resumed();
+        });
+        return bar;
+    }
+
     public static TextBlock Heading(string text) => new()
     {
         Text = text,

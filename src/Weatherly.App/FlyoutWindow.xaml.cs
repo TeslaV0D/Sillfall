@@ -154,7 +154,7 @@ public sealed partial class FlyoutWindow : Window
 
         Host.Children.Add(tiles);
 
-        Host.Children.Add(Ui.SliderRow("Wind", -400, 400, settings.Wind.Speed, 10, value => _controller.Update(s => s with { Wind = s.Wind with { Speed = (float)value } }), width: 330));
+        Host.Children.Add(Ui.SliderRow("Wind", -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value }), width: 330));
 
         IReadOnlyList<Scene> templates = _controller.AllTemplates;
         var picker = new ComboBox { Header = "Template", PlaceholderText = "Apply a template", MinWidth = 330 };
@@ -173,7 +173,13 @@ public sealed partial class FlyoutWindow : Window
         };
         Host.Children.Add(picker);
 
-        Host.Children.Add(Ui.Note("Weather sync: arrives with the next update."));
+        Host.Children.Add(Ui.Toggle("Real weather", settings.WeatherSync.Enabled, on =>
+            _controller.Update(s => s with { WeatherSync = s.WeatherSync with { Enabled = on } })));
+        if (Ui.SyncPausedBar(_controller, Build) is { } paused)
+        {
+            Host.Children.Add(paused);
+        }
+
         Host.Children.Add(Ui.ActionButton("More settings…", () =>
         {
             AppWindow.Hide();

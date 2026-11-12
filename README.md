@@ -3,16 +3,9 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M9 (Oberfläche): Tray-Flyout und Einstellungsfenster mit zehn Seiten, Vorlagen zum
-Teilen, Regeln für Monitore, Apps, Akku und Reduced Motion. Alle sechs Wettereffekte sind da. Die App läuft im Infobereich: Regen und Schnee lassen sich
-über das Tray-Menü stellen, das Fenster lässt sich schließen, ohne dass das Wetter endet, und die
-Einstellungen bleiben über Neustarts erhalten. Regen: Tropfen in verschiedenen Tiefen, Splashes, Pfützen,
-Rinnsale, Wasserfälle und prozeduraler Sound. Schnee: taumelnde Flocken, Haufen auf Fensterkanten und
-Taskleiste, die beim Schließen, Schütteln oder Wegschleudern abrutschen und schmelzen. Laub: flatternde
-Blätter in Herbstfarben, die auf Kanten liegen bleiben, von einer schnellen Mausbewegung aufgewirbelt und
-durch Schütteln abgeworfen werden. Nebel: zieht mit dem Wind, Fenster ragen heraus. Sonne: warme Strahlen
-von oben, Fenster werfen Schatten, Staub schwebt im Licht. Gras: wächst auf Kanten und Taskleiste, im
-Regen schneller, wiegt sich im Wind und weicht dem Mauszeiger aus.
+**Status:** Meilenstein M10 (Wetter-Sync): Die Effekte folgen auf Wunsch dem echten Wetter (MET Norway) an
+einer offline gesuchten Stadt oder am Standort des PCs, mit Invert, Gewicht pro Effekt und Pause bei Handeingriff.
+Davor: Tray-Flyout, Einstellungen mit zehn Seiten und alle sechs Wettereffekte.
 
 ```bash
 dotnet run --project tools/Weatherly.Sandbox

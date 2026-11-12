@@ -9,6 +9,8 @@ using Weatherly.Core.Effects.Sun;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
+using Weatherly.Core.Weather;
+using Weatherly.Core.Weather.Cities;
 using Weatherly.Platform.Displays;
 
 namespace Weatherly.App;
@@ -34,11 +36,15 @@ public sealed partial class SettingsWindow : Window
         ("about", "About", ""),
     ];
 
+    /// <summary>The city list, read in the background on the first search (about 34,000 cities).</summary>
+    private static readonly Lazy<Task<CityIndex>> s_cities = new(() => Task.Run(CityIndex.LoadBundled));
+
     private readonly AppController _controller;
     private readonly DispatcherQueueTimer _liveTimer;
     private string _page = "effects";
     private bool _quitting;
     private TextBlock? _liveText;
+    private TextBlock? _syncStatus;
     private long _lastFrames = -1;
     private DateTime _lastSample;
 
@@ -46,6 +52,7 @@ public sealed partial class SettingsWindow : Window
     {
         _controller = controller;
         InitializeComponent();
+        _controller.Changed += (_, _) => UpdateSyncStatus();
 
         Title = $"{AppInfo.Name} settings";
         SettingsTitleBar.Title = Title;
@@ -135,6 +142,7 @@ public sealed partial class SettingsWindow : Window
     {
         _liveTimer.Stop();
         _liveText = null;
+        _syncStatus = null;
         PageHost.Children.Clear();
         string title = Pages.FirstOrDefault(page => page.Key == _page).Title ?? string.Empty;
         PageHost.Children.Add(Ui.Title(title));
@@ -186,12 +194,13 @@ public sealed partial class SettingsWindow : Window
     private void BuildEffects()
     {
         Add(Ui.Note("Every effect has its own intensity, colour and brightness. In random mode the intensity wanders slowly between a minimum and a maximum."));
+        AddSyncPausedBar();
         AppSettings settings = _controller.Settings;
         foreach (EffectKind kind in Enum.GetValues<EffectKind>())
         {
             EffectConfig config = settings.Effect(kind);
             var panel = new StackPanel { Spacing = 8 };
-            panel.Children.Add(Ui.SliderRow("Intensity (%)", 0, 100, config.Intensity * 100, 5, value => UpdateEffect(kind, c => c with { Intensity = (float)(value / 100) })));
+            panel.Children.Add(Ui.SliderRow("Intensity (%)", 0, 100, config.Intensity * 100, 5, value => _controller.SetIntensity(kind, (float)(value / 100))));
 
             StackPanel random = Ui.Stack(
                 Ui.SliderRow("Lowest intensity (%)", 0, 100, config.RandomMin * 100, 5, value => UpdateEffect(kind, c => c with { RandomMin = (float)(value / 100) })),
@@ -253,8 +262,8 @@ public sealed partial class SettingsWindow : Window
 
         Add(Ui.Heading("Wind"));
         Add(Ui.Card(Ui.Stack(
-            Ui.SliderRow("Wind (px/s, negative blows to the left)", -400, 400, settings.Wind.Speed, 10, value => _controller.Update(s => s with { Wind = s.Wind with { Speed = (float)value } })),
-            Ui.SliderRow("Gusts (%)", 0, 100, settings.Wind.Gustiness * 100, 5, value => _controller.Update(s => s with { Wind = s.Wind with { Gustiness = (float)(value / 100) } })))));
+            Ui.SliderRow("Wind (px/s, negative blows to the left)", -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value })),
+            Ui.SliderRow("Gusts (%)", 0, 100, settings.Wind.Gustiness * 100, 5, value => _controller.SetWind(w => w with { Gustiness = (float)(value / 100) })))));
     }
 
     private void BuildTemplates()
@@ -370,11 +379,191 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
+    private void AddSyncPausedBar()
+    {
+        if (Ui.SyncPausedBar(_controller, BuildPage) is { } bar)
+        {
+            Add(bar);
+        }
+    }
+
     private void BuildSync()
     {
+        WeatherSyncConfig sync = _controller.Settings.WeatherSync;
+        Add(Ui.Note("The effects follow the real weather at your location or a city you choose. Moving a slider by hand pauses the sync for that effect."));
+        AddSyncPausedBar();
+
+        var details = new StackPanel { Spacing = 16, Visibility = sync.Enabled ? Visibility.Visible : Visibility.Collapsed };
         Add(Ui.Card(Ui.Stack(
-            Ui.Note("Real weather comes with the next milestone (M10): the effects follow the weather at your location or a city you choose, with an invert mode and a weight per effect. Moving a slider pauses the sync for that effect."),
-            Ui.Note("Your location stays rough: coordinates are rounded to about 11 km before anything is sent."))));
+            Ui.Toggle("Follow the real weather", sync.Enabled, on =>
+            {
+                details.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+                UpdateSync(s => s with { Enabled = on });
+            }),
+            Ui.Note("Only a rounded location (about 11 km) is sent to the weather service, every 15 to 60 minutes. Nothing else."))));
+        Add(details);
+
+        _syncStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        details.Children.Add(Ui.Card(Ui.Stack(
+            new TextBlock { Text = "Now", Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
+            _syncStatus,
+            Ui.ActionButton("Update now", _controller.RefreshWeatherNow))));
+        UpdateSyncStatus();
+
+        // Location: a city from the bundled list (searched on this PC) or the Windows location service.
+        var cityPanel = new StackPanel { Spacing = 8, Visibility = sync.Source == LocationSource.City ? Visibility.Visible : Visibility.Collapsed };
+        var chosen = new TextBlock { Text = sync.City is { } city ? $"Weather for {city.Name} ({city.Country})" : "No city chosen yet." };
+        cityPanel.Children.Add(chosen);
+        cityPanel.Children.Add(CitySearch(chosen));
+        details.Children.Add(Ui.Card(Ui.Stack(
+            Ui.Choice("Location", ["A city I choose", "This PC's location (Windows location service)"], (int)sync.Source, index =>
+            {
+                cityPanel.Visibility = index == (int)LocationSource.City ? Visibility.Visible : Visibility.Collapsed;
+                UpdateSync(s => s with { Source = (LocationSource)index });
+            }),
+            cityPanel)));
+
+        // Custom sync: a weight per element, and the inverted world.
+        var weights = Ui.Stack(
+            Ui.Toggle("Invert: a clear sky rains, bad weather brings sunshine, heat brings snow", sync.Invert, on => UpdateSync(s => s with { Invert = on })),
+            Ui.Note("How much each element follows the weather. 0 % keeps your own value, 100 % is the weather."));
+        foreach (SyncElement element in Enum.GetValues<SyncElement>())
+        {
+            weights.Children.Add(Ui.SliderRow($"{Ui.Name(element)} (%)", 0, 100, sync.Weight(element) * 100, 5,
+                value => UpdateSync(s => s.WithWeight(element, (float)(value / 100)))));
+        }
+
+        details.Children.Add(Ui.Card(weights));
+        details.Children.Add(Ui.Note($"{_controller.Weather?.Attribution ?? "Weather data: MET Norway (CC BY 4.0)"}. {CityIndex.Attribution}."));
+    }
+
+    private void UpdateSync(Func<WeatherSyncConfig, WeatherSyncConfig> change) =>
+        _controller.Update(settings => settings with { WeatherSync = change(settings.WeatherSync) });
+
+    /// <summary>The city search: suggestions from the bundled list while typing, nothing leaves the PC.</summary>
+    private AutoSuggestBox CitySearch(TextBlock chosen)
+    {
+        var box = new AutoSuggestBox
+        {
+            Header = "City",
+            PlaceholderText = "Search for a city, for example Hamburg or Paris, FR",
+            QueryIcon = new SymbolIcon(Symbol.Find),
+            Width = 420,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        IReadOnlyList<City> results = [];
+
+        void Choose(City city)
+        {
+            chosen.Text = $"Weather for {city.DisplayName}";
+            box.Text = string.Empty;
+            UpdateSync(s => s with
+            {
+                Source = LocationSource.City,
+                City = new CityChoice { Name = city.Name, Country = city.Country, Latitude = city.Location.Latitude, Longitude = city.Location.Longitude },
+            });
+        }
+
+        box.TextChanged += async (sender, e) =>
+        {
+            if (e.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
+            {
+                return;
+            }
+
+            string text = sender.Text;
+            CityIndex index = await s_cities.Value;
+            if (sender.Text != text)
+            {
+                return;
+            }
+
+            results = index.Search(text, limit: 8);
+            sender.ItemsSource = results.Select(city => city.DisplayName).ToList();
+        };
+        box.QuerySubmitted += async (sender, e) =>
+        {
+            int picked = e.ChosenSuggestion is string name ? results.Select(city => city.DisplayName).ToList().IndexOf(name) : -1;
+            if (picked >= 0)
+            {
+                Choose(results[picked]);
+                return;
+            }
+
+            CityIndex index = await s_cities.Value;
+            if (index.Search(sender.Text, limit: 1) is [City first])
+            {
+                Choose(first);
+            }
+        };
+        return box;
+    }
+
+    /// <summary>The sync's status line: the weather now, the location, the next request, problems.</summary>
+    private void UpdateSyncStatus()
+    {
+        if (_syncStatus is null)
+        {
+            return;
+        }
+
+        WeatherSyncConfig config = _controller.Settings.WeatherSync;
+        WeatherSync? sync = _controller.Weather;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var lines = new List<string>();
+        if (sync is null)
+        {
+            lines.Add("The weather sync is not available in this run.");
+        }
+        else if (!config.Enabled)
+        {
+            lines.Add("Off. Nothing is sent.");
+        }
+        else
+        {
+            if (_controller.LocationProblem is { } problem)
+            {
+                lines.Add(problem);
+            }
+            else if (_controller.WeatherLocation is { } place)
+            {
+                lines.Add(config.Source == LocationSource.City && config.City is { } city
+                    ? $"{city.Name} ({city.Country})"
+                    : string.Create(CultureInfo.CurrentCulture, $"This PC's location, about {place.Latitude:0.0}°, {place.Longitude:0.0}°"));
+            }
+
+            if (sync.Current(now) is { } weather)
+            {
+                lines.Add(Describe(weather));
+            }
+
+            lines.Add(sync.State switch
+            {
+                WeatherSyncState.Live => string.Create(CultureInfo.CurrentCulture, $"Updated at {sync.LastSuccess!.Value.ToLocalTime():t}, next check at {sync.NextAttempt.ToLocalTime():t}."),
+                WeatherSyncState.Offline => string.Create(CultureInfo.CurrentCulture, $"Offline: {sync.LastError} Showing the last forecast, next try at {sync.NextAttempt.ToLocalTime():t}."),
+                _ => sync.LastError is { } error ? $"No weather yet: {error}" : "Asking the weather service…",
+            });
+        }
+
+        _syncStatus.Text = string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>"Light rain showers, 3 °C, wind 2 m/s from the south-west".</summary>
+    private static string Describe(WeatherSnapshot weather)
+    {
+        string symbol = weather.Symbol.Split('_')[0];
+        string text = symbol switch
+        {
+            "" => "No symbol",
+            "clearsky" => "Clear sky",
+            "partlycloudy" => "Partly cloudy",
+            _ => symbol.Replace("light", "light ", StringComparison.Ordinal).Replace("heavy", "heavy ", StringComparison.Ordinal)
+                .Replace("showers", " showers", StringComparison.Ordinal).Replace("andthunder", " and thunder", StringComparison.Ordinal),
+        };
+        text = char.ToUpperInvariant(text[0]) + text[1..].Replace("  ", " ", StringComparison.Ordinal);
+        string[] directions = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+        string from = directions[(int)Math.Round(((weather.WindFromDirection % 360) + 360) % 360 / 45.0) % 8];
+        return string.Create(CultureInfo.CurrentCulture, $"{text}, {weather.AirTemperature:0} °C, wind {weather.WindSpeed:0} m/s from the {from}.");
     }
 
     private void BuildVisitors()
@@ -591,8 +780,11 @@ public sealed partial class SettingsWindow : Window
         Add(Ui.Heading("Privacy"));
         Add(Ui.Card(Ui.Note(
             "The app reads only where windows are and how big they are, never their titles or contents. It does not record the screen. " +
-            "App rules use the app's file name, on this PC only. Nothing is collected or sent; the weather sync (M10) will send a rounded location to the weather service and nothing else.")));
+            "App rules use the app's file name, on this PC only. Nothing is collected. Only when you switch the weather sync on, a location rounded to about 11 km is sent to the weather service, and nothing else.")));
         Add(Ui.Heading("Credits"));
-        Add(Ui.Card(Ui.Note("All graphics and sounds are made by the app itself or for it; see ASSETS.md. Weather data will come from MET Norway (M10).")));
+        Add(Ui.Card(Ui.Stack(
+            Ui.Note("All graphics and sounds are made by the app itself or for it; see ASSETS.md."),
+            Ui.Note("Weather data: MET Norway (api.met.no), CC BY 4.0."),
+            Ui.Note($"{CityIndex.Attribution}, geonames.org."))));
     }
 }

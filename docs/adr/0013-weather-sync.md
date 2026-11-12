@@ -1,6 +1,6 @@
 # ADR-0013: Wetter-Sync
 
-- Status: akzeptiert (Teil 1: Core; Oberfläche und Standortdienst folgen in Teil 2)
+- Status: akzeptiert
 - Datum: 2026-11-12
 - Meilenstein: M10
 
@@ -84,9 +84,20 @@ mit 1,5 MB verdichtet und als Ressource in Core eingebettet.
 - **Postleitzahlen:** Die PLZ-Suche (GeoNames Postal, Download pro Land) ist laut Plan optional. Sie ist
   zurückgestellt und nicht Teil von M10.
 
+### 8. In der App
+
+- **`AppController`:** Er sieht alle 30 Sekunden nach, ob eine Abfrage fällig ist, und wendet die Vorhersage an. So
+  folgen die Effekte auch dem Stundenwechsel.
+- **Pause bei Handeingriff:** Effekt-Regler, Wind, Tray-Menü und Flyout gehen über `SetIntensity`/`SetWind`.
+  Läuft der Sync, pausiert jeder dieser Eingriffe das betroffene Element. Ein Banner bietet „Resume sync“ an.
+- **Ortung:** `DeviceLocation` nutzt den Windows-Ortungsdienst mit 5 km Genauigkeit. Windows fragt nach der
+  Erlaubnis, im MSIX-Manifest steht die Capability `location`. Die Position wird sofort gerundet und nur im
+  Speicher gehalten.
+- **Smoke-Test:** Er bekommt keinen Provider, der Sync kann dort also nie Netzwerk nutzen.
+
 ## Konsequenzen
 
-- Die Attribution „Weather data: MET Norway (CC BY 4.0)“ und „City list: GeoNames (CC BY 4.0)“ muss in den
-  Sync-Einstellungen und auf der Info-Seite stehen (Teil 2).
+- Die Attribution „Weather data: MET Norway (CC BY 4.0)“ und „City list: GeoNames (CC BY 4.0)“ steht in den
+  Sync-Einstellungen und auf der Info-Seite.
 - Ob die Grenzen der Mapping-Tabelle sich gut anfühlen (8 mm/h als „voll“, Nebel 0,75, 15 m/s als voller Wind),
   zeigt erst echtes Wetter. Die Werte stehen als Konstanten in `WeatherMapper`.

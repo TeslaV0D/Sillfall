@@ -61,5 +61,7 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <!-- Only for the weather sync with "this PC's location"; Windows asks before the first use. -->
+    <DeviceCapability Name="location" />
   </Capabilities>
 </Package>
