@@ -201,6 +201,44 @@ internal static class Ui
         return button;
     }
 
+    /// <summary>
+    /// Names an expander for Narrator. The focus lands on the toggle button in its header, a part of the template, which
+    /// does not take the expander's name: it gets the name once the template is applied.
+    /// </summary>
+    public static void NameExpander(Expander expander, string name)
+    {
+        ArgumentNullException.ThrowIfNull(expander);
+        AutomationProperties.SetName(expander, name);
+        expander.Loaded += (_, _) =>
+        {
+            if (FindDescendant<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>(expander) is { } header)
+            {
+                AutomationProperties.SetName(header, name);
+            }
+        };
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FindDescendant<T>(child) is { } deeper)
+            {
+                return deeper;
+            }
+        }
+
+        return null;
+    }
+
     public static T Resource<T>(string key)
         where T : class => (T)Application.Current.Resources[key];
 

@@ -273,7 +273,7 @@ public sealed partial class SettingsWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
             };
-            AutomationProperties.SetName(expander, Ui.Name(kind));
+            Ui.NameExpander(expander, Ui.Name(kind));
             Add(expander);
         }
 
