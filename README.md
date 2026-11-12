@@ -34,7 +34,7 @@ Until the first signed release, SmartScreen may show *Windows protected your PC*
 
 ## Build from source
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). The WinUI app needs **Windows 10 2004** or newer.
+Requires only the [.NET 10 SDK](https://dotnet.microsoft.com/download) (no Visual Studio, no Windows SDK: shaders compile with the `d3dcompiler_47.dll` that ships with Windows). The WinUI app needs **Windows 10 2004** or newer.
 
 ```bash
 # Full solution (Windows)
