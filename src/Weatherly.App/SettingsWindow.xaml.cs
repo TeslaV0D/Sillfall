@@ -597,7 +597,7 @@ public sealed partial class SettingsWindow : Window
         Add(Ui.Heading("Collection"));
         Add(Ui.Note(string.Create(CultureInfo.CurrentCulture,
             $"{album.TotalCollected} collected, {album.Points} points, best combo {album.BestCombo}. Rarer visitors are worth more, and twice as much in their favourite weather.")));
-        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 150, ItemHeight = 176 };
+        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 158, ItemHeight = 214 };
         foreach (VisitorProfile profile in VisitorCatalog.All)
         {
             int count = album.CountOf(profile.Kind);
