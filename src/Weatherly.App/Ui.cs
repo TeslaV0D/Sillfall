@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
@@ -32,12 +33,19 @@ internal static class Ui
     /// The icon of an effect: our own 16 × 16 drawings (ASSETS.md), because the system icon font has no weather symbols.
     /// A new element on every call, since an element can only have one parent.
     /// </summary>
-    public static PathIcon Icon(EffectKind kind) => new()
+    public static PathIcon Icon(EffectKind kind)
     {
-        Data = (Geometry)XamlBindingHelper.ConvertValue(typeof(Geometry), IconPath(kind)),
-        Width = 16,
-        Height = 16,
-    };
+        var icon = new PathIcon
+        {
+            Data = (Geometry)XamlBindingHelper.ConvertValue(typeof(Geometry), IconPath(kind)),
+            Width = 16,
+            Height = 16,
+        };
+
+        // Decoration next to the effect's name: Narrator reads the name, not the drawing.
+        AutomationProperties.SetAccessibilityView(icon, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        return icon;
+    }
 
     /// <summary>Path markup of <see cref="Icon"/>. <c>F1</c> fills overlapping parts (non-zero rule).</summary>
     private static string IconPath(EffectKind kind) => kind switch
@@ -152,13 +160,15 @@ internal static class Ui
             Width = width,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
+        AutomationProperties.SetName(slider, header);
         slider.ValueChanged += (_, e) => changed(e.NewValue);
         return slider;
     }
 
     public static ToggleSwitch Toggle(string header, bool on, Action<bool> changed)
     {
-        var toggle = new ToggleSwitch { Header = header, IsOn = on };
+        var toggle = new ToggleSwitch { Header = header, IsOn = on, OnContent = Texts.Get("Common.On"), OffContent = Texts.Get("Common.Off") };
+        AutomationProperties.SetName(toggle, header);
         toggle.Toggled += (_, _) => changed(toggle.IsOn);
         return toggle;
     }
@@ -166,6 +176,7 @@ internal static class Ui
     public static ComboBox Choice(string header, IReadOnlyList<string> items, int selected, Action<int> changed)
     {
         var combo = new ComboBox { Header = header, MinWidth = 260 };
+        AutomationProperties.SetName(combo, header);
         foreach (string item in items)
         {
             combo.Items.Add(item);
@@ -185,6 +196,7 @@ internal static class Ui
     public static Button ActionButton(string text, Action click)
     {
         var button = new Button { Content = text };
+        AutomationProperties.SetName(button, text);
         button.Click += (_, _) => click();
         return button;
     }
@@ -234,6 +246,7 @@ internal static class Ui
     {
         var source = new SvgImageSource { RasterizePixelWidth = size * 2, RasterizePixelHeight = size * 2 };
         var image = new Image { Source = source, Width = size, Height = size };
+        AutomationProperties.SetName(image, VisitorCatalog.Get(kind).Name);
         _ = LoadSvgAsync(source, Render.VisitorDrawings.Svg(kind));
         return image;
     }

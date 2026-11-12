@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M11 (Visitors)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M12 (Sprachen und Barrierefreiheit)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -156,6 +156,11 @@ Noch nicht eingerichtet: Job `package` für MSIX-Build und Signierung bei Tags (
 - Code, Bezeichner und Kommentare auf Englisch. Doku für Boss (dieses Dokument, ADRs, Checklisten) auf Deutsch.
 - Paketversionen stehen zentral in `Directory.Packages.props`.
 - Der Produktname kommt immer aus `AppInfo.Name`. „Weatherly“ ist ein Arbeitstitel.
+- Sichtbare Texte nie als Literal: immer `Texts.Get("Bereich.Name")` bzw. `Texts.Format(...)` (Core, ADR-0015), mit
+  Eintrag in beiden `.resw` unter `src/Weatherly.Core/Localization/Strings/`. `LocalizationTests` prüft das.
+  Diagnosefenster und Smoke-Bericht bleiben englisch.
+- Jedes neue Bedienelement braucht einen Namen für Narrator (`AutomationProperties.Name`, die `Ui`-Bausteine setzen
+  ihn). Der Smoke-Test (`AccessibilityCheck`) prüft das auf jeder Einstellungsseite.
 - Alle Shader geben premultiplied Alpha aus. Alle Koordinaten sind intern physische Pixel.
 - Tests: xUnit v3 und AwesomeAssertions (siehe ADR-0002). Testnamen im Muster `Methode_Zustand_Erwartung`.
 - Win32-APIs kommen in `src/Weatherly.Platform/NativeMethods.txt`, alphabetisch sortiert.

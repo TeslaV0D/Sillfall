@@ -3,6 +3,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Weatherly.Core;
 using Weatherly.Core.Displays;
@@ -264,14 +265,16 @@ public sealed partial class SettingsWindow : Window
                     _controller.Update(s => s with { SunSide = index == 1 ? SunSide.Left : SunSide.Right })));
             }
 
-            Add(new Expander
+            var expander = new Expander
             {
                 Header = Ui.Row(Ui.Icon(kind), new TextBlock { Text = Ui.Name(kind) }),
                 Content = panel,
                 IsExpanded = kind == EffectKind.Rain,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
-            });
+            };
+            AutomationProperties.SetName(expander, Ui.Name(kind));
+            Add(expander);
         }
 
         Add(Ui.Heading(Texts.Get("Effects.Wind")));
@@ -662,6 +665,14 @@ public sealed partial class SettingsWindow : Window
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
                 ShowStatus(status, InfoBarSeverity.Success, Texts.Get("Visitors.CardCopied"));
             }),
+            Ui.ActionButton(Texts.Get("Visitors.ShareCardButton"), async () =>
+            {
+                (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
+                if (png is not null)
+                {
+                    await ShareAsync(png, Texts.Format("Visitors.CardTitle", AppInfo.Name));
+                }
+            }),
             Ui.ActionButton(Texts.Get("Visitors.SaveCard"), async () =>
             {
                 (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
@@ -680,6 +691,31 @@ public sealed partial class SettingsWindow : Window
                     ShowStatus(status, InfoBarSeverity.Success, Texts.Format("Common.SavedAs", file.Name));
                 }
             })));
+    }
+
+    /// <summary>
+    /// Opens Windows' share window with the card as a picture (PLAN.md, section 6). Desktop apps reach it through the
+    /// window handle (<c>DataTransferManagerInterop</c>); the picture goes through a temporary file, which sharing targets
+    /// read most reliably.
+    /// </summary>
+    private async Task ShareAsync(byte[] png, string title)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"{AppInfo.Name}-visitors.png");
+        await File.WriteAllBytesAsync(path, png);
+        Windows.Storage.StorageFile file = await Windows.Storage.StorageFile.GetFileFromPathAsync(path);
+        nint window = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        Windows.ApplicationModel.DataTransfer.DataTransferManager manager = Windows.ApplicationModel.DataTransfer.DataTransferManagerInterop.GetForWindow(window);
+
+        void OnDataRequested(Windows.ApplicationModel.DataTransfer.DataTransferManager sender, Windows.ApplicationModel.DataTransfer.DataRequestedEventArgs e)
+        {
+            sender.DataRequested -= OnDataRequested;
+            e.Request.Data.Properties.Title = title;
+            e.Request.Data.SetStorageItems([file]);
+            e.Request.Data.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
+        }
+
+        manager.DataRequested += OnDataRequested;
+        Windows.ApplicationModel.DataTransfer.DataTransferManagerInterop.ShowShareUIForWindow(window);
     }
 
     private static string Favourite(WeatherAffinity affinity) => affinity switch
@@ -899,6 +935,8 @@ public sealed partial class SettingsWindow : Window
                 [Texts.Get("Advanced.ReducedMotion.Follow"), Texts.Get("Advanced.ReducedMotion.Always"), Texts.Get("Advanced.ReducedMotion.Never")],
                 (int)advanced.ReducedMotion,
                 index => _controller.Update(s => s with { Advanced = s.Advanced with { ReducedMotion = (ReducedMotion)index } })),
+            Ui.Toggle(Texts.Get("Advanced.HighContrast"), advanced.PauseInHighContrast,
+                on => _controller.Update(s => s with { Advanced = s.Advanced with { PauseInHighContrast = on } })),
             Ui.Choice(
                 Texts.Get("Advanced.Language"),
                 [Texts.Get("Advanced.Language.System"), "English", "Deutsch"],

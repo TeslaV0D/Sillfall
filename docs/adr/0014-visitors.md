@@ -137,8 +137,7 @@ Das Overlay bleibt click-through.
 - **Share Card:** Die Karte ist ein XAML-Element der Visitors-Seite. Sie wird über `RenderTargetBitmap` als PNG in die
   Zwischenablage oder in eine Datei gespeichert. PLAN.md nennt dafür Direct2D. XAML liefert dasselbe Bild ohne zweiten
   Text-Renderer, die Figuren kommen aus denselben SVGs (`SvgImageSource`).
-- **Teilen-Dialog:** Das Teilen-Fenster von Windows (`DataTransferManager`) fehlt noch: Es braucht für Desktop-Apps
-  eigene Interop und folgt mit M12. Kopieren und Speichern decken das Teilen bis dahin ab.
+- **Teilen-Dialog:** Das Teilen-Fenster von Windows (`DataTransferManager`) kam mit M12 dazu (ADR-0015).
 
 ## Konsequenzen
 

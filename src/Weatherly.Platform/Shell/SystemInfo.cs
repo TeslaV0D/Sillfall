@@ -2,6 +2,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Power;
 using Windows.Win32.System.Threading;
+using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Weatherly.Platform.Shell;
@@ -21,6 +22,14 @@ public static class SystemInfo
     {
         BOOL enabled = true;
         return !PInvoke.SystemParametersInfo(SYSTEM_PARAMETERS_INFO_ACTION.SPI_GETCLIENTAREAANIMATION, 0, &enabled, 0) || enabled;
+    }
+
+    /// <summary>Whether Windows' high contrast mode is on.</summary>
+    public static unsafe bool HighContrastOn()
+    {
+        var contrast = new HIGHCONTRASTW { cbSize = (uint)sizeof(HIGHCONTRASTW) };
+        return PInvoke.SystemParametersInfo(SYSTEM_PARAMETERS_INFO_ACTION.SPI_GETHIGHCONTRAST, contrast.cbSize, &contrast, 0)
+            && contrast.dwFlags.HasFlag(HIGHCONTRASTW_FLAGS.HCF_HIGHCONTRASTON);
     }
 
     /// <summary>The executable name of the process that owns <paramref name="window"/> ("notepad.exe"), or <see langword="null"/>.</summary>

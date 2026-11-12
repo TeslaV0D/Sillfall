@@ -134,6 +134,9 @@ public sealed record AdvancedConfig
 
     public ReducedMotion ReducedMotion { get; set; } = ReducedMotion.FollowSystem;
 
+    /// <summary>All weather pauses while Windows' high contrast mode is on (it would lower the contrast).</summary>
+    public bool PauseInHighContrast { get; set; } = true;
+
     /// <summary>Language of the app: empty follows Windows, otherwise a code of <c>Texts.Languages</c> ("en", "de").</summary>
     public string Language { get; set; } = string.Empty;
 }

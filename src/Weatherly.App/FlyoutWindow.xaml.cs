@@ -1,5 +1,6 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Weatherly.Core;
@@ -126,6 +127,7 @@ public sealed partial class FlyoutWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(new TextBlock { Text = AppInfo.Name, Style = Ui.Resource<Style>("SubtitleTextBlockStyle"), VerticalAlignment = VerticalAlignment.Center });
         var master = new ToggleSwitch { IsOn = settings.Enabled, OnContent = Texts.Get("Common.On"), OffContent = Texts.Get("Common.Off"), MinWidth = 0 };
+        AutomationProperties.SetName(master, Texts.Format("Flyout.Master", AppInfo.Name));
         master.Toggled += (_, _) => _controller.Update(s => s with { Enabled = master.IsOn });
         Grid.SetColumn(master, 1);
         header.Children.Add(master);
@@ -159,6 +161,7 @@ public sealed partial class FlyoutWindow : Window
 
         IReadOnlyList<Scene> templates = _controller.AllTemplates;
         var picker = new ComboBox { Header = Texts.Get("Flyout.Template"), PlaceholderText = Texts.Get("Flyout.ApplyTemplate"), MinWidth = 330 };
+        AutomationProperties.SetName(picker, Texts.Get("Flyout.Template"));
         foreach (Scene scene in templates)
         {
             picker.Items.Add($"{scene.Emoji}  {scene.Name}");
@@ -198,6 +201,8 @@ public sealed partial class FlyoutWindow : Window
             Content = Ui.Row(Ui.Icon(kind), new TextBlock { Text = Ui.Name(kind) }),
         };
         var slider = new Slider { Minimum = 0, Maximum = 100, StepFrequency = 5, Value = Math.Round(intensity * 100) };
+        AutomationProperties.SetName(toggle, Ui.Name(kind));
+        AutomationProperties.SetName(slider, Texts.Format("Flyout.Intensity", Ui.Name(kind)));
         slider.ValueChanged += (_, e) =>
         {
             toggle.IsChecked = e.NewValue > 0;

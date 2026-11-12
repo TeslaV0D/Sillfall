@@ -29,6 +29,7 @@
   <data name="Advanced.Autostart" xml:space="preserve"><value>Mit Windows starten</value></data>
   <data name="Advanced.Capture" xml:space="preserve"><value>Wetter in Screenshots und bei Bildschirmfreigabe ausblenden</value></data>
   <data name="Advanced.Diagnostics" xml:space="preserve"><value>Diagnosefenster öffnen</value></data>
+  <data name="Advanced.HighContrast" xml:space="preserve"><value>Wetter pausieren, solange hoher Kontrast an ist</value></data>
   <data name="Advanced.Language" xml:space="preserve"><value>Sprache</value></data>
   <data name="Advanced.Language.System" xml:space="preserve"><value>Wie Windows</value></data>
   <data name="Advanced.ReducedMotion" xml:space="preserve"><value>Reduzierte Bewegung</value></data>
@@ -98,6 +99,8 @@
   <data name="Effects.Wind" xml:space="preserve"><value>Wind</value></data>
   <data name="Effects.WindSpeed" xml:space="preserve"><value>Wind (px/s, negativ weht nach links)</value></data>
   <data name="Flyout.ApplyTemplate" xml:space="preserve"><value>Vorlage anwenden</value></data>
+  <data name="Flyout.Intensity" xml:space="preserve"><value>{0}, Stärke</value></data>
+  <data name="Flyout.Master" xml:space="preserve"><value>{0} an oder aus</value></data>
   <data name="Flyout.MoreSettings" xml:space="preserve"><value>Weitere Einstellungen…</value></data>
   <data name="Flyout.RealWeather" xml:space="preserve"><value>Echtes Wetter</value></data>
   <data name="Flyout.Template" xml:space="preserve"><value>Vorlage</value></data>
@@ -114,6 +117,7 @@
   <data name="Pause.Animations" xml:space="preserve"><value>Pausiert: Windows hat Animationen ausgeschaltet</value></data>
   <data name="Pause.App" xml:space="preserve"><value>Pausiert, solange {0} im Vordergrund ist</value></data>
   <data name="Pause.Battery" xml:space="preserve"><value>Pausiert im Akkubetrieb</value></data>
+  <data name="Pause.HighContrast" xml:space="preserve"><value>Pausiert: Hoher Kontrast ist an</value></data>
   <data name="Pause.Off" xml:space="preserve"><value>Pausiert</value></data>
   <data name="Pause.ReducedMotion" xml:space="preserve"><value>Pausiert: Reduzierte Bewegung ist an</value></data>
   <data name="Performance.Auto" xml:space="preserve"><value>Automatisch: 60 fps, 30 im Akkubetrieb</value></data>
@@ -258,6 +262,7 @@ Bildratengrenze: {1}. {2}</value></data>
   <data name="Visitors.Points" xml:space="preserve"><value>+{0} Punkte</value></data>
   <data name="Visitors.SaveCard" xml:space="preserve"><value>Karte speichern…</value></data>
   <data name="Visitors.ShareCard" xml:space="preserve"><value>Karte zum Teilen</value></data>
+  <data name="Visitors.ShareCardButton" xml:space="preserve"><value>Teilen…</value></data>
   <data name="Visitors.Shortcut" xml:space="preserve"><value>Drücke {0} oder nutze das Tray-Menü, um einen Besucher ohne Maus einzusammeln.</value></data>
   <data name="Visitors.ShortcutTaken" xml:space="preserve"><value>{0} ist von einem anderen Programm belegt; das Tray-Menü sammelt Besucher ohne Maus ein.</value></data>
   <data name="Visitors.Summary" xml:space="preserve"><value>{0} eingesammelt, {1} Punkte, beste Combo {2}. Seltenere Besucher sind mehr wert, in ihrem Lieblingswetter doppelt so viel.</value></data>

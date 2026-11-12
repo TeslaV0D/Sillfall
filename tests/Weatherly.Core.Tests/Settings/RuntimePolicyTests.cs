@@ -76,4 +76,13 @@ public class RuntimePolicyTests
 
         RuntimePolicy.Decide(settings, SystemState.Default).Should().Be(new RuntimeDecision(true, "Paused", 60, 1f));
     }
+
+    [Fact]
+    public void Decide_HighContrast_PausesUnlessSwitchedOff()
+    {
+        var state = SystemState.Default with { HighContrast = true };
+
+        RuntimePolicy.Decide(new AppSettings(), state).Reason.Should().Be("Paused: high contrast is on");
+        RuntimePolicy.Decide(new AppSettings { Advanced = new AdvancedConfig { PauseInHighContrast = false } }, state).Paused.Should().BeFalse();
+    }
 }

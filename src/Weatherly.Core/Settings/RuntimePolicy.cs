@@ -1,11 +1,13 @@
 using Weatherly.Core.Localization;
+
 namespace Weatherly.Core.Settings;
 
 /// <summary>What the system reports right now: power source, animation setting and the foreground app.</summary>
 /// <param name="OnBattery">Running on battery power.</param>
 /// <param name="AnimationsEnabled">Windows' "show animations" setting (SPI_GETCLIENTAREAANIMATION).</param>
 /// <param name="ForegroundProcess">Executable name of the foreground window's process ("game.exe"), if known.</param>
-public readonly record struct SystemState(bool OnBattery, bool AnimationsEnabled, string? ForegroundProcess)
+/// <param name="HighContrast">Windows' high contrast mode is on (SPI_GETHIGHCONTRAST).</param>
+public readonly record struct SystemState(bool OnBattery, bool AnimationsEnabled, string? ForegroundProcess, bool HighContrast = false)
 {
     public static SystemState Default => new(OnBattery: false, AnimationsEnabled: true, ForegroundProcess: null);
 }
@@ -63,6 +65,12 @@ public static class RuntimePolicy
                 return Texts.Get("Pause.ReducedMotion");
             case ReducedMotion.FollowSystem when !state.AnimationsEnabled:
                 return Texts.Get("Pause.Animations");
+        }
+
+        // Translucent weather lowers exactly the contrast these users switched on (PLAN.md, M12).
+        if (state.HighContrast && settings.Advanced.PauseInHighContrast)
+        {
+            return Texts.Get("Pause.HighContrast");
         }
 
         if (state.OnBattery && settings.Performance.Battery == BatteryBehavior.Pause)

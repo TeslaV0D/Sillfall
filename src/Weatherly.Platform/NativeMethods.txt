@@ -48,6 +48,7 @@ GetWindowDisplayAffinity
 GetWindowLong
 GetWindowRect
 GetWindowThreadProcessId
+HIGHCONTRASTW
 HTTRANSPARENT
 HWND_TOPMOST
 IDC_HAND

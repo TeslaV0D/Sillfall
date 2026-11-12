@@ -369,6 +369,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromMilliseconds(700));
                 (int width, int height) = await settings.SavePageAsync(Path.Combine(directory, string.Create(CultureInfo.InvariantCulture, $"settings-{index:00}-{key}.png")));
                 diagnostics.Add(new DiagnosticResult($"Settings page {Core.Localization.Texts.Get(title)}", width > 0 && height > 0, string.Create(CultureInfo.InvariantCulture, $"{width} x {height}")));
+                diagnostics.Add(Narrated($"Narrator names on {Core.Localization.Texts.Get(title)}", settings.Content));
             }
 
             // The sync page once more with the sync switched on (in memory only: this run has no weather service, so
@@ -405,6 +406,7 @@ public partial class App : Application
             flyout.ShowNearTray();
             await Task.Delay(TimeSpan.FromMilliseconds(700));
             (int flyoutWidth, int flyoutHeight) = await flyout.SaveAsync(Path.Combine(directory, "flyout.png"));
+            diagnostics.Add(Narrated("Narrator names in the flyout", flyout.Content));
             diagnostics.Add(new DiagnosticResult("Flyout", flyoutWidth > 0 && flyoutHeight > 0, string.Create(CultureInfo.InvariantCulture, $"{flyoutWidth} x {flyoutHeight}")));
 
             int exitCode = smokeTest.WriteReport(diagnostics, []);
@@ -595,6 +597,13 @@ public partial class App : Application
         {
             smokeTest.Fail(exception);
         }
+    }
+
+    /// <summary>Every focusable control below <paramref name="root"/> has a name for Narrator (M12).</summary>
+    private static DiagnosticResult Narrated(string name, UIElement? root)
+    {
+        List<string> unnamed = root is null ? ["no content"] : AccessibilityCheck.UnnamedControls(root);
+        return new DiagnosticResult(name, unnamed.Count == 0, unnamed.Count == 0 ? "every control has a name" : string.Join("; ", unnamed.Take(6)));
     }
 
     /// <summary>

@@ -660,7 +660,7 @@ public sealed partial class OverlayHost : IDisposable
 
         if (animations)
         {
-            updated = updated with { AnimationsEnabled = Shell.SystemInfo.AnimationsEnabled() };
+            updated = updated with { AnimationsEnabled = Shell.SystemInfo.AnimationsEnabled(), HighContrast = Shell.SystemInfo.HighContrastOn() };
         }
 
         if (!foreground.IsNull)
