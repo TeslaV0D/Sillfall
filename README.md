@@ -3,9 +3,9 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M10 (Wetter-Sync): Die Effekte folgen auf Wunsch dem echten Wetter (MET Norway) an
-einer offline gesuchten Stadt oder am Standort des PCs, mit Invert, Gewicht pro Effekt und Pause bei Handeingriff.
-Davor: Tray-Flyout, Einstellungen mit zehn Seiten und alle sechs Wettereffekte.
+**Status:** Meilenstein M11 (Visitors): Acht eigene Figuren besuchen den Desktop, laufen über Fenster, reagieren auf
+das Wetter und lassen sich (opt-in) einsammeln, mit Sammlung, Punkten und Erfolgen. Davor: Wetter-Sync, Einstellungen
+mit zehn Seiten und alle sechs Wettereffekte.
 
 ```bash
 dotnet run --project tools/Weatherly.Sandbox

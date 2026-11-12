@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -9,6 +10,7 @@ using Weatherly.Core.Effects.Sun;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
+using Weatherly.Core.Visitors;
 using Weatherly.Core.Weather;
 using Weatherly.Core.Weather.Cities;
 using Weatherly.Platform.Displays;
@@ -568,7 +570,151 @@ public sealed partial class SettingsWindow : Window
 
     private void BuildVisitors()
     {
-        Add(Ui.Card(Ui.Note("Visitors are small characters of our own that drop by on your windows. They arrive with milestone M11: how often they come, collecting them and a collection to look at.")));
+        VisitorConfig config = _controller.Settings.Visitors;
+        Add(Ui.Note("Small characters of our own drop by on your windows: they walk along the top edges, jump from window to window and react to the weather."));
+        var status = new InfoBar { IsOpen = false, IsClosable = true };
+        Add(status);
+        string shortcut = _controller.Window.CollectShortcutRegistered
+            ? $"Press {Platform.Overlay.OverlayHost.CollectShortcut} or use the tray menu to collect a visitor without the mouse."
+            : $"{Platform.Overlay.OverlayHost.CollectShortcut} is taken by another program; the tray menu collects visitors without the mouse.";
+        Add(Ui.Card(Ui.Stack(
+            Ui.Choice("How often visitors come", ["Never", "Rarely (about every 30 minutes)", "Sometimes (about every 10 minutes)", "Often (about every 3 minutes)"], (int)config.Frequency,
+                index => _controller.Update(s => s with { Visitors = s.Visitors with { Frequency = (VisitorFrequency)index } })),
+            Ui.Toggle("Pick up visitors and drop them into the box", config.Interactive,
+                on => _controller.Update(s => s with { Visitors = s.Visitors with { Interactive = on } })),
+            Ui.Toggle("Announce every visitor with a notification", config.Announce,
+                on => _controller.Update(s => s with { Visitors = s.Visitors with { Announce = on } })),
+            Ui.Note(shortcut),
+            Ui.ActionButton("Invite a visitor now", () =>
+            {
+                if (!_controller.InviteVisitor())
+                {
+                    ShowStatus(status, InfoBarSeverity.Informational, "No room right now: there are visitors already, the weather is switched off, or no window edge is free.");
+                }
+            }))));
+
+        VisitorAlbum album = _controller.Album;
+        Add(Ui.Heading("Collection"));
+        Add(Ui.Note(string.Create(CultureInfo.CurrentCulture,
+            $"{album.TotalCollected} collected, {album.Points} points, best combo {album.BestCombo}. Rarer visitors are worth more, and twice as much in their favourite weather.")));
+        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 150, ItemHeight = 176 };
+        foreach (VisitorProfile profile in VisitorCatalog.All)
+        {
+            int count = album.CountOf(profile.Kind);
+            Image picture = Ui.VisitorImage(profile.Kind, 72);
+            picture.Opacity = count > 0 ? 1 : 0.3;
+            var card = Ui.Card(Ui.Stack(
+                picture,
+                new TextBlock { Text = profile.Name, Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
+                Ui.Note(count > 0 ? string.Create(CultureInfo.CurrentCulture, $"Collected {count}×") : "Not met yet"),
+                Ui.Note($"{Favourite(profile.Affinity)}, {profile.Rarity.ToString().ToLowerInvariant()}")));
+            card.Margin = new Thickness(0, 0, 8, 8);
+            ToolTipService.SetToolTip(card, profile.Description);
+            grid.Children.Add(card);
+        }
+
+        Add(grid);
+
+        Add(Ui.Heading("Achievements"));
+        var achievements = new StackPanel { Spacing = 6 };
+        foreach (Achievement achievement in Enum.GetValues<Achievement>())
+        {
+            (string title, string description) = Achievements.Describe(achievement);
+            bool reached = album.Has(achievement);
+            achievements.Children.Add(Ui.Row(
+                new FontIcon { Glyph = reached ? "\uE73E" : "\uE739", Foreground = reached ? Ui.Resource<Microsoft.UI.Xaml.Media.Brush>("AccentTextFillColorPrimaryBrush") : Ui.Resource<Microsoft.UI.Xaml.Media.Brush>("TextFillColorTertiaryBrush") },
+                new TextBlock { Text = title, Style = Ui.Resource<Style>("BodyStrongTextBlockStyle"), Width = 150 },
+                Ui.Note(reached ? description : $"{description} (not yet)")));
+        }
+
+        Add(Ui.Card(achievements));
+
+        Add(Ui.Heading("Share card"));
+        Border shareCard = ShareCard(album);
+        Add(shareCard);
+        Add(Ui.Row(
+            Ui.ActionButton("Copy card", async () =>
+            {
+                (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
+                if (png is null)
+                {
+                    return;
+                }
+
+                var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+                await stream.WriteAsync(png.AsBuffer());
+                stream.Seek(0);
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                ShowStatus(status, InfoBarSeverity.Success, "Card copied as a picture.");
+            }),
+            Ui.ActionButton("Save card…", async () =>
+            {
+                (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
+                if (png is null)
+                {
+                    return;
+                }
+
+                var picker = new Windows.Storage.Pickers.FileSavePicker { SuggestedFileName = $"{AppInfo.Name} visitors" };
+                picker.FileTypeChoices.Add("PNG picture", [".png"]);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, Win32Interop.GetWindowFromWindowId(AppWindow.Id));
+                Windows.Storage.StorageFile? file = await picker.PickSaveFileAsync();
+                if (file is not null)
+                {
+                    await Windows.Storage.FileIO.WriteBytesAsync(file, png);
+                    ShowStatus(status, InfoBarSeverity.Success, $"Saved {file.Name}.");
+                }
+            })));
+    }
+
+    private static string Favourite(WeatherAffinity affinity) => affinity switch
+    {
+        WeatherAffinity.Any => "any weather",
+        WeatherAffinity.Leaves => "loves falling leaves",
+        WeatherAffinity.Sun => "loves sunshine",
+        _ => $"loves {affinity.ToString().ToLowerInvariant()}",
+    };
+
+    /// <summary>A card with the collection to share as a picture: points, achievements and the visitors met so far.</summary>
+    private static Border ShareCard(VisitorAlbum album)
+    {
+        var visitors = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        foreach (VisitorProfile profile in VisitorCatalog.All)
+        {
+            Image picture = Ui.VisitorImage(profile.Kind, 44);
+            picture.Opacity = album.CountOf(profile.Kind) > 0 ? 1 : 0.18;
+            visitors.Children.Add(picture);
+        }
+
+        var content = new StackPanel { Spacing = 10 };
+        content.Children.Add(new TextBlock { Text = $"My {AppInfo.Name} visitors", Style = Ui.Resource<Style>("SubtitleTextBlockStyle"), Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 46, 52, 64)) });
+        content.Children.Add(visitors);
+        content.Children.Add(new TextBlock
+        {
+            Text = string.Create(CultureInfo.CurrentCulture, $"{album.Points} points · {album.TotalCollected} collected · {album.Achievements.Count} of {Enum.GetValues<Achievement>().Length} achievements"),
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 76, 86, 106)),
+        });
+
+        return new Border
+        {
+            Width = 440,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(20),
+            CornerRadius = new CornerRadius(12),
+            Background = new Microsoft.UI.Xaml.Media.LinearGradientBrush
+            {
+                StartPoint = new Windows.Foundation.Point(0, 0),
+                EndPoint = new Windows.Foundation.Point(1, 1),
+                GradientStops =
+                {
+                    new Microsoft.UI.Xaml.Media.GradientStop { Color = Microsoft.UI.ColorHelper.FromArgb(255, 220, 232, 245), Offset = 0 },
+                    new Microsoft.UI.Xaml.Media.GradientStop { Color = Microsoft.UI.ColorHelper.FromArgb(255, 245, 240, 225), Offset = 1 },
+                },
+            },
+            Child = content,
+        };
     }
 
     private void BuildSound()

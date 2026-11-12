@@ -27,6 +27,10 @@ public sealed partial class TrayIcon : IDisposable
     private const uint NifIcon = 0x2;
     private const uint NifTip = 0x4;
     private const uint NifShowTip = 0x80;
+    private const uint NifInfo = 0x10;
+    private const uint NiifUser = 0x4;
+    private const uint NiifNoSound = 0x10;
+    private const uint NiifRespectQuietTime = 0x80;
     private const uint NotifyIconVersion4 = 4;
     private const uint NinSelect = PInvoke.WM_USER + 0;
     private const uint NinKeySelect = NinSelect | 0x1;
@@ -91,6 +95,28 @@ public sealed partial class TrayIcon : IDisposable
             NotifyIconData data = CreateData();
             Notify(NimModify, ref data);
         }
+    }
+
+    /// <summary>
+    /// Shows a short notification at the icon (a toast on Windows 10 and 11), silent and held back during Focus or a
+    /// full-screen app. Returns whether the shell took it.
+    /// </summary>
+    public unsafe bool ShowNotification(string title, string text)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!IsShown)
+        {
+            return false;
+        }
+
+        NotifyIconData data = CreateData();
+        data.Flags |= NifInfo;
+        data.InfoFlags = NiifUser | NiifNoSound | NiifRespectQuietTime;
+        string info = (text ?? string.Empty).Length > 255 ? text![..255] : text ?? string.Empty;
+        string caption = (title ?? string.Empty).Length > 63 ? title![..63] : title ?? string.Empty;
+        info.AsSpan().CopyTo(new Span<char>(data.Info, 256));
+        caption.AsSpan().CopyTo(new Span<char>(data.InfoTitle, 64));
+        return Notify(NimModify, ref data);
     }
 
     public void Dispose()

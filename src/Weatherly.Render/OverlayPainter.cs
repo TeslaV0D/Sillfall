@@ -86,9 +86,9 @@ public sealed class OverlayPainter : IDisposable
             _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites, frame.Opacity);
 
             // Visitors walk on top of the weather (PLAN.md, section 4.7), drawn with Direct2D on the same target.
-            if (scene.Visitors.Length > 0)
+            if (scene.Visitors.Length > 0 || scene.Box.IsVisible)
             {
-                DrawVisitors(target, MonitorArea(frame, size), scene.Visitors, frame.Opacity);
+                DrawVisitors(target, MonitorArea(frame, size), scene.Visitors, scene.Box, frame.Opacity);
             }
 
             // App rules: windows of some processes stay clear. Their rectangles are cut back to transparent.
@@ -126,7 +126,7 @@ public sealed class OverlayPainter : IDisposable
     }
 
     /// <summary>Direct2D comes up on the first visitor: most frames never need it.</summary>
-    private void DrawVisitors(ID3D11RenderTargetView target, PixelRect area, ReadOnlySpan<Core.Rendering.VisitorPose> visitors, float opacity)
+    private void DrawVisitors(ID3D11RenderTargetView target, PixelRect area, ReadOnlySpan<Core.Rendering.VisitorPose> visitors, Core.Rendering.VisitorBox box, float opacity)
     {
         _context.ClearState();
         _canvas ??= new Direct2DCanvas(_device);
@@ -136,7 +136,7 @@ public sealed class OverlayPainter : IDisposable
         _canvas.Begin(texture);
         try
         {
-            _visitors.Draw(visitors, area, opacity);
+            _visitors.Draw(visitors, area, opacity, box);
         }
         finally
         {

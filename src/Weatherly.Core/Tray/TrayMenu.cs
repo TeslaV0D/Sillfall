@@ -14,6 +14,8 @@ namespace Weatherly.Core.Tray;
 /// <param name="SetSound">Switches the weather sound on or off.</param>
 /// <param name="SetPaused">Pauses or resumes all effects.</param>
 /// <param name="Quit">Ends the app.</param>
+/// <param name="CollectVisitor">Collects the visitor that came first (the keyboard alternative), if any.</param>
+/// <param name="VisitorsOnScreen">How many visitors are on screen right now.</param>
 public sealed record TrayCommands(
     Action Open,
     Action<float> SetRain,
@@ -24,7 +26,9 @@ public sealed record TrayCommands(
     Action<float> SetGrass,
     Action<bool> SetSound,
     Action<bool> SetPaused,
-    Action Quit);
+    Action Quit,
+    Action? CollectVisitor = null,
+    int VisitorsOnScreen = 0);
 
 /// <summary>
 /// The minimal tray menu of the MVP (PLAN.md, section 12: MVP cut): open the window, every effect in
@@ -58,11 +62,26 @@ public static class TrayMenu
             EffectMenu("Sun", options.Sun.ClampedIntensity, commands.SetSun, paused),
             EffectMenu("Grass", options.Grass.ClampedIntensity, commands.SetGrass, paused),
             new TrayMenuItem { Text = "Sound", IsChecked = soundOn, Invoke = () => commands.SetSound(!soundOn) },
+            .. VisitorItems(commands),
             TrayMenuItem.Separator,
             new TrayMenuItem { Text = "Pause all effects", IsChecked = paused, Invoke = () => commands.SetPaused(!paused) },
             TrayMenuItem.Separator,
             new TrayMenuItem { Text = "Quit", Invoke = commands.Quit },
         ];
+    }
+
+    /// <summary>"Collect visitor", only while one is on screen: the keyboard and Narrator way to collect (PLAN.md, section 6).</summary>
+    private static IEnumerable<TrayMenuItem> VisitorItems(TrayCommands commands)
+    {
+        if (commands.CollectVisitor is { } collect && commands.VisitorsOnScreen > 0)
+        {
+            yield return TrayMenuItem.Separator;
+            yield return new TrayMenuItem
+            {
+                Text = commands.VisitorsOnScreen == 1 ? "Collect the visitor (Ctrl+Alt+V)" : $"Collect a visitor ({commands.VisitorsOnScreen} here, Ctrl+Alt+V)",
+                Invoke = collect,
+            };
+        }
     }
 
     /// <summary>Tooltip of the tray icon: the name and what is on.</summary>

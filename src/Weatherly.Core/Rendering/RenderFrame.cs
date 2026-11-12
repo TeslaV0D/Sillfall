@@ -64,6 +64,9 @@ public sealed class RenderFrame
     /// <summary>Visitors, drawn on top of all weather (PLAN.md, section 4.7: render order).</summary>
     public ReadOnlySpan<VisitorPose> Visitors => _visitors.AsSpan(0, _visitorCount);
 
+    /// <summary>The box for collecting visitors. Default: none.</summary>
+    public VisitorBox Box { get; set; }
+
     /// <summary>Windows the user's app rules keep clear of weather: nothing is drawn over them.</summary>
     public ReadOnlySpan<PixelRect> Cutouts => _cutouts.AsSpan(0, _cutoutCount);
 
@@ -73,6 +76,7 @@ public sealed class RenderFrame
         _occluderCount = 0;
         _cutoutCount = 0;
         _visitorCount = 0;
+        Box = default;
         Surfaces = null;
         Fog = default;
         Sun = default;

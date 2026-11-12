@@ -55,6 +55,15 @@ public sealed record OverlayStatus(
     /// <summary>Visitors on screen (milestone M11).</summary>
     public IReadOnlyList<Visitors.VisitorInfo> Visitors { get; init; } = [];
 
+    /// <summary>Where the box for collecting visitors stands (interactive mode).</summary>
+    public Geometry.PixelRect VisitorBox { get; init; }
+
+    /// <summary>Handles of the windows that let visitors be picked up (interactive mode).</summary>
+    public IReadOnlyList<nint> VisitorHitWindows { get; init; } = [];
+
+    /// <summary>Whether the shortcut for collecting a visitor without a mouse is registered.</summary>
+    public bool CollectShortcutRegistered { get; init; }
+
     /// <summary>Visible surfaces computed from <see cref="Windows"/>.</summary>
     public IReadOnlyList<SurfaceSegment> Surfaces { get; init; } = [];
 

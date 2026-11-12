@@ -1,8 +1,12 @@
 using Microsoft.UI.Dispatching;
+using Weatherly.Audio;
+using Weatherly.Core.Audio;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
+using Weatherly.Core.Visitors;
 using Weatherly.Core.Weather;
+using Weatherly.Platform.Overlay;
 
 namespace Weatherly.App;
 
@@ -36,6 +40,9 @@ internal sealed class AppController
     private readonly DispatcherQueueTimer _randomTimer;
     private readonly DispatcherQueueTimer _weatherTimer;
     private readonly WeatherSync? _weatherSync;
+    private readonly AlbumStore? _albumStore;
+    private readonly VisitorSoundPlayer? _sounds;
+    private int _visitorsOnScreen;
     private DateTime _lastRandomUpdate = DateTime.UtcNow;
     private bool _applying;
     private bool _refreshing;
@@ -47,7 +54,11 @@ internal sealed class AppController
     /// <param name="settings">The settings to start with.</param>
     /// <param name="followSystem">Apply the runtime policy and the random walks (off in the smoke test, which sets its own state).</param>
     /// <param name="weatherProvider">The weather service; <see langword="null"/> has no weather sync (smoke test: no network).</param>
-    public AppController(MainWindow window, SettingsStore? store, AppSettings settings, bool followSystem, IWeatherProvider? weatherProvider)
+    /// <param name="albumStore">Where the visitor collection is saved; <see langword="null"/> keeps it in memory.</param>
+    /// <param name="sounds">Plays the visitors' sounds; <see langword="null"/> without audio output.</param>
+    public AppController(
+        MainWindow window, SettingsStore? store, AppSettings settings, bool followSystem, IWeatherProvider? weatherProvider,
+        AlbumStore? albumStore = null, VisitorSoundPlayer? sounds = null)
     {
         _window = window;
         _store = store;
@@ -66,6 +77,12 @@ internal sealed class AppController
         });
 
         _weatherSync = weatherProvider is null ? null : new WeatherSync(weatherProvider);
+        _albumStore = albumStore;
+        _sounds = sounds;
+        Album = albumStore?.Load() ?? new VisitorAlbum();
+        window.VisitorArrived += OnVisitorArrived;
+        window.VisitorCollected += OnVisitorCollected;
+        window.VisitorDropped += (_, e) => PlaySound(VisitorSound.Sulk, e.Kind);
         _weatherTimer = CreateTimer(queue, s_weatherCheck, repeating: true, () =>
         {
             // Every half minute: ask the service when due, and follow the forecast from one hour to the next.
@@ -99,6 +116,21 @@ internal sealed class AppController
     public RuntimeDecision Decision { get; private set; } = new(false, null, 60, 1f);
 
     public MainWindow Window => _window;
+
+    /// <summary>The visitor collection: points, who came how often, achievements.</summary>
+    public VisitorAlbum Album { get; private set; }
+
+    /// <summary>Raised on the UI thread after a visitor was collected, with what it brought.</summary>
+    public event EventHandler<CollectReward>? VisitorRewarded;
+
+    /// <summary>Visitors on screen, as far as the controller knows (arrivals minus collects; refreshed on status reads).</summary>
+    public int VisitorsOnScreen => _window.GetStatus()?.Visitors.Count ?? _visitorsOnScreen;
+
+    /// <summary>Lets a visitor come now ("Invite a visitor").</summary>
+    public bool InviteVisitor() => _window.InviteVisitor();
+
+    /// <summary>Collects the visitor that came first: the keyboard and Narrator way (tray menu, Ctrl+Alt+V).</summary>
+    public void CollectVisitor() => _window.CollectVisitor();
 
     /// <summary>The weather sync's state; <see langword="null"/> when this run has none (smoke test).</summary>
     public WeatherSync? Weather => _weatherSync;
@@ -229,6 +261,64 @@ internal sealed class AppController
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // Not being able to remember a setting is no reason to interrupt the user. It is tried again on the next change.
+        }
+    }
+
+    private void OnVisitorArrived(object? sender, VisitorEventArgs e)
+    {
+        _visitorsOnScreen++;
+        PlaySound(VisitorSound.Arrive, e.Kind);
+        string name = VisitorCatalog.Get(e.Kind).Name;
+        string how = Settings.Visitors.Interactive ? $"Drop it into the box or press {OverlayHost.CollectShortcut}." : $"Press {OverlayHost.CollectShortcut} to collect it.";
+        _window.Tray?.SetTooltip($"{Core.AppInfo.Name}: {name} is visiting. {how}");
+        if (Settings.Visitors.Announce)
+        {
+            _window.Tray?.ShowNotification($"{name} is visiting", how);
+        }
+    }
+
+    private void OnVisitorCollected(object? sender, VisitorCollectedEventArgs e)
+    {
+        _visitorsOnScreen = Math.Max(0, _visitorsOnScreen - 1);
+        (VisitorAlbum album, CollectReward reward) = Album.Collect(e.Kind, e.Mood, DateTimeOffset.UtcNow);
+        Album = album;
+        try
+        {
+            _albumStore?.Save(album);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // The points stay in memory and are written with the next collect.
+        }
+
+        PlaySound(VisitorSound.Collect, e.Kind);
+        string name = VisitorCatalog.Get(e.Kind).Name;
+        var details = new List<string> { $"+{reward.Points} points" };
+        if (reward.FavouriteWeather)
+        {
+            details.Add("its favourite weather");
+        }
+
+        if (reward.Combo > 1)
+        {
+            details.Add($"{reward.Combo} in a row");
+        }
+
+        foreach (Achievement achievement in reward.NewAchievements)
+        {
+            details.Add($"achievement: {Achievements.Describe(achievement).Title}");
+        }
+
+        _window.Tray?.ShowNotification($"{name} collected", string.Join(", ", details) + ".");
+        Apply();
+        VisitorRewarded?.Invoke(this, reward);
+    }
+
+    private void PlaySound(VisitorSound sound, VisitorKind kind)
+    {
+        if (!Settings.Sound.Muted)
+        {
+            _sounds?.Play(sound, kind, Settings.Sound.Master * Settings.Sound.Visitors);
         }
     }
 

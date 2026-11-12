@@ -39,7 +39,7 @@ namespace Weatherly.Platform.Overlay;
 /// rescaled, the affected overlays are rebuilt (see <see cref="OverlayLayoutPlanner"/>).
 /// </para>
 /// </summary>
-public sealed class OverlayHost : IDisposable
+public sealed partial class OverlayHost : IDisposable
 {
     private const uint CommandMessage = PInvoke.WM_APP + 1;
     private const uint StopMessage = PInvoke.WM_APP + 2;
@@ -234,21 +234,18 @@ public sealed class OverlayHost : IDisposable
             spawned = _visitors.Spawn(who, _engine.Context);
         }
 
+        if (spawned)
+        {
+            OnVisitorArrived(who);
+        }
+
+        SyncHitWindows();
         UpdateAnimation();
         return spawned;
     });
 
     /// <summary>Collects the visitor that came first (keyboard and Narrator alternative). Returns who, or null.</summary>
-    public Core.Visitors.VisitorKind? CollectVisitor() => Invoke(() =>
-    {
-        Core.Visitors.VisitorKind? kind = _visitors.CollectOldest();
-        if (kind is not null)
-        {
-            VisitorCollected?.Invoke(this, new VisitorCollectedEventArgs(kind.Value, _visitors.Mood));
-        }
-
-        return kind;
-    });
+    public Core.Visitors.VisitorKind? CollectVisitor() => Invoke(CollectFirstVisitor);
 
     /// <summary>A visitor was collected (dropped into the box or by keyboard). Raised on the overlay thread.</summary>
     public event EventHandler<VisitorCollectedEventArgs>? VisitorCollected;
@@ -340,6 +337,7 @@ public sealed class OverlayHost : IDisposable
             _module = GetModule();
             RegisterWindowClass();
             _controlWindow = CreateControlWindow();
+            RegisterCollectShortcut();
             UpdateSystemState(power: true, animations: true, foreground: PInvoke.GetForegroundWindow());
             HookWindowEvents();
             RefreshOverlays();
@@ -448,6 +446,8 @@ public sealed class OverlayHost : IDisposable
         }
 
         _engine.Advance(elapsed);
+        UpdateBox(elapsed);
+        SyncHitWindows();
         Volatile.Write(ref _rainHitsPerSecond, _rain.HitsPerSecond);
         long simulated = Stopwatch.GetTimestamp();
         PresentAll();
@@ -487,8 +487,10 @@ public sealed class OverlayHost : IDisposable
 
             _hooks.Clear();
 
+            DestroyHitWindows();
             if (_controlWindow != 0)
             {
+                UnregisterCollectShortcut();
                 PInvoke.DestroyWindow((HWND)_controlWindow);
                 _controlWindow = 0;
             }
@@ -521,10 +523,15 @@ public sealed class OverlayHost : IDisposable
         {
             bool isControlWindow = window == (HWND)_controlWindow;
 
+            if (!isControlWindow && OnHitWindowMessage(window, message, out LRESULT handled))
+            {
+                return handled;
+            }
+
             switch (message)
             {
                 // Belt and braces next to WS_EX_TRANSPARENT: should a hit test ever reach an overlay, it passes through.
-                case PInvoke.WM_NCHITTEST when !isControlWindow:
+                case PInvoke.WM_NCHITTEST when !isControlWindow && !IsHitWindow(window):
                     return new LRESULT(PInvoke.HTTRANSPARENT);
 
                 case PInvoke.WM_MOUSEACTIVATE:
@@ -567,6 +574,10 @@ public sealed class OverlayHost : IDisposable
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == PollTimerId:
                     UpdateWindows(force: false);
                     InviteVisitorWhenDue();
+                    return new LRESULT(0);
+
+                case PInvoke.WM_HOTKEY when isControlWindow && wParam.Value == CollectHotkeyId:
+                    CollectFirstVisitor();
                     return new LRESULT(0);
 
                 case CommandMessage when isControlWindow:
@@ -762,9 +773,11 @@ public sealed class OverlayHost : IDisposable
         }
 
         _visitorScheduler.PlanNext(now);
-        if (_visitors.Count < Core.Visitors.VisitorScheduler.MaxAtOnce(_options.Visitors)
-            && _visitors.Spawn(_visitorScheduler.Choose(_visitors.Mood), _engine.Context))
+        Core.Visitors.VisitorKind who = _visitorScheduler.Choose(_visitors.Mood);
+        if (_visitors.Count < Core.Visitors.VisitorScheduler.MaxAtOnce(_options.Visitors) && _visitors.Spawn(who, _engine.Context))
         {
+            OnVisitorArrived(who);
+            SyncHitWindows();
             UpdateAnimation();
         }
     }
@@ -841,6 +854,8 @@ public sealed class OverlayHost : IDisposable
         {
             _visitors.LeaveAll();
         }
+
+        SyncHitWindows();
 
         // App rules may have changed: processes are looked up again as they show up.
         _hiddenProcessNames = new HashSet<string>(_options.HideOverProcesses, StringComparer.OrdinalIgnoreCase);
@@ -924,7 +939,7 @@ public sealed class OverlayHost : IDisposable
     {
         SurfaceSet? surfaces = _options.ShowSurfaces ? _engine.Context.Surfaces : null;
         // Fog and sunlight have no sprites, only layers: they are content too.
-        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere || _engine.Frame.Visitors.Length > 0 ? _engine.Frame : null;
+        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere || _engine.Frame.Visitors.Length > 0 || _engine.Frame.Box.IsVisible ? _engine.Frame : null;
 
         for (int attempt = 0; attempt < DeviceRecoveryAttempts; attempt++)
         {
@@ -998,6 +1013,9 @@ public sealed class OverlayHost : IDisposable
         {
             Windows = [.. _engine.Context.Windows.Windows],
             Visitors = [.. Enumerable.Range(0, _visitors.Count).Select(index => _visitors[index])],
+            VisitorBox = CurrentBoxBounds(),
+            VisitorHitWindows = [.. _hitWindows.Where((window, slot) => window != 0 && _hitVisitors[slot] != 0)],
+            CollectShortcutRegistered = _hotkeyRegistered,
             Surfaces = [.. _engine.Context.Surfaces.Segments],
             WindowUpdates = _engine.WindowUpdates,
             WindowEvents = new Dictionary<WindowEventKind, long>(_engine.WindowEventCounts),

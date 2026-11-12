@@ -121,6 +121,9 @@ public sealed record VisitorConfig
 
     /// <summary>Opt-in: visitors can be picked up and dropped into the box (small hit windows follow them).</summary>
     public bool Interactive { get; set; }
+
+    /// <summary>A notification says who came and how to collect it with the keyboard (helps with Narrator).</summary>
+    public bool Announce { get; set; }
 }
 
 public sealed record AdvancedConfig

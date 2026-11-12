@@ -64,6 +64,8 @@ public sealed partial class MainWindow : Window
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
         _overlay.SystemStateChanged += OnOverlaySystemStateChanged;
         _overlay.VisitorCollected += OnOverlayVisitorCollected;
+        _overlay.VisitorArrived += OnOverlayVisitorArrived;
+        _overlay.VisitorDropped += OnOverlayVisitorDropped;
         Closed += OnClosed;
         AppWindow.Closing += OnClosing;
 
@@ -83,6 +85,15 @@ public sealed partial class MainWindow : Window
 
     /// <summary>A visitor was collected (box or keyboard). Raised on the UI thread.</summary>
     public event EventHandler<VisitorCollectedEventArgs>? VisitorCollected;
+
+    /// <summary>A visitor appeared. Raised on the UI thread.</summary>
+    public event EventHandler<VisitorEventArgs>? VisitorArrived;
+
+    /// <summary>A visitor was dropped outside the box. Raised on the UI thread.</summary>
+    public event EventHandler<VisitorEventArgs>? VisitorDropped;
+
+    /// <summary>Whether Ctrl+Alt+V is ours (another program may have taken it first).</summary>
+    public bool CollectShortcutRegistered => _overlay.CollectShortcutRegistered;
 
     /// <summary>Lets a visitor come now ("invite", smoke test), optionally onto a given window.</summary>
     public bool InviteVisitor(Core.Visitors.VisitorKind? kind = null, nint onWindow = 0) => _overlay.SpawnVisitor(kind, onWindow);
@@ -347,6 +358,8 @@ public sealed partial class MainWindow : Window
         _overlay.LayoutChanged -= OnOverlayLayoutChanged;
         _overlay.SystemStateChanged -= OnOverlaySystemStateChanged;
         _overlay.VisitorCollected -= OnOverlayVisitorCollected;
+        _overlay.VisitorArrived -= OnOverlayVisitorArrived;
+        _overlay.VisitorDropped -= OnOverlayVisitorDropped;
         _overlay.Dispose();
         _tray?.Dispose();
         _tray = null;
@@ -361,6 +374,12 @@ public sealed partial class MainWindow : Window
     /// <summary>Called on the overlay thread when the system state changed: passed on to the UI thread.</summary>
     private void OnOverlayVisitorCollected(object? sender, VisitorCollectedEventArgs e) =>
         DispatcherQueue.TryEnqueue(() => VisitorCollected?.Invoke(this, e));
+
+    private void OnOverlayVisitorArrived(object? sender, VisitorEventArgs e) =>
+        DispatcherQueue.TryEnqueue(() => VisitorArrived?.Invoke(this, e));
+
+    private void OnOverlayVisitorDropped(object? sender, VisitorEventArgs e) =>
+        DispatcherQueue.TryEnqueue(() => VisitorDropped?.Invoke(this, e));
 
     private void OnOverlaySystemStateChanged(object? sender, EventArgs e) =>
         DispatcherQueue.TryEnqueue(() => SystemStateChanged?.Invoke(this, EventArgs.Empty));

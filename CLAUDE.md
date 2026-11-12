@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M10 (Wetter-Sync)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M11 (Visitors)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -78,6 +78,11 @@ Wetter-Sync (ADR-0013, `docs/weather-mapping.md`): `MetNorwayProvider` (einziger
 macht daraus `WeatherTargets`, und `WeatherBlend` mischt sie pro Element mit den eigenen Werten (Gewicht, Pause bei
 Handeingriff). Städtesuche offline über `CityIndex` (GeoNames, gebaut von `tools/cities/build_cities.py`). In der App
 steuert `AppController` den Sync, `DeviceLocation` liefert die Ortung. Der Smoke-Test hat keinen Provider.
+
+Visitors (ADR-0014): `VisitorSystem` (Core, ein `IEffectSystem`) mit Katalog, `VisitorScheduler` (Wanduhr) und
+`VisitorAlbum`/`AlbumStore` (`collection.json`). Zeichnen: SVGs in `src/Weatherly.Render/Visitors/`, `VisitorPainter`
+über den SVG-Renderer von Direct2D. Interaktion im `OverlayHost` (`OverlayHost.Visitors.cs`): Hit-Fenster pro Figur,
+Korb, Strg+Alt+V. Sounds: `VisitorSynth` (Core) und `VisitorSoundPlayer` (Audio). Smoke-Test `--visitors`.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.

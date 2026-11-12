@@ -31,6 +31,23 @@ public enum Achievement
     Hundred,
 }
 
+/// <summary>Names and descriptions of the achievements, for the collection page.</summary>
+public static class Achievements
+{
+    public static (string Title, string Description) Describe(Achievement achievement) => achievement switch
+    {
+        Achievement.FirstGuest => ("First guest", "Collect your first visitor."),
+        Achievement.Regular => ("Regulars", "Collect ten visitors."),
+        Achievement.FullHouse => ("Full house", "Collect all eight visitors."),
+        Achievement.RareFind => ("Rare find", "Collect Lumen, the rarest visitor."),
+        Achievement.InTheirElement => ("In their element", "Collect a visitor in its favourite weather."),
+        Achievement.EveryWeather => ("Every weather", "Collect visitors in rain, snow, falling leaves, fog and sunshine."),
+        Achievement.ThreeInARow => ("Three in a row", "Collect three visitors, each within a minute of the one before."),
+        Achievement.Hundred => ("A hundred points", "Reach 100 points."),
+        _ => (achievement.ToString(), string.Empty),
+    };
+}
+
 /// <summary>How often one visitor was collected.</summary>
 public sealed record VisitorTally
 {

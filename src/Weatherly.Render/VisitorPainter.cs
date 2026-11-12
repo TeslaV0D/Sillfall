@@ -20,6 +20,7 @@ public sealed class VisitorPainter : IDisposable
     private readonly IWICImagingFactory _wic;
     private readonly Dictionary<(VisitorKind Kind, Part Part), ID2D1SvgDocument?> _parts = [];
     private readonly Dictionary<VisitorProp, ID2D1SvgDocument> _props = [];
+    private ID2D1SvgDocument? _box;
 
     public VisitorPainter(ID2D1DeviceContext context)
     {
@@ -43,9 +44,14 @@ public sealed class VisitorPainter : IDisposable
     /// Draws <paramref name="visitors"/> onto the context's target (between <c>BeginDraw</c> and <c>EndDraw</c>).
     /// <paramref name="area"/> is the target's rectangle on the desktop, <paramref name="opacity"/> the monitor's opacity.
     /// </summary>
-    public void Draw(ReadOnlySpan<VisitorPose> visitors, PixelRect area, float opacity)
+    public void Draw(ReadOnlySpan<VisitorPose> visitors, PixelRect area, float opacity, VisitorBox box = default)
     {
         Matrix3x2 previous = _context.Transform;
+        if (box.IsVisible)
+        {
+            DrawBox(box, area, opacity);
+        }
+
         foreach (VisitorPose pose in visitors)
         {
             DrawOne(in pose, area, opacity);
@@ -66,6 +72,7 @@ public sealed class VisitorPainter : IDisposable
             document.Dispose();
         }
 
+        _box?.Dispose();
         _wic.Dispose();
         _context.Dispose();
     }
@@ -142,6 +149,30 @@ public sealed class VisitorPainter : IDisposable
         {
             _context.PopLayer();
         }
+    }
+
+    /// <summary>The box, scaled into its rectangle; it grows a little while a held visitor is over it.</summary>
+    private void DrawBox(VisitorBox box, PixelRect area, float opacity)
+    {
+        float alpha = Math.Clamp(box.Visibility * opacity, 0f, 1f);
+        float grow = box.Hot ? 1.12f : 1f;
+        float size = Math.Min(box.Bounds.Width, box.Bounds.Height) / VisitorArt.Size * grow;
+        var centre = new Vector2(box.Bounds.Left + (box.Bounds.Width / 2f) - area.Left, box.Bounds.Bottom - area.Top);
+        _context.PushLayer(new LayerParameters1
+        {
+            ContentBounds = new Rect(-1e6f, -1e6f, 2e6f, 2e6f),
+            MaskTransform = Matrix3x2.Identity,
+            Opacity = alpha,
+        }, null!);
+        _context.Transform = Matrix3x2.CreateTranslation(-VisitorArt.Size / 2f, -VisitorArt.Size) * Matrix3x2.CreateScale(size) * Matrix3x2.CreateTranslation(centre);
+        _context.DrawSvgDocument(BoxDocument());
+        _context.PopLayer();
+    }
+
+    private ID2D1SvgDocument BoxDocument()
+    {
+        _box ??= Create(VisitorArt.LoadSvg("box"));
+        return _box;
     }
 
     private void DrawEyes(VisitorArt art, float blink, Matrix3x2 body)

@@ -1,6 +1,6 @@
 # ADR-0014: Visitors
 
-- Status: akzeptiert (Teil 1: Core. Zeichnen, Hit-Fenster und Oberfläche folgen)
+- Status: akzeptiert
 - Datum: 2026-11-12
 - Meilenstein: M11
 
@@ -92,7 +92,57 @@ Der D2D-Renderer und die Hit-Fenster brauchen so keinen Simulationscode.
   - drei in Folge,
   - 100 Punkte.
 
+### 5. Zeichnen mit dem SVG-Renderer von Direct2D
+
+Die Figuren sind SVGs mit benannten Teilen (`eyes`, `foot-left`, `foot-right`). `VisitorPainter` zerlegt sie beim
+ersten Gebrauch in einzelne `ID2D1SvgDocument`s und bewegt die Teile getrennt:
+
+- Die Füße wechseln sich beim Laufen ab.
+- Der Körper wippt.
+- Die Augen blinzeln.
+- Stauchen und Neigen beim Springen.
+- Gespiegelt nach Laufrichtung.
+
+Gesichter (Bogenaugen, Brauen) und die Sonnenbrille entstehen als kleine SVGs aus den Augenpositionen (`VisitorArt`).
+Spritesheets und eigener Geometrie-Code sind nicht nötig, und die Figuren bleiben bei jeder DPI scharf. Direct2D startet
+erst mit dem ersten Visitor.
+
+### 6. Hit-Fenster und Korb
+
+Das Overlay bleibt click-through.
+
+- **Hit-Fenster:** Im Interaktiv-Modus (opt-in) folgt jedem Visitor ein eigenes kleines Fenster. Es ist geschichtet
+  mit Alpha 1/255: unsichtbar, aber anklickbar (Alpha 0 ließe Klicks durch). Es ist topmost und wird nie aktiviert.
+- **Tracking:** Die Hit-Fenster tragen den Klassen-Präfix des Overlays, deshalb sieht das Fenster-Tracking sie nicht.
+- **Greifen:** Beim Greifen fängt das Hit-Fenster die Maus (`SetCapture`). Der Korb erscheint unten rechts im
+  Arbeitsbereich des Hauptmonitors und leuchtet, solange die Figur darüber ist. Loslassen über dem Korb sammelt sie ein,
+  anderswo fällt sie, schmollt und geht.
+- **Sauberkeit:** Hat ein anderes Fenster die Maus übernommen, wird die Figur einfach losgelassen. Gehende Figuren
+  verlieren ihr Hit-Fenster sofort.
+
+### 7. Ohne Maus
+
+- **Tastenkürzel:** Strg+Alt+V (`RegisterHotKey`) sammelt die erste Figur ein. Ist das Kürzel belegt, sagt die
+  Einstellungsseite das.
+- **Tray-Menü:** Es hat dafür einen Eintrag, solange eine Figur da ist.
+- **Tooltip:** Der Tooltip des Tray-Icons nennt die Figur und den Weg zum Einsammeln. Narrator liest ihn vor.
+- **Hinweise:** Wahlweise kommt eine Benachrichtigung bei jeder Ankunft. Eingesammelte Figuren melden Punkte und Erfolge
+  immer still per Benachrichtigung, und Windows hält sie bei „Nicht stören“ zurück.
+
+### 8. Sounds, Share Card
+
+- **Sounds:** Drei prozedurale Klänge pro Figur (Ankommen, Einsammeln, Schmollen), Sinustöne mit eigener Tonhöhe pro
+  Figur (`VisitorSynth`). Es gibt keine Samples, also auch keine Lizenzfragen. Sie sind nur zu hören, wenn der Sound an
+  ist (Lautstärke „Visitors“).
+- **Share Card:** Die Karte ist ein XAML-Element der Visitors-Seite. Sie wird über `RenderTargetBitmap` als PNG in die
+  Zwischenablage oder in eine Datei gespeichert. PLAN.md nennt dafür Direct2D. XAML liefert dasselbe Bild ohne zweiten
+  Text-Renderer, die Figuren kommen aus denselben SVGs (`SvgImageSource`).
+- **Teilen-Dialog:** Das Teilen-Fenster von Windows (`DataTransferManager`) fehlt noch: Es braucht für Desktop-Apps
+  eigene Interop und folgt mit M12. Kopieren und Speichern decken das Teilen bis dahin ab.
+
 ## Konsequenzen
 
+- Das Greifen über Hit-Fenster ist echtes Windows-Verhalten: Der Smoke-Test zieht eine Figur mit echter Maus-Eingabe in
+  den Korb. Wie es sich mit mehreren Monitoren, Touch und Stift anfühlt, prüft die Checkliste M11.
 - Ob Tempo, Sprungweite, Häufigkeit und Besuchsdauer sich gut anfühlen, zeigt erst die Abnahme. Alle Werte stehen als
   Konstanten in `VisitorSystem`, `VisitorCatalog` und `VisitorScheduler`.

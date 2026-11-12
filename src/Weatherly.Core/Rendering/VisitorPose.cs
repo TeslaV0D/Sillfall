@@ -77,3 +77,12 @@ public struct VisitorPose
     /// <summary>Held by the user (interactive mode).</summary>
     public bool Held { get; set; }
 }
+
+/// <summary>The box visitors are dropped into (interactive mode, PLAN.md, section 6).</summary>
+/// <param name="Bounds">Where it stands, in desktop pixels.</param>
+/// <param name="Visibility">0 hidden to 1 fully shown (it fades in while a visitor is held).</param>
+/// <param name="Hot">A held visitor is over it: letting go collects.</param>
+public readonly record struct VisitorBox(Geometry.PixelRect Bounds, float Visibility, bool Hot)
+{
+    public bool IsVisible => Visibility > 0.01f && !Bounds.IsEmpty;
+}

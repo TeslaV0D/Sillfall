@@ -12,6 +12,7 @@ using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
 using Weatherly.Core.Tray;
+using Weatherly.Core.Visitors;
 using Weatherly.Core.Weather.Providers;
 using Weatherly.Platform.Overlay;
 using Weatherly.Platform.Shell;
@@ -147,7 +148,15 @@ public partial class App : Application
             _window.Own(weather);
         }
 
-        _controller = new AppController(_window, store, settings, followSystem: _smokeTest is null, weather);
+        // Visitors: the collection is saved next to the settings; their sounds need an audio output (servers have none).
+        AlbumStore? albumStore = _smokeTest is null ? new AlbumStore(AlbumStore.DefaultPath) : null;
+        VisitorSoundPlayer? visitorSounds = _smokeTest is null ? VisitorSoundPlayer.TryCreate(out _) : null;
+        if (visitorSounds is not null)
+        {
+            _window.Own(visitorSounds);
+        }
+
+        _controller = new AppController(_window, store, settings, followSystem: _smokeTest is null, weather, albumStore, visitorSounds);
         _settingsWindow = new SettingsWindow(_controller);
         _flyout = new FlyoutWindow(_controller, () => _settingsWindow.ShowPage("effects"));
 
@@ -214,7 +223,9 @@ public partial class App : Application
                     SetGrass: value => Controller.SetIntensity(EffectKind.Grass, value),
                     SetSound: on => Controller.Update(s => s with { Sound = s.Sound with { Muted = !on } }),
                     SetPaused: paused => Controller.Update(s => s with { Enabled = !paused }),
-                    Quit: Quit)),
+                    Quit: Quit,
+                    CollectVisitor: () => Controller.CollectVisitor(),
+                    VisitorsOnScreen: Controller.VisitorsOnScreen)),
                 ToggleFlyout);
             if (!tray.Show())
             {
@@ -601,10 +612,76 @@ public partial class App : Application
                 taken == Core.Visitors.VisitorKind.Pip && collected == Core.Visitors.VisitorKind.Pip && after?.Visitors.Count == 0,
                 string.Create(CultureInfo.InvariantCulture, $"collected {taken?.ToString() ?? "nothing"}, event {collected?.ToString() ?? "none"}, {after?.Visitors.Count ?? -1} left")));
             results.Add(new DiagnosticResult("Render loop stops after the visit", after is { IsAnimating: false }, after?.IsAnimating == true ? "still animating" : "idle"));
+
+            // Interactive mode: drag a visitor into the box with the real mouse, through its hit window.
+            results.AddRange(await CheckVisitorDragAsync(window, handle, () => collected));
         }
         finally
         {
             window.VisitorCollected -= OnCollected;
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// The interactive path (PLAN.md, section 6, M11 acceptance): with interactive mode on, a hit window follows the
+    /// visitor; the mouse picks it up there and drops it over the box, which collects it. Afterwards no hit window is
+    /// left, so the desktop is click-through again.
+    /// </summary>
+    private static async Task<List<DiagnosticResult>> CheckVisitorDragAsync(MainWindow window, nint appWindow, Func<Core.Visitors.VisitorKind?> lastCollected)
+    {
+        var results = new List<DiagnosticResult>();
+        OverlayOptions before = window.Options;
+        window.ApplyOptions(before with { VisitorsInteractive = true });
+        try
+        {
+            window.InviteVisitor(Core.Visitors.VisitorKind.Sol, appWindow);
+            await Task.Delay(TimeSpan.FromSeconds(1.2));
+            OverlayStatus? status = window.Refresh();
+            if (status is not { Visitors.Count: > 0 } || status.VisitorHitWindows.Count == 0)
+            {
+                results.Add(new DiagnosticResult("Visitor hit window", false, $"{status?.Visitors.Count ?? 0} visitor(s), {status?.VisitorHitWindows.Count ?? 0} hit window(s)"));
+                return results;
+            }
+
+            Core.Geometry.PixelRect bounds = status.Visitors[0].Bounds;
+            Core.Geometry.PixelRect box = status.VisitorBox;
+            results.Add(new DiagnosticResult("Visitor hit window", true, string.Create(CultureInfo.InvariantCulture, $"{status.VisitorHitWindows.Count} over a visitor at {bounds.Left}, {bounds.Top}; box at {box.Left}, {box.Top}")));
+
+            // Grab it in the middle and carry it to the box in small steps, as a hand would.
+            int fromX = bounds.Left + (bounds.Width / 2);
+            int fromY = bounds.Top + (bounds.Height / 2);
+            int toX = box.Left + (box.Width / 2);
+            int toY = box.Top + (box.Height / 2);
+            PointerInput.MoveTo(fromX, fromY);
+            await Task.Delay(150);
+            PointerInput.LeftButton(down: true);
+            await Task.Delay(150);
+            OverlayStatus? held = window.Refresh();
+            bool wasHeld = held?.Visitors is { Count: > 0 } visitors && visitors[0].State == Core.Visitors.VisitorState.Held;
+            for (int step = 1; step <= 15; step++)
+            {
+                PointerInput.MoveTo(fromX + ((toX - fromX) * step / 15), fromY + ((toY - fromY) * step / 15));
+                await Task.Delay(40);
+            }
+
+            await Task.Delay(150);
+            PointerInput.LeftButton(down: false);
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            OverlayStatus? after = window.Refresh();
+            results.Add(new DiagnosticResult(
+                "Drag into the box collects",
+                wasHeld && lastCollected() == Core.Visitors.VisitorKind.Sol && after?.Visitors.Count == 0,
+                string.Create(CultureInfo.InvariantCulture, $"held {wasHeld}, collected {lastCollected()?.ToString() ?? "nothing"}, {after?.Visitors.Count ?? -1} left")));
+            results.Add(new DiagnosticResult(
+                "No hit window after the visit",
+                after?.VisitorHitWindows.Count == 0,
+                $"{after?.VisitorHitWindows.Count ?? -1} hit window(s) shown"));
+        }
+        finally
+        {
+            window.ApplyOptions(before);
         }
 
         return results;

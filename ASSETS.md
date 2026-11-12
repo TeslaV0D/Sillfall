@@ -65,6 +65,7 @@ werden im Code aus den Augenpositionen erzeugt (`VisitorArt`).
 | `src/Weatherly.Render/Visitors/snowball.svg` | Requisit Schneeball, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
 | `src/Weatherly.Render/Visitors/lantern.svg` | Requisit Laterne, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
 | `src/Weatherly.Render/Visitors/leaf.svg` | Requisit Blatt, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/box.svg` | Sammelkorb, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
 
 ## Daten
 

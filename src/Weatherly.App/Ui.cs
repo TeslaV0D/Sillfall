@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Weatherly.Core.Imaging;
 using Weatherly.Core.Settings;
+using Weatherly.Core.Visitors;
 
 namespace Weatherly.App;
 
@@ -191,10 +192,10 @@ internal static class Ui
         where T : class => (T)Application.Current.Resources[key];
 
     /// <summary>
-    /// Renders <paramref name="element"/> (it must be on screen) and writes it as a PNG. For the smoke test's
-    /// pictures of the settings pages. Returns the size, or (0, 0) when nothing was rendered.
+    /// Renders <paramref name="element"/> (it must be on screen) as a PNG in memory. Returns the bytes and the size; no
+    /// bytes when nothing was rendered.
     /// </summary>
-    public static async Task<(int Width, int Height)> SavePngAsync(UIElement element, string path)
+    public static async Task<(byte[]? Png, int Width, int Height)> RenderPngAsync(UIElement element)
     {
         var bitmap = new RenderTargetBitmap();
         await bitmap.RenderAsync(element);
@@ -202,13 +203,52 @@ internal static class Ui
         int height = bitmap.PixelHeight;
         if (width == 0 || height == 0)
         {
-            return (0, 0);
+            return (null, 0, 0);
         }
 
         // BGRA, premultiplied: what the PNG encoder expects.
         byte[] pixels = (await bitmap.GetPixelsAsync()).ToArray();
+        return (PngEncoder.Encode(pixels, width, height), width, height);
+    }
+
+    /// <summary>
+    /// Renders <paramref name="element"/> (it must be on screen) and writes it as a PNG. For the smoke test's
+    /// pictures of the settings pages. Returns the size, or (0, 0) when nothing was rendered.
+    /// </summary>
+    public static async Task<(int Width, int Height)> SavePngAsync(UIElement element, string path)
+    {
+        (byte[]? png, int width, int height) = await RenderPngAsync(element);
+        if (png is null)
+        {
+            return (0, 0);
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await File.WriteAllBytesAsync(path, PngEncoder.Encode(pixels, width, height));
+        await File.WriteAllBytesAsync(path, png);
         return (width, height);
+    }
+
+    /// <summary>A visitor's drawing as an image (the same SVG the overlay draws), <paramref name="size"/> pixels square.</summary>
+    public static Image VisitorImage(VisitorKind kind, double size)
+    {
+        var source = new SvgImageSource { RasterizePixelWidth = size * 2, RasterizePixelHeight = size * 2 };
+        var image = new Image { Source = source, Width = size, Height = size };
+        _ = LoadSvgAsync(source, Render.VisitorDrawings.Svg(kind));
+        return image;
+    }
+
+    private static async Task LoadSvgAsync(SvgImageSource source, string svg)
+    {
+        using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+        using (var writer = new Windows.Storage.Streams.DataWriter(stream.GetOutputStreamAt(0)))
+        {
+            writer.WriteBytes(System.Text.Encoding.UTF8.GetBytes(svg));
+            await writer.StoreAsync();
+            await writer.FlushAsync();
+            writer.DetachStream();
+        }
+
+        stream.Seek(0);
+        await source.SetSourceAsync(stream);
     }
 }
