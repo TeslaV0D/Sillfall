@@ -191,6 +191,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      # Steps cannot read secrets in `if:`; the job env can. "true" when the reserved identity and the signing secrets are set.
+      PUBLIC_SIGNING: ${{ vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != '' }}
     steps:
       - name: Download packages
         uses: actions/download-artifact@v6
@@ -200,7 +203,7 @@ jobs:
           path: packages
 
       - name: Prepare the trusted copies
-        if: vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        if: env.PUBLIC_SIGNING == 'true'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path trusted | Out-Null
@@ -209,7 +212,7 @@ jobs:
           }
 
       - name: Sign with Azure Artifact Signing
-        if: vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        if: env.PUBLIC_SIGNING == 'true'
         uses: azure/artifact-signing-action@v2.0.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
