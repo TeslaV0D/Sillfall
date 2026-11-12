@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Prop: a big leaf held over the head like an umbrella; the stem ends at the anchor (32, 34). Own design (ASSETS.md). -->
+  <rect x="31.2" y="18" width="1.8" height="16" rx="0.9" fill="#8C5A3C"/>
+  <path d="M12 22 C16 10 48 10 52 22 C44 18 20 18 12 22 Z" fill="#E3893B"/>
+  <path d="M20 19 C26 15 38 15 44 19" stroke="#C46A22" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+</svg>

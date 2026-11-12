@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Bristle, the hedgehog. Own design (ASSETS.md). Faces right. -->
+  <path d="M7 52 L9 41 L13 45 L15 33 L20 39 L23 27 L28 35 L32 24 L36 34 L41 27 L43 38 L48 32 L49 43 L53 42 L52 52 Z" fill="#8C5A3C"/>
+  <rect x="10" y="44" width="42" height="12" rx="6" fill="#A9744F"/>
+  <ellipse cx="50" cy="47" rx="9.5" ry="7.5" fill="#E8C39E"/>
+  <circle cx="58.5" cy="46.5" r="2.2" fill="#2E3440"/>
+  <g id="eyes"><circle cx="51" cy="44" r="1.8" fill="#2E3440"/></g>
+  <circle cx="47.5" cy="49.5" r="1.8" fill="#F2A7B5"/>
+  <path d="M24 25 C24 17 31 13 37 14 C37 21 31 26 24 25 Z" fill="#E3893B"/>
+  <g id="foot-left"><ellipse cx="18" cy="57.5" rx="4" ry="2.4" fill="#6E4630"/></g>
+  <g id="foot-right"><ellipse cx="44" cy="57.5" rx="4" ry="2.4" fill="#6E4630"/></g>
+</svg>

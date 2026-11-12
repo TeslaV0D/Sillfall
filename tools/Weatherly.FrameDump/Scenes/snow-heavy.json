@@ -1,0 +1,24 @@
+{
+  // Heavy snow with wind on deep piles. Window 2 is shaken at 4.0 s (its snow is tossed off), window 1 is
+  // jerked to the left at 5.5 s (the snow keeps going) and window 2 closes at 7.0 s (its snow drops onto
+  // window 1 and the floor).
+  "name": "snow-heavy",
+  "seed": 22,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 400, "y": 110, "width": 200, "height": 150 },
+    { "id": 1, "x": 60, "y": 170, "width": 280, "height": 160 }
+  ],
+  "effects": { "snow": 1.0, "snowFill": 16 },
+  "wind": { "x": 50, "gustiness": 0.5 },
+  "captures": [ 3.9, 4.25, 5.4, 5.75, 7.2, 9.0 ],
+  "events": [
+    { "at": 4.0, "window": 2, "x": 430, "y": 110 },
+    { "at": 4.05, "window": 2, "x": 370, "y": 110 },
+    { "at": 4.1, "window": 2, "x": 430, "y": 110 },
+    { "at": 4.15, "window": 2, "x": 400, "y": 110 },
+    { "at": 5.5, "window": 1, "x": 50, "y": 170 },
+    { "at": 5.5166, "window": 1, "x": 0, "y": 170 },
+    { "at": 7.0, "window": 2, "close": true }
+  ]
+}

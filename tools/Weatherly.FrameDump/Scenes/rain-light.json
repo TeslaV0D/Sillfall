@@ -1,0 +1,12 @@
+{
+  // Light rain without wind: thin streaks, a few splashes, puddles just starting.
+  "name": "rain-light",
+  "seed": 11,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 120, "y": 150, "width": 380, "height": 180 }
+  ],
+  "effects": { "rain": 0.3 },
+  "wind": { "x": 0, "gustiness": 0.0 },
+  "captures": [ 1.0, 4.0 ]
+}

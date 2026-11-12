@@ -1,0 +1,35 @@
+<Project>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Newly published advisories for a dependency must not turn an unrelated build red. They stay visible as warnings. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Required for IDE0005 (unused usings) to be reported on build. CS1591 would demand docs on every public member. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Lets the Windows-targeted projects (everything except the WinUI app) compile on Linux for fast feedback. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Windows targeting">
+    <!--
+      All Windows projects build against one SDK version and share one minimum OS version.
+      Minimum is Windows 10 2004 (19041): first build with WDA_EXCLUDEFROMCAPTURE.
+      CA1416 flags every API newer than the minimum, so those calls need an OS version guard.
+    -->
+    <WeatherlyWindowsTargetFramework>net10.0-windows10.0.26100.0</WeatherlyWindowsTargetFramework>
+    <WeatherlyWindowsMinVersion>10.0.19041.0</WeatherlyWindowsMinVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>Weatherly</Product>
+    <Version>0.1.0</Version>
+    <Copyright>Copyright © 2026 Anton</Copyright>
+  </PropertyGroup>
+
+</Project>

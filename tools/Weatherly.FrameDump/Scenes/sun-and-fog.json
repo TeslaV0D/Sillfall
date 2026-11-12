@@ -1,0 +1,12 @@
+{
+  // Morning mood: light fog with sunlight from the top left, a few leaves.
+  "name": "sun-and-fog",
+  "seed": 43,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 200, "y": 140, "width": 320, "height": 190 }
+  ],
+  "effects": { "sun": 0.8, "sunSide": "left", "fog": 0.5, "leaves": 0.4, "skipFadeIn": true },
+  "wind": { "x": 20 },
+  "captures": [ 3.0 ]
+}

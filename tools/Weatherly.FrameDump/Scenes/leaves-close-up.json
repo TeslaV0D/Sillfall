@@ -1,0 +1,12 @@
+{
+  // A small area at 200 % scaling for judging the leaf shapes, colours, the turning over and the lying leaves.
+  "name": "leaves-close-up",
+  "seed": 33,
+  "monitor": { "width": 320, "height": 240, "taskbar": 0, "scale": 2.0 },
+  "windows": [
+    { "id": 1, "x": 40, "y": 130, "width": 240, "height": 110 }
+  ],
+  "effects": { "leaves": 1.0, "leavesScatter": 3 },
+  "wind": { "x": 20 },
+  "captures": [ 2.0, 4.0 ]
+}

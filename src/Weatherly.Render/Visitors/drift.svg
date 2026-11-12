@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Drift, the little cloud. Own design (ASSETS.md). Faces the viewer. -->
+  <g id="foot-left">
+    <rect x="23.5" y="50" width="3" height="8" rx="1.5" fill="#6F9CCB"/>
+    <ellipse cx="25" cy="58.5" rx="4" ry="2.4" fill="#6F9CCB"/>
+  </g>
+  <g id="foot-right">
+    <rect x="37.5" y="50" width="3" height="8" rx="1.5" fill="#6F9CCB"/>
+    <ellipse cx="39" cy="58.5" rx="4" ry="2.4" fill="#6F9CCB"/>
+  </g>
+  <rect x="11" y="36" width="42" height="16" rx="8" fill="#9DB8D6"/>
+  <circle cx="22" cy="36" r="11" fill="#CADBEE"/>
+  <circle cx="34" cy="29" r="14" fill="#DCE8F5"/>
+  <circle cx="45" cy="37" r="9.5" fill="#CADBEE"/>
+  <rect x="12" y="34" width="40" height="14" rx="7" fill="#DCE8F5"/>
+  <g id="eyes"><circle cx="28" cy="36" r="2" fill="#2E3440"/><circle cx="38" cy="36" r="2" fill="#2E3440"/></g>
+  <ellipse cx="24" cy="41" rx="2.6" ry="1.6" fill="#6F9CCB"/><ellipse cx="42" cy="41" rx="2.6" ry="1.6" fill="#6F9CCB"/>
+  <path d="M31 40 Q33 42 35 40" stroke="#2E3440" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+</svg>

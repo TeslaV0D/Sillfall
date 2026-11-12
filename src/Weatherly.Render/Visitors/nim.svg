@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Nim, the mouse with an umbrella. Own design (ASSETS.md). Faces the viewer. -->
+  <path d="M19 54 C10 55 7 49 11 45" stroke="#F2A7B5" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <rect x="44.2" y="17" width="2.4" height="38" rx="1.2" fill="#4C566A"/>
+  <path d="M44.6 55 Q44.6 59 41 59" stroke="#4C566A" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <path d="M28 20 A17 12 0 0 1 62 20 Z" fill="#5E81AC"/>
+  <path d="M39.3 20 A5.7 4 0 0 1 50.7 20 Z" fill="#81A1C1"/>
+  <ellipse cx="30" cy="47" rx="11" ry="11.5" fill="#9AA3AE"/>
+  <ellipse cx="30" cy="49" rx="6.5" ry="7" fill="#C7CDD4"/>
+  <circle cx="22" cy="25" r="6" fill="#9AA3AE"/><circle cx="22" cy="25" r="3.4" fill="#F2A7B5"/>
+  <circle cx="38" cy="25" r="6" fill="#9AA3AE"/><circle cx="38" cy="25" r="3.4" fill="#F2A7B5"/>
+  <circle cx="30" cy="33" r="10" fill="#9AA3AE"/>
+  <g id="eyes"><circle cx="26.5" cy="32" r="2" fill="#2E3440"/><circle cx="33.5" cy="32" r="2" fill="#2E3440"/></g>
+  <circle cx="30" cy="36" r="1.6" fill="#F2A7B5"/>
+  <ellipse cx="40.5" cy="45" rx="3.2" ry="2.6" fill="#9AA3AE"/>
+  <g id="foot-left"><ellipse cx="25" cy="58.5" rx="4.2" ry="2.4" fill="#7E8792"/></g>
+  <g id="foot-right"><ellipse cx="35" cy="58.5" rx="4.2" ry="2.4" fill="#7E8792"/></g>
+</svg>

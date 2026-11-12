@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      soak_minutes:
+        description: "Minutes of the soak test (at most about 330: GitHub stops jobs after 6 hours; the full 8 hours run on a real PC)"
+        default: "5"
+
+# The suffix starts a fresh group: run #36 (2026-11-11) got stuck in GitHub's dispatch, cannot be cancelled,
+# and kept every later run of the old group waiting behind it. Bump it again if that ever repeats.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-2
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  core:
+    name: Core (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Everything except the WinUI app. The Windows libraries cross-compile on Linux,
+      # which catches most mistakes minutes before the Windows job reports.
+      - name: Restore
+        run: dotnet restore Weatherly.CrossPlatform.slnf
+
+      - name: Check formatting
+        run: dotnet format Weatherly.CrossPlatform.slnf --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build Weatherly.CrossPlatform.slnf -c Release --no-restore
+
+      - name: Test Weatherly.Core
+        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+
+  windows:
+    name: Windows (${{ matrix.platform }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Weatherly.slnx -p:Platform=${{ matrix.platform }}
+
+      - name: Build solution
+        run: dotnet build Weatherly.slnx -c Release -p:Platform=${{ matrix.platform }} --no-restore
+
+      # The runner is an x64 machine: tests and the app can only run in the x64 leg. ARM64 is build-only.
+      - name: Check formatting
+        if: matrix.platform == 'x64'
+        run: dotnet format Weatherly.slnx --verify-no-changes --no-restore
+
+      - name: Test Weatherly.Core
+        if: matrix.platform == 'x64'
+        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+
+      # Each test that renders saves its frame as PNG into the preview folder.
+      - name: Test Weatherly.Render (WARP)
+        if: matrix.platform == 'x64'
+        env:
+          WEATHERLY_PREVIEW_DIR: ${{ runner.temp }}/previews/render
+        run: dotnet test --project tests/Weatherly.Render.Tests -c Release --no-build
+
+      # Preview frames of every scene in tools/Weatherly.FrameDump/Scenes, rendered headless with WARP.
+      - name: Render FrameDump previews
+        if: always() && matrix.platform == 'x64'
+        run: dotnet run --project tools/Weatherly.FrameDump -c Release -p:Platform=x64 -- --out "${{ runner.temp }}/previews/framedump"
+
+      # Runs even when a render test failed (for example a golden still waiting for review), so every
+      # push gets the full picture.
+      - name: Smoke test the app
+        if: always() && matrix.platform == 'x64'
+        shell: pwsh
+        run: >-
+          ./tools/ci/smoke-test.ps1 -Platform x64
+          -ReportDirectory "$env:RUNNER_TEMP/smoke"
+          -PreviewDirectory "$env:RUNNER_TEMP/previews/desktop"
+
+      - name: Upload smoke test reports
+        if: always() && matrix.platform == 'x64'
+        uses: actions/upload-artifact@v6
+        with:
+          name: smoke-reports
+          path: ${{ runner.temp }}/smoke/
+          if-no-files-found: ignore
+
+      # Rendered frames and desktop screenshots, for review without a Windows desktop.
+      - name: Upload previews
+        if: always() && matrix.platform == 'x64'
+        uses: actions/upload-artifact@v6
+        with:
+          name: previews
+          path: ${{ runner.temp }}/previews/
+          if-no-files-found: ignore
+
+  # Soak test (M13): the app runs with everything on while memory, handles and GDI/USER objects are sampled.
+  # 5 minutes on every push catch fast leaks; longer runs via "Run workflow", the full 8 hours on a real PC.
+  soak:
+    name: Soak (x64)
+    runs-on: windows-latest
+    # Expressions have no arithmetic: a run started by hand may take up to GitHub's limit, a push run 40 minutes.
+    timeout-minutes: ${{ inputs.soak_minutes && 360 || 40 }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Soak test the app
+        shell: pwsh
+        run: >-
+          ./tools/ci/soak-test.ps1 -Platform x64
+          -Minutes ${{ inputs.soak_minutes || '5' }}
+          -ReportDirectory "$env:RUNNER_TEMP/soak"
+
+      - name: Upload soak report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: soak
+          path: ${{ runner.temp }}/soak/
+          if-no-files-found: ignore

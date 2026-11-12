@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Windows-only: these tests drive Direct3D through WARP, so they run in the windows CI job. -->
+  <PropertyGroup>
+    <TargetFramework>$(WeatherlyWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(WeatherlyWindowsMinVersion)</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Weatherly.Render.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Weatherly.Core\Weatherly.Core.csproj" />
+    <ProjectReference Include="..\..\src\Weatherly.Render\Weatherly.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\tools\Weatherly.FrameDump\Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+    <None Include="Goldens\*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Goldens" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="AwesomeAssertions" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

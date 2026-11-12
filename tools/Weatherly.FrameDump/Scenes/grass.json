@@ -1,0 +1,18 @@
+{
+  // Grown grass on two windows and the floor with wind from the left. At 2.0 s the cursor rests on window 1's
+  // edge (the blades bend away from it), at 3.0 s window 2 closes (its grass fades).
+  "name": "grass",
+  "seed": 51,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 380, "y": 120, "width": 200, "height": 150 },
+    { "id": 1, "x": 50, "y": 170, "width": 300, "height": 170 }
+  ],
+  "effects": { "grass": 1.0, "grassGrown": 0.9 },
+  "wind": { "x": 60, "gustiness": 0.4 },
+  "captures": [ 1.0, 2.5, 3.3 ],
+  "events": [
+    { "at": 2.0, "cursorX": 200, "cursorY": 162 },
+    { "at": 3.0, "window": 2, "close": true }
+  ]
+}

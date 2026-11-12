@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Lumen, the firefly. Own design (ASSETS.md). Faces the viewer, hovers. -->
+  <circle cx="32" cy="44" r="17" fill="#FFD966" opacity="0.28"/>
+  <ellipse cx="21" cy="30" rx="9" ry="5" fill="#CFE3F2" opacity="0.9" transform="rotate(25 21 30)"/>
+  <ellipse cx="43" cy="30" rx="9" ry="5" fill="#CFE3F2" opacity="0.9" transform="rotate(-25 43 30)"/>
+  <ellipse cx="32" cy="44" rx="9" ry="11" fill="#FFD966"/>
+  <rect x="24" y="38" width="16" height="3" rx="1.5" fill="#F2C23E"/>
+  <circle cx="32" cy="24" r="8.5" fill="#4C566A"/>
+  <rect x="26" y="9" width="2" height="9" rx="1" fill="#4C566A" transform="rotate(-20 27 17)"/>
+  <rect x="36" y="9" width="2" height="9" rx="1" fill="#4C566A" transform="rotate(20 37 17)"/>
+  <circle cx="24.5" cy="10" r="2.2" fill="#FFD966"/><circle cx="39.5" cy="10" r="2.2" fill="#FFD966"/>
+  <g id="eyes">
+    <circle cx="28.8" cy="23.5" r="2.8" fill="#FFFFFF"/><circle cx="29.2" cy="23.8" r="1.5" fill="#2E3440"/>
+    <circle cx="35.2" cy="23.5" r="2.8" fill="#FFFFFF"/><circle cx="35.6" cy="23.8" r="1.5" fill="#2E3440"/>
+  </g>
+</svg>

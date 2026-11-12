@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Pip, the snail. Own design (ASSETS.md). Faces left. -->
+  <rect x="9" y="46" width="48" height="12" rx="6" fill="#F2C57C"/>
+  <rect x="10" y="27" width="12" height="27" rx="6" fill="#F2C57C"/>
+  <rect x="11" y="16" width="2.6" height="13" rx="1.3" fill="#E3B064"/>
+  <rect x="18.4" y="16" width="2.6" height="13" rx="1.3" fill="#E3B064"/>
+  <g id="eyes">
+    <circle cx="12.3" cy="16" r="3.2" fill="#FFFFFF"/><circle cx="12.8" cy="16.4" r="1.7" fill="#2E3440"/>
+    <circle cx="19.7" cy="16" r="3.2" fill="#FFFFFF"/><circle cx="20.2" cy="16.4" r="1.7" fill="#2E3440"/>
+  </g>
+  <circle cx="38" cy="37" r="16" fill="#7BB662"/>
+  <circle cx="38" cy="37" r="10.5" fill="#93C77B"/>
+  <circle cx="38" cy="37" r="5" fill="#7BB662"/>
+  <path d="M27 21 C33 10 48 9 54 17 C47 23 35 25 27 21 Z" fill="#4E9A4B"/>
+  <rect x="25" y="19" width="5" height="2.4" rx="1.2" fill="#4E9A4B" transform="rotate(-25 27 20)"/>
+</svg>

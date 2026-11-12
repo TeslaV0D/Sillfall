@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-neutral on purpose: no Windows, Win32 or Vortice references. Enforced by ArchitectureTests. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Weatherly.Core</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Weatherly.Core.Tests" />
+  </ItemGroup>
+
+  <!-- The app's texts in English and German (M12), read by Localization/Texts.cs. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Localization/Strings/en-US/Resources.resw" LogicalName="Weatherly.Core.Localization.Strings.en-US.Resources.resw" />
+    <EmbeddedResource Include="Localization/Strings/de-DE/Resources.resw" LogicalName="Weatherly.Core.Localization.Strings.de-DE.Resources.resw" />
+  </ItemGroup>
+
+  <!-- Offline city search of the weather sync, built by tools/cities/build_cities.py (GeoNames, CC BY 4.0, see ASSETS.md). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Weather/Cities/cities15000.tsv.gz" LogicalName="Weatherly.Core.Weather.Cities.cities15000.tsv.gz" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+{
+  // Leaves without wind: fluttering down in front of and behind the window, the first ones settling on the edge.
+  "name": "leaves-light",
+  "seed": 31,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 1, "x": 120, "y": 150, "width": 380, "height": 180 }
+  ],
+  "effects": { "leaves": 0.6 },
+  "wind": { "x": 0, "gustiness": 0.0 },
+  "captures": [ 5.0, 14.0 ]
+}

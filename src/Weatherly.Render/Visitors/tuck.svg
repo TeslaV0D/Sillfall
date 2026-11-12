@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Tuck, the penguin. Own design (ASSETS.md). Faces the viewer. -->
+  <ellipse cx="17" cy="42" rx="4" ry="10" fill="#3B4252" transform="rotate(20 17 42)"/>
+  <ellipse cx="47" cy="42" rx="4" ry="10" fill="#3B4252" transform="rotate(-20 47 42)"/>
+  <ellipse cx="32" cy="38" rx="16" ry="20" fill="#3B4252"/>
+  <ellipse cx="32" cy="44" rx="10.5" ry="13" fill="#F5F7FA"/>
+  <g id="eyes">
+    <circle cx="26.5" cy="28" r="3.6" fill="#FFFFFF"/><circle cx="27" cy="28.4" r="1.9" fill="#2E3440"/>
+    <circle cx="37.5" cy="28" r="3.6" fill="#FFFFFF"/><circle cx="38" cy="28.4" r="1.9" fill="#2E3440"/>
+  </g>
+  <path d="M28.5 32.5 L35.5 32.5 L32 37 Z" fill="#F4A340"/>
+  <rect x="17" y="37" width="30" height="5" rx="2.5" fill="#E05A47"/>
+  <rect x="37" y="39" width="5" height="11" rx="2.5" fill="#E05A47" transform="rotate(-12 39.5 39)"/>
+  <g id="foot-left"><ellipse cx="26" cy="58.5" rx="5.5" ry="2.6" fill="#F4A340"/></g>
+  <g id="foot-right"><ellipse cx="38" cy="58.5" rx="5.5" ry="2.6" fill="#F4A340"/></g>
+</svg>

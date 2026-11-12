@@ -1,0 +1,21 @@
+{
+  // Calibration drops on two overlapping windows with a light breeze.
+  // Window 1 is moved at 2.0 s (resting drops travel with it) and shaken at 3.0 s (drops fall off).
+  "name": "calibration-drops",
+  "seed": 7,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 360, "y": 90, "width": 220, "height": 150 },
+    { "id": 1, "x": 60, "y": 140, "width": 340, "height": 190 }
+  ],
+  "effects": { "testDrops": 1.0 },
+  "wind": { "x": 25, "gustiness": 0.6 },
+  "captures": [ 1.0, 1.95, 2.5, 3.3, 4.0, 5.0 ],
+  "events": [
+    { "at": 2.0, "window": 1, "x": 90, "y": 150 },
+    { "at": 3.0, "window": 1, "x": 150, "y": 150 },
+    { "at": 3.05, "window": 1, "x": 90, "y": 150 },
+    { "at": 3.1, "window": 1, "x": 150, "y": 150 },
+    { "at": 3.15, "window": 1, "x": 90, "y": 150 }
+  ]
+}

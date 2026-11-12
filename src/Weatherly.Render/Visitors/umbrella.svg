@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Prop: umbrella, held over the head. The handle ends at the anchor (32, 34). Own design (ASSETS.md). -->
+  <rect x="31" y="20" width="2" height="14" rx="1" fill="#4C566A"/>
+  <path d="M10 22 A22 14 0 0 1 54 22 Z" fill="#E05A47"/>
+  <path d="M25 22 A7 14 0 0 1 39 22 Z" fill="#F08A6C"/>
+  <circle cx="32" cy="7.5" r="1.6" fill="#4C566A"/>
+</svg>

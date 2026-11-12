@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- German texts of the app. Keys are sorted; LocalizationTests keeps the English and German files in step. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="About.Assets" xml:space="preserve"><value>Alle Grafiken und Sounds stammen von der App selbst oder wurden für sie gemacht; siehe ASSETS.md.</value></data>
+  <data name="About.Credits" xml:space="preserve"><value>Danksagung</value></data>
+  <data name="About.Privacy" xml:space="preserve"><value>Datenschutz</value></data>
+  <data name="About.PrivacyText" xml:space="preserve"><value>Die App liest nur, wo Fenster sind und wie groß sie sind, nie ihre Titel oder Inhalte. Sie nimmt den Bildschirm nicht auf. App-Regeln nutzen den Dateinamen der App, nur auf diesem PC. Es wird nichts gesammelt. Nur wenn du den Wetter-Sync einschaltest, geht ein auf etwa 11 km gerundeter Standort an den Wetterdienst, sonst nichts.</value></data>
+  <data name="About.Tagline" xml:space="preserve"><value>Animiertes Wetter über deinen offenen Fenstern.</value></data>
+  <data name="Achievement.EveryWeather" xml:space="preserve"><value>Jedes Wetter</value></data>
+  <data name="Achievement.EveryWeather.Text" xml:space="preserve"><value>Sammle Besucher bei Regen, Schnee, fallendem Laub, Nebel und Sonnenschein ein.</value></data>
+  <data name="Achievement.FirstGuest" xml:space="preserve"><value>Erster Gast</value></data>
+  <data name="Achievement.FirstGuest.Text" xml:space="preserve"><value>Sammle deinen ersten Besucher ein.</value></data>
+  <data name="Achievement.FullHouse" xml:space="preserve"><value>Volles Haus</value></data>
+  <data name="Achievement.FullHouse.Text" xml:space="preserve"><value>Sammle alle acht Besucher ein.</value></data>
+  <data name="Achievement.Hundred" xml:space="preserve"><value>Hundert Punkte</value></data>
+  <data name="Achievement.Hundred.Text" xml:space="preserve"><value>Erreiche 100 Punkte.</value></data>
+  <data name="Achievement.InTheirElement" xml:space="preserve"><value>In seinem Element</value></data>
+  <data name="Achievement.InTheirElement.Text" xml:space="preserve"><value>Sammle einen Besucher in seinem Lieblingswetter ein.</value></data>
+  <data name="Achievement.RareFind" xml:space="preserve"><value>Seltener Fund</value></data>
+  <data name="Achievement.RareFind.Text" xml:space="preserve"><value>Sammle Lumen ein, den seltensten Besucher.</value></data>
+  <data name="Achievement.Regular" xml:space="preserve"><value>Stammgäste</value></data>
+  <data name="Achievement.Regular.Text" xml:space="preserve"><value>Sammle zehn Besucher ein.</value></data>
+  <data name="Achievement.ThreeInARow" xml:space="preserve"><value>Drei in Folge</value></data>
+  <data name="Achievement.ThreeInARow.Text" xml:space="preserve"><value>Sammle drei Besucher ein, jeden innerhalb einer Minute nach dem vorigen.</value></data>
+  <data name="Advanced.Autostart" xml:space="preserve"><value>Mit Windows starten</value></data>
+  <data name="Advanced.Capture" xml:space="preserve"><value>Wetter in Screenshots und bei Bildschirmfreigabe ausblenden</value></data>
+  <data name="Advanced.Diagnostics" xml:space="preserve"><value>Diagnosefenster öffnen</value></data>
+  <data name="Advanced.HighContrast" xml:space="preserve"><value>Wetter pausieren, solange hoher Kontrast an ist</value></data>
+  <data name="Advanced.Language" xml:space="preserve"><value>Sprache</value></data>
+  <data name="Advanced.Language.System" xml:space="preserve"><value>Wie Windows</value></data>
+  <data name="Advanced.Logs" xml:space="preserve"><value>Fehlerberichte öffnen (sie bleiben auf diesem PC)</value></data>
+  <data name="Advanced.ReducedMotion" xml:space="preserve"><value>Reduzierte Bewegung</value></data>
+  <data name="Advanced.ReducedMotion.Always" xml:space="preserve"><value>Immer pausieren</value></data>
+  <data name="Advanced.ReducedMotion.Follow" xml:space="preserve"><value>Windows folgen (pausieren, wenn Animationen aus sind)</value></data>
+  <data name="Advanced.ReducedMotion.Never" xml:space="preserve"><value>Nie pausieren</value></data>
+  <data name="Advanced.Remote" xml:space="preserve"><value>Wetter in einer Remotedesktop-Sitzung pausieren</value></data>
+  <data name="Advanced.Reset" xml:space="preserve"><value>Alle Einstellungen zurücksetzen…</value></data>
+  <data name="Advanced.ResetConfirm" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="Advanced.ResetText" xml:space="preserve"><value>Jeder Effekt, jede Regel und jede Option geht auf den Standard zurück. Deine eigenen Vorlagen bleiben.</value></data>
+  <data name="Advanced.ResetTitle" xml:space="preserve"><value>Alle Einstellungen zurücksetzen?</value></data>
+  <data name="Advanced.Shell" xml:space="preserve"><value>Wetter ausblenden, solange Start, Suche oder Benachrichtigungen offen sind</value></data>
+  <data name="Advanced.Troubleshooting" xml:space="preserve"><value>Fehlersuche</value></data>
+  <data name="Affinity.Any" xml:space="preserve"><value>jedes Wetter</value></data>
+  <data name="Affinity.Fog" xml:space="preserve"><value>liebt Nebel</value></data>
+  <data name="Affinity.Grass" xml:space="preserve"><value>liebt Gras</value></data>
+  <data name="Affinity.Leaves" xml:space="preserve"><value>liebt fallendes Laub</value></data>
+  <data name="Affinity.Rain" xml:space="preserve"><value>liebt Regen</value></data>
+  <data name="Affinity.Snow" xml:space="preserve"><value>liebt Schnee</value></data>
+  <data name="Affinity.Sun" xml:space="preserve"><value>liebt Sonnenschein</value></data>
+  <data name="Affinity.Wind" xml:space="preserve"><value>liebt Wind</value></data>
+  <data name="Apps.Add" xml:space="preserve"><value>Hinzufügen</value></data>
+  <data name="Apps.AddRule" xml:space="preserve"><value>Regel hinzufügen</value></data>
+  <data name="Apps.App" xml:space="preserve"><value>App</value></data>
+  <data name="Apps.Hide" xml:space="preserve"><value>Kein Wetter über ihren Fenstern</value></data>
+  <data name="Apps.Intro" xml:space="preserve"><value>Regeln für einzelne Apps: Alles Wetter pausieren, solange die App vorne ist, oder ihre Fenster frei von Wetter halten. Verwendet wird nur der Dateiname der App, auf diesem PC.</value></data>
+  <data name="Apps.Pause" xml:space="preserve"><value>Pausieren, solange im Vordergrund</value></data>
+  <data name="Apps.Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Apps.Rule" xml:space="preserve"><value>Regel</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Common.Off" xml:space="preserve"><value>Aus</value></data>
+  <data name="Common.On" xml:space="preserve"><value>An</value></data>
+  <data name="Common.Percent" xml:space="preserve"><value>{0} (%)</value></data>
+  <data name="Common.PngPicture" xml:space="preserve"><value>PNG-Bild</value></data>
+  <data name="Common.SavedAs" xml:space="preserve"><value>Gespeichert als {0}.</value></data>
+  <data name="Credits.Cities" xml:space="preserve"><value>Städteliste: GeoNames (geonames.org), CC BY 4.0.</value></data>
+  <data name="Credits.Weather" xml:space="preserve"><value>Wetterdaten: MET Norway (api.met.no), CC BY 4.0.</value></data>
+  <data name="Direction.E" xml:space="preserve"><value>Osten</value></data>
+  <data name="Direction.N" xml:space="preserve"><value>Norden</value></data>
+  <data name="Direction.NE" xml:space="preserve"><value>Nordosten</value></data>
+  <data name="Direction.NW" xml:space="preserve"><value>Nordwesten</value></data>
+  <data name="Direction.S" xml:space="preserve"><value>Süden</value></data>
+  <data name="Direction.SE" xml:space="preserve"><value>Südosten</value></data>
+  <data name="Direction.SW" xml:space="preserve"><value>Südwesten</value></data>
+  <data name="Direction.W" xml:space="preserve"><value>Westen</value></data>
+  <data name="Displays.Intro" xml:space="preserve"><value>Wetter pro Bildschirm: abschalten oder schwächer machen.</value></data>
+  <data name="Displays.Primary" xml:space="preserve"><value> (Hauptbildschirm)</value></data>
+  <data name="Effect.Fog" xml:space="preserve"><value>Nebel</value></data>
+  <data name="Effect.Grass" xml:space="preserve"><value>Gras</value></data>
+  <data name="Effect.Leaves" xml:space="preserve"><value>Laub</value></data>
+  <data name="Effect.Rain" xml:space="preserve"><value>Regen</value></data>
+  <data name="Effect.Snow" xml:space="preserve"><value>Schnee</value></data>
+  <data name="Effect.Sun" xml:space="preserve"><value>Sonnenlicht</value></data>
+  <data name="Effects.Brightness" xml:space="preserve"><value>Helligkeit (%)</value></data>
+  <data name="Effects.Gusts" xml:space="preserve"><value>Böen (%)</value></data>
+  <data name="Effects.Intensity" xml:space="preserve"><value>Stärke (%)</value></data>
+  <data name="Effects.Intro" xml:space="preserve"><value>Jeder Effekt hat seine eigene Stärke, Farbe und Helligkeit. Im Zufallsmodus wandert die Stärke langsam zwischen einem Minimum und einem Maximum.</value></data>
+  <data name="Effects.Mode" xml:space="preserve"><value>Modus</value></data>
+  <data name="Effects.Mode.Fixed" xml:space="preserve"><value>Fest</value></data>
+  <data name="Effects.Mode.Random" xml:space="preserve"><value>Zufällig</value></data>
+  <data name="Effects.OwnColour" xml:space="preserve"><value>Eigene Farbe</value></data>
+  <data name="Effects.RainDepth" xml:space="preserve"><value>Tiefe: Anteil der Tropfen, die Fenster treffen (%)</value></data>
+  <data name="Effects.RandomMax" xml:space="preserve"><value>Höchste Stärke (%)</value></data>
+  <data name="Effects.RandomMin" xml:space="preserve"><value>Geringste Stärke (%)</value></data>
+  <data name="Effects.RandomMinutes" xml:space="preserve"><value>Minuten zwischen Wechseln</value></data>
+  <data name="Effects.SunSide" xml:space="preserve"><value>Die Sonne steht über der</value></data>
+  <data name="Effects.SunSide.Left" xml:space="preserve"><value>linken oberen Ecke</value></data>
+  <data name="Effects.SunSide.Right" xml:space="preserve"><value>rechten oberen Ecke</value></data>
+  <data name="Effects.Wind" xml:space="preserve"><value>Wind</value></data>
+  <data name="Effects.WindSpeed" xml:space="preserve"><value>Wind (px/s, negativ weht nach links)</value></data>
+  <data name="Flyout.ApplyTemplate" xml:space="preserve"><value>Vorlage anwenden</value></data>
+  <data name="Flyout.Intensity" xml:space="preserve"><value>{0}, Stärke</value></data>
+  <data name="Flyout.Master" xml:space="preserve"><value>{0} an oder aus</value></data>
+  <data name="Flyout.MoreSettings" xml:space="preserve"><value>Weitere Einstellungen…</value></data>
+  <data name="Flyout.RealWeather" xml:space="preserve"><value>Echtes Wetter</value></data>
+  <data name="Flyout.Template" xml:space="preserve"><value>Vorlage</value></data>
+  <data name="Page.About" xml:space="preserve"><value>Info</value></data>
+  <data name="Page.Advanced" xml:space="preserve"><value>Erweitert</value></data>
+  <data name="Page.Apps" xml:space="preserve"><value>Apps</value></data>
+  <data name="Page.Displays" xml:space="preserve"><value>Bildschirme</value></data>
+  <data name="Page.Effects" xml:space="preserve"><value>Effekte</value></data>
+  <data name="Page.Performance" xml:space="preserve"><value>Leistung</value></data>
+  <data name="Page.Sound" xml:space="preserve"><value>Sound</value></data>
+  <data name="Page.Sync" xml:space="preserve"><value>Wetter-Sync</value></data>
+  <data name="Page.Templates" xml:space="preserve"><value>Vorlagen</value></data>
+  <data name="Page.Visitors" xml:space="preserve"><value>Besucher</value></data>
+  <data name="Pause.Animations" xml:space="preserve"><value>Pausiert: Windows hat Animationen ausgeschaltet</value></data>
+  <data name="Pause.App" xml:space="preserve"><value>Pausiert, solange {0} im Vordergrund ist</value></data>
+  <data name="Pause.Battery" xml:space="preserve"><value>Pausiert im Akkubetrieb</value></data>
+  <data name="Pause.FullScreen" xml:space="preserve"><value>Pausiert, solange eine App im Vollbild läuft</value></data>
+  <data name="Pause.HighContrast" xml:space="preserve"><value>Pausiert: Hoher Kontrast ist an</value></data>
+  <data name="Pause.Locked" xml:space="preserve"><value>Pausiert, solange der PC gesperrt ist oder schläft</value></data>
+  <data name="Pause.Off" xml:space="preserve"><value>Pausiert</value></data>
+  <data name="Pause.Presentation" xml:space="preserve"><value>Pausiert während einer Präsentation</value></data>
+  <data name="Pause.ReducedMotion" xml:space="preserve"><value>Pausiert: Reduzierte Bewegung ist an</value></data>
+  <data name="Pause.Remote" xml:space="preserve"><value>Pausiert in einer Remotedesktop-Sitzung</value></data>
+  <data name="Pause.Shell" xml:space="preserve"><value>Ausgeblendet, solange Start, Suche oder Benachrichtigungen offen sind</value></data>
+  <data name="Performance.Auto" xml:space="preserve"><value>Automatisch: 60 fps, 30 im Akkubetrieb</value></data>
+  <data name="Performance.Balanced" xml:space="preserve"><value>Ausgewogen: 60 fps</value></data>
+  <data name="Performance.Battery" xml:space="preserve"><value>Im Akkubetrieb</value></data>
+  <data name="Performance.DisplayRate" xml:space="preserve"><value>Bildwiederholrate des Bildschirms</value></data>
+  <data name="Performance.Idle" xml:space="preserve"><value>Leerlauf: Nichts bewegt sich, es werden keine Bilder gezeichnet.</value></data>
+  <data name="Performance.KeepGoing" xml:space="preserve"><value>Weiterlaufen</value></data>
+  <data name="Performance.LeastEnergy" xml:space="preserve"><value>Geringster Verbrauch: 30 fps</value></data>
+  <data name="Performance.Live" xml:space="preserve"><value>{0:0} fps, {1:0.0} ms pro Bild, Simulation {2:0.00} ms, {3} Sprites</value></data>
+  <data name="Performance.NotRunning" xml:space="preserve"><value>Das Overlay läuft nicht.</value></data>
+  <data name="Performance.Now" xml:space="preserve"><value>Gerade jetzt</value></data>
+  <data name="Performance.Pause" xml:space="preserve"><value>Pausieren</value></data>
+  <data name="Performance.Reduce" xml:space="preserve"><value>Reduzieren: halbe Stärke, 30 fps</value></data>
+  <data name="Performance.Running" xml:space="preserve"><value>Läuft.</value></data>
+  <data name="Performance.Smoothest" xml:space="preserve"><value>Am flüssigsten: Bildwiederholrate des Bildschirms</value></data>
+  <data name="Performance.Smoothness" xml:space="preserve"><value>Flüssigkeit</value></data>
+  <data name="Performance.Status" xml:space="preserve"><value>{0}
+Bildratengrenze: {1}. {2}</value></data>
+  <data name="Preset.AutumnWind" xml:space="preserve"><value>Herbstwind</value></data>
+  <data name="Preset.ClearSky" xml:space="preserve"><value>Klarer Himmel</value></data>
+  <data name="Preset.Neon" xml:space="preserve"><value>Neon</value></data>
+  <data name="Preset.SpringMorning" xml:space="preserve"><value>Frühlingsmorgen</value></data>
+  <data name="Preset.Thunderstorm" xml:space="preserve"><value>Gewitter</value></data>
+  <data name="Preset.WinterEvening" xml:space="preserve"><value>Winterabend</value></data>
+  <data name="Rarity.Common" xml:space="preserve"><value>häufig</value></data>
+  <data name="Rarity.Rare" xml:space="preserve"><value>selten</value></data>
+  <data name="Rarity.Uncommon" xml:space="preserve"><value>gelegentlich</value></data>
+  <data name="Settings.WindowTitle" xml:space="preserve"><value>{0} – Einstellungen</value></data>
+  <data name="Sound.Enable" xml:space="preserve"><value>Sound</value></data>
+  <data name="Sound.Note" xml:space="preserve"><value>Regen- und Besucher-Sounds werden live erzeugt, ohne Aufnahmen.</value></data>
+  <data name="Sound.Rain" xml:space="preserve"><value>Regen (%)</value></data>
+  <data name="Sound.Visitors" xml:space="preserve"><value>Besucher (%)</value></data>
+  <data name="Sound.Volume" xml:space="preserve"><value>Lautstärke (%)</value></data>
+  <data name="Sound.Wind" xml:space="preserve"><value>Wind (%)</value></data>
+  <data name="Sync.Asking" xml:space="preserve"><value>Frage den Wetterdienst…</value></data>
+  <data name="Sync.ChooseCity" xml:space="preserve"><value>Wähle eine Stadt, um ihr Wetter zu bekommen.</value></data>
+  <data name="Sync.City" xml:space="preserve"><value>Stadt</value></data>
+  <data name="Sync.CitySearch" xml:space="preserve"><value>Stadt suchen, zum Beispiel Hamburg oder Paris, FR</value></data>
+  <data name="Sync.Describe" xml:space="preserve"><value>{0}, {1} °C, Wind {2} m/s aus {3}.</value></data>
+  <data name="Sync.DeviceAt" xml:space="preserve"><value>Standort dieses PCs, etwa {0}°, {1}°</value></data>
+  <data name="Sync.Enable" xml:space="preserve"><value>Dem echten Wetter folgen</value></data>
+  <data name="Sync.Intro" xml:space="preserve"><value>Die Effekte folgen dem echten Wetter an deinem Standort oder in einer Stadt deiner Wahl. Wer einen Regler von Hand bewegt, pausiert den Sync für diesen Effekt.</value></data>
+  <data name="Sync.Invert" xml:space="preserve"><value>Umkehren: Klarer Himmel regnet, schlechtes Wetter bringt Sonne, Hitze bringt Schnee</value></data>
+  <data name="Sync.Live" xml:space="preserve"><value>Aktualisiert um {0}, nächste Abfrage um {1}.</value></data>
+  <data name="Sync.Location" xml:space="preserve"><value>Standort</value></data>
+  <data name="Sync.Location.City" xml:space="preserve"><value>Eine Stadt meiner Wahl</value></data>
+  <data name="Sync.Location.Device" xml:space="preserve"><value>Standort dieses PCs (Windows-Ortungsdienst)</value></data>
+  <data name="Sync.NoCity" xml:space="preserve"><value>Noch keine Stadt gewählt.</value></data>
+  <data name="Sync.NoWeather" xml:space="preserve"><value>Noch kein Wetter: {0}</value></data>
+  <data name="Sync.Now" xml:space="preserve"><value>Jetzt</value></data>
+  <data name="Sync.Off" xml:space="preserve"><value>Aus. Es wird nichts gesendet.</value></data>
+  <data name="Sync.Offline" xml:space="preserve"><value>Offline: {0} Es gilt die letzte Vorhersage, nächster Versuch um {1}.</value></data>
+  <data name="Sync.PausedMany" xml:space="preserve"><value>{0} behalten die Werte, die du von Hand eingestellt hast.</value></data>
+  <data name="Sync.PausedOne" xml:space="preserve"><value>{0} behält den Wert, den du von Hand eingestellt hast.</value></data>
+  <data name="Sync.PausedTitle" xml:space="preserve"><value>Wetter-Sync pausiert</value></data>
+  <data name="Sync.Privacy" xml:space="preserve"><value>Nur ein gerundeter Standort (etwa 11 km) geht alle 15 bis 60 Minuten an den Wetterdienst. Sonst nichts.</value></data>
+  <data name="Sync.Resume" xml:space="preserve"><value>Sync fortsetzen</value></data>
+  <data name="Sync.Unavailable" xml:space="preserve"><value>Der Wetter-Sync ist in diesem Lauf nicht verfügbar.</value></data>
+  <data name="Sync.UpdateNow" xml:space="preserve"><value>Jetzt aktualisieren</value></data>
+  <data name="Sync.WeatherFor" xml:space="preserve"><value>Wetter für {0}</value></data>
+  <data name="Sync.Weights" xml:space="preserve"><value>Wie stark jedes Element dem Wetter folgt. 0 % behält deinen eigenen Wert, 100 % ist das Wetter.</value></data>
+  <data name="Templates.Apply" xml:space="preserve"><value>Anwenden</value></data>
+  <data name="Templates.ApplyLink" xml:space="preserve"><value>Anwenden</value></data>
+  <data name="Templates.BadFile" xml:space="preserve"><value>Diese Datei lässt sich nicht lesen.</value></data>
+  <data name="Templates.BadLink" xml:space="preserve"><value>Dieser Link lässt sich nicht öffnen.</value></data>
+  <data name="Templates.CopyLink" xml:space="preserve"><value>Link kopieren</value></data>
+  <data name="Templates.DefaultName" xml:space="preserve"><value>Mein Wetter</value></data>
+  <data name="Templates.Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Templates.Emoji" xml:space="preserve"><value>Emoji</value></data>
+  <data name="Templates.Export" xml:space="preserve"><value>Exportieren…</value></data>
+  <data name="Templates.FileType" xml:space="preserve"><value>{0}-Szene</value></data>
+  <data name="Templates.Import" xml:space="preserve"><value>.wscene-Datei importieren…</value></data>
+  <data name="Templates.Link" xml:space="preserve"><value>Link</value></data>
+  <data name="Templates.LinkCopied" xml:space="preserve"><value>Link kopiert. Jeder mit der App kann ihn öffnen.</value></data>
+  <data name="Templates.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Templates.NameExample" xml:space="preserve"><value>Regnerischer Nachmittag</value></data>
+  <data name="Templates.None" xml:space="preserve"><value>Noch keine. Speichere unten das aktuelle Wetter oder öffne einen geteilten Link.</value></data>
+  <data name="Templates.OpenShared" xml:space="preserve"><value>Geteilte Vorlage öffnen</value></data>
+  <data name="Templates.Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Templates.SaveCurrent" xml:space="preserve"><value>Aktuelles Wetter speichern</value></data>
+  <data name="Templates.Yours" xml:space="preserve"><value>Deine Vorlagen</value></data>
+  <data name="Tray.CollectMany" xml:space="preserve"><value>Besucher einsammeln ({0} da, Strg+Alt+V)</value></data>
+  <data name="Tray.CollectOne" xml:space="preserve"><value>Besucher einsammeln (Strg+Alt+V)</value></data>
+  <data name="Tray.Fog" xml:space="preserve"><value>Nebel</value></data>
+  <data name="Tray.Grass" xml:space="preserve"><value>Gras</value></data>
+  <data name="Tray.Leaves" xml:space="preserve"><value>Laub</value></data>
+  <data name="Tray.Open" xml:space="preserve"><value>{0} öffnen</value></data>
+  <data name="Tray.Pause" xml:space="preserve"><value>Alle Effekte pausieren</value></data>
+  <data name="Tray.Quit" xml:space="preserve"><value>Beenden</value></data>
+  <data name="Tray.Rain" xml:space="preserve"><value>Regen</value></data>
+  <data name="Tray.Snow" xml:space="preserve"><value>Schnee</value></data>
+  <data name="Tray.Sound" xml:space="preserve"><value>Sound</value></data>
+  <data name="Tray.Step.Heavy" xml:space="preserve"><value>Stark</value></data>
+  <data name="Tray.Step.Light" xml:space="preserve"><value>Leicht</value></data>
+  <data name="Tray.Step.Medium" xml:space="preserve"><value>Mittel</value></data>
+  <data name="Tray.Step.Off" xml:space="preserve"><value>Aus</value></data>
+  <data name="Tray.Sun" xml:space="preserve"><value>Sonne</value></data>
+  <data name="Tray.TooltipClear" xml:space="preserve"><value>{0}: klarer Himmel</value></data>
+  <data name="Tray.TooltipFog" xml:space="preserve"><value>Nebel {0}</value></data>
+  <data name="Tray.TooltipGrass" xml:space="preserve"><value>Gras {0}</value></data>
+  <data name="Tray.TooltipLeaves" xml:space="preserve"><value>Laub {0}</value></data>
+  <data name="Tray.TooltipPaused" xml:space="preserve"><value>{0}: pausiert</value></data>
+  <data name="Tray.TooltipRain" xml:space="preserve"><value>Regen {0}</value></data>
+  <data name="Tray.TooltipReason" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Tray.TooltipSnow" xml:space="preserve"><value>Schnee {0}</value></data>
+  <data name="Tray.TooltipSun" xml:space="preserve"><value>Sonne {0}</value></data>
+  <data name="Visitor.Bristle" xml:space="preserve"><value>Ein Igel, der Herbstlaub sammelt.</value></data>
+  <data name="Visitor.Drift" xml:space="preserve"><value>Ein Wölkchen, das geht, wohin der Wind geht.</value></data>
+  <data name="Visitor.Lumen" xml:space="preserve"><value>Ein Glühwürmchen, das den Weg durch den Nebel leuchtet.</value></data>
+  <data name="Visitor.Nim" xml:space="preserve"><value>Eine Maus mit Schirm für jedes Wetter.</value></data>
+  <data name="Visitor.Pip" xml:space="preserve"><value>Eine Schnecke, die nie ohne ihren Blatthut aus dem Haus geht.</value></data>
+  <data name="Visitor.Sol" xml:space="preserve"><value>Eine Katze, die immer bereit für die Sonne ist.</value></data>
+  <data name="Visitor.Sprout" xml:space="preserve"><value>Ein Blumentopf, der spazieren gegangen ist.</value></data>
+  <data name="Visitor.Tuck" xml:space="preserve"><value>Ein Pinguin, der seine Schals selbst strickt.</value></data>
+  <data name="Visitors.Achievements" xml:space="preserve"><value>Erfolge</value></data>
+  <data name="Visitors.Announce" xml:space="preserve"><value>Jeden Besucher mit einer Benachrichtigung ankündigen</value></data>
+  <data name="Visitors.CardCopied" xml:space="preserve"><value>Karte als Bild kopiert.</value></data>
+  <data name="Visitors.CardFile" xml:space="preserve"><value>{0}-Besucher</value></data>
+  <data name="Visitors.CardLine" xml:space="preserve"><value>{0} Punkte · {1} eingesammelt · {2} von {3} Erfolgen</value></data>
+  <data name="Visitors.CardTitle" xml:space="preserve"><value>Meine {0}-Besucher</value></data>
+  <data name="Visitors.Collected" xml:space="preserve"><value>{0} eingesammelt</value></data>
+  <data name="Visitors.CollectedCount" xml:space="preserve"><value>{0}× eingesammelt</value></data>
+  <data name="Visitors.Collection" xml:space="preserve"><value>Sammlung</value></data>
+  <data name="Visitors.Combo" xml:space="preserve"><value>{0} in Folge</value></data>
+  <data name="Visitors.CopyCard" xml:space="preserve"><value>Karte kopieren</value></data>
+  <data name="Visitors.FavouriteWeather" xml:space="preserve"><value>sein Lieblingswetter</value></data>
+  <data name="Visitors.Frequency" xml:space="preserve"><value>Wie oft Besucher kommen</value></data>
+  <data name="Visitors.Frequency.Never" xml:space="preserve"><value>Nie</value></data>
+  <data name="Visitors.Frequency.Often" xml:space="preserve"><value>Oft (etwa alle 3 Minuten)</value></data>
+  <data name="Visitors.Frequency.Rarely" xml:space="preserve"><value>Selten (etwa alle 30 Minuten)</value></data>
+  <data name="Visitors.Frequency.Sometimes" xml:space="preserve"><value>Manchmal (etwa alle 10 Minuten)</value></data>
+  <data name="Visitors.HowInteractive" xml:space="preserve"><value>Leg ihn in den Korb oder drücke {0}.</value></data>
+  <data name="Visitors.HowKeyboard" xml:space="preserve"><value>Drücke {0}, um ihn einzusammeln.</value></data>
+  <data name="Visitors.Interactive" xml:space="preserve"><value>Besucher aufheben und in den Korb legen</value></data>
+  <data name="Visitors.Intro" xml:space="preserve"><value>Kleine eigene Figuren besuchen deine Fenster: Sie laufen über die Oberkanten, springen von Fenster zu Fenster und reagieren auf das Wetter.</value></data>
+  <data name="Visitors.Invite" xml:space="preserve"><value>Jetzt einen Besucher einladen</value></data>
+  <data name="Visitors.NewAchievement" xml:space="preserve"><value>Erfolg: {0}</value></data>
+  <data name="Visitors.NoRoom" xml:space="preserve"><value>Gerade kein Platz: Es sind schon Besucher da, das Wetter ist aus, oder keine Fensterkante ist frei.</value></data>
+  <data name="Visitors.NotMet" xml:space="preserve"><value>Noch nicht getroffen</value></data>
+  <data name="Visitors.NotYet" xml:space="preserve"><value>{0} (noch nicht)</value></data>
+  <data name="Visitors.Points" xml:space="preserve"><value>+{0} Punkte</value></data>
+  <data name="Visitors.SaveCard" xml:space="preserve"><value>Karte speichern…</value></data>
+  <data name="Visitors.ShareCard" xml:space="preserve"><value>Karte zum Teilen</value></data>
+  <data name="Visitors.ShareCardButton" xml:space="preserve"><value>Teilen…</value></data>
+  <data name="Visitors.Shortcut" xml:space="preserve"><value>Drücke {0} oder nutze das Tray-Menü, um einen Besucher ohne Maus einzusammeln.</value></data>
+  <data name="Visitors.ShortcutKeys" xml:space="preserve"><value>Strg+Alt+V</value></data>
+  <data name="Visitors.ShortcutTaken" xml:space="preserve"><value>{0} ist von einem anderen Programm belegt; das Tray-Menü sammelt Besucher ohne Maus ein.</value></data>
+  <data name="Visitors.Summary" xml:space="preserve"><value>{0} eingesammelt, {1} Punkte, beste Combo {2}. Seltenere Besucher sind mehr wert, in ihrem Lieblingswetter doppelt so viel.</value></data>
+  <data name="Visitors.Visiting" xml:space="preserve"><value>{0} ist zu Besuch</value></data>
+  <data name="Visitors.VisitingTooltip" xml:space="preserve"><value>{0}: {1} ist zu Besuch. {2}</value></data>
+  <data name="Weather.None" xml:space="preserve"><value>Ohne Symbol</value></data>
+  <data name="Weather.Thunder" xml:space="preserve"><value> mit Gewitter</value></data>
+  <data name="Weather.clearsky" xml:space="preserve"><value>Klarer Himmel</value></data>
+  <data name="Weather.cloudy" xml:space="preserve"><value>Bewölkt</value></data>
+  <data name="Weather.fair" xml:space="preserve"><value>Heiter</value></data>
+  <data name="Weather.fog" xml:space="preserve"><value>Nebel</value></data>
+  <data name="Weather.heavyrain" xml:space="preserve"><value>Starker Regen</value></data>
+  <data name="Weather.heavyrainshowers" xml:space="preserve"><value>Starke Regenschauer</value></data>
+  <data name="Weather.heavysleet" xml:space="preserve"><value>Starker Schneeregen</value></data>
+  <data name="Weather.heavysleetshowers" xml:space="preserve"><value>Starke Schneeregenschauer</value></data>
+  <data name="Weather.heavysnow" xml:space="preserve"><value>Starker Schneefall</value></data>
+  <data name="Weather.heavysnowshowers" xml:space="preserve"><value>Starke Schneeschauer</value></data>
+  <data name="Weather.lightrain" xml:space="preserve"><value>Leichter Regen</value></data>
+  <data name="Weather.lightrainshowers" xml:space="preserve"><value>Leichte Regenschauer</value></data>
+  <data name="Weather.lightsleet" xml:space="preserve"><value>Leichter Schneeregen</value></data>
+  <data name="Weather.lightsleetshowers" xml:space="preserve"><value>Leichte Schneeregenschauer</value></data>
+  <data name="Weather.lightsnow" xml:space="preserve"><value>Leichter Schneefall</value></data>
+  <data name="Weather.lightsnowshowers" xml:space="preserve"><value>Leichte Schneeschauer</value></data>
+  <data name="Weather.partlycloudy" xml:space="preserve"><value>Teils bewölkt</value></data>
+  <data name="Weather.rain" xml:space="preserve"><value>Regen</value></data>
+  <data name="Weather.rainshowers" xml:space="preserve"><value>Regenschauer</value></data>
+  <data name="Weather.sleet" xml:space="preserve"><value>Schneeregen</value></data>
+  <data name="Weather.sleetshowers" xml:space="preserve"><value>Schneeregenschauer</value></data>
+  <data name="Weather.snow" xml:space="preserve"><value>Schneefall</value></data>
+  <data name="Weather.snowshowers" xml:space="preserve"><value>Schneeschauer</value></data>
+</root>

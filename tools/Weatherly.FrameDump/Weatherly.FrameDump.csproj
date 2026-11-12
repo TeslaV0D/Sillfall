@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(WeatherlyWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(WeatherlyWindowsMinVersion)</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Weatherly.FrameDump</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Weatherly.Core\Weatherly.Core.csproj" />
+    <ProjectReference Include="..\..\src\Weatherly.Render\Weatherly.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+  </ItemGroup>
+
+</Project>

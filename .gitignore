@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+artifacts/
+AppPackages/
+BundleArtifacts/
+TestResults/
+*.binlog
+
+# IDE / user files
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# Verify snapshot tests: received files are never committed
+*.received.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python (asset generator)
+__pycache__/
