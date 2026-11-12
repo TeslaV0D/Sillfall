@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Windows-only: these tests drive Direct3D through WARP, so they run in the windows CI job. -->
+  <PropertyGroup>
+    <TargetFramework>$(SillfallWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(SillfallWindowsMinVersion)</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sillfall.Render.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sillfall.Core\Sillfall.Core.csproj" />
+    <ProjectReference Include="..\..\src\Sillfall.Render\Sillfall.Render.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\tools\Sillfall.FrameDump\Scenes\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="Scenes" />
+    <None Include="Goldens\*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Goldens" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="AwesomeAssertions" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

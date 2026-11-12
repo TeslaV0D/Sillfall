@@ -1,94 +1,76 @@
-# ADR-0016: Härtung
+# ADR-0016: Hardening
 
-- Status: akzeptiert
-- Datum: 2026-11-12
-- Meilenstein: M13
+- Status: accepted
+- Date: 2026-11-12
+- Milestone: M13
 
-## Kontext
+## Context
 
-PLAN.md, M13 verlangt:
+PLAN.md, M13 requires:
 
-- Vollbild- und Spiel-Erkennung,
-- Pause bei Sperre, Standby und Remotedesktop,
-- Grafikkarten-Ausfall,
-- Umgang mit dem Startmenü,
-- lokale Absturzprotokolle ohne Telemetrie,
-- 8 Stunden ohne Leck.
+- fullscreen and game detection,
+- pause on lock, standby, and Remote Desktop,
+- GPU device loss recovery,
+- handling the Start menu,
+- local crash logs without telemetry,
+- 8 hours without leaks.
 
-Abnahme: Soak-Test bestanden, Budgets auf Referenz-Hardware.
+Sign-off: soak test passed, budgets on reference hardware.
 
-## Entscheidungen
+## Decisions
 
-### 1. Systemzustände pausieren das Wetter
+### 1. System states pause weather
 
-`SystemState` (Core) kennt neu:
+`SystemState` (Core) knows:
 
-- Sperre (inklusive getrennter Sitzung und Standby),
-- Vollbild,
-- Präsentationsmodus,
-- Remotedesktop.
+- lock (including disconnected session and standby),
+- fullscreen,
+- presentation mode,
+- Remote Desktop.
 
-Wer im Vordergrund ist, verrät, ob Start, Suche oder Benachrichtigungen offen sind. `RuntimePolicy` entscheidet in
-dieser Reihenfolge:
+Foreground process indicates whether Start, Search, or notifications are open. `RuntimePolicy` decides in this order:
 
-1. aus
-2. gesperrt
-3. Vollbild
-4. Präsentation
-5. Remotedesktop (abschaltbar)
-6. Reduced Motion
-7. hoher Kontrast
-8. Akku
-9. Start und Suche (abschaltbar)
-10. App-Regeln
+1. off
+2. locked
+3. fullscreen
+4. presentation
+5. Remote Desktop (can disable)
+6. reduced motion
+7. high contrast
+8. battery
+9. Start and Search (can disable)
+10. app rules
 
-Eine Pause entfernt die Overlay-Fenster ganz. Über einem Spiel liegt also nichts, auch kein leeres Fenster. Es gibt
-keine Hooks in fremde Prozesse (Anti-Cheat).
+A pause removes overlay windows entirely. Nothing sits above a game, not even empty windows. No hooks into other processes (anti-cheat).
 
-Die Erkennung im `OverlayHost`:
+Detection in `OverlayHost`:
 
-- **Vollbild und Präsentation:** `SHQueryUserNotificationState`, bei jedem Fokuswechsel und alle 2 Sekunden. Die Shell
-  meldet das nicht von sich aus. Der Timer läuft am Steuerfenster, also auch, solange keine Overlays da sind, sonst
-  bemerkte die App das Ende eines Spiels nie. Ein Vollbildfenster des eigenen Prozesses zählt nicht, damit die App
-  sich nicht selbst pausiert.
-- **Sperre und Remotedesktop:** `WTSRegisterSessionNotification` (Sperren, Entsperren, Verbinden, Trennen) und
-  `SM_REMOTESESSION`.
-- **Standby:** `WM_POWERBROADCAST` (`PBT_APMSUSPEND`, `PBT_APMRESUME*`). Nach dem Aufwachen wird die verstrichene Zeit
-  nicht nachsimuliert, und Monitore und Grafik werden neu geprüft.
-- **Startmenü:** Die Prozessnamen der Shell (`StartMenuExperienceHost`, `SearchHost`, `ShellExperienceHost` …) im
-  Vordergrund. Gelesen wird wie bei den App-Regeln nur der Dateiname.
+- **Fullscreen and presentation:** `SHQueryUserNotificationState`, on every focus change and every 2 s. Shell does not push this. Timer runs on the control window so a game ending is noticed even with no overlays. Own process fullscreen does not count (no self-pause).
+- **Lock and Remote Desktop:** `WTSRegisterSessionNotification` (lock, unlock, connect, disconnect) and `SM_REMOTESESSION`.
+- **Standby:** `WM_POWERBROADCAST` (`PBT_APMSUSPEND`, `PBT_APMRESUME*`). After wake, elapsed time is not simulated; monitors and graphics are rechecked.
+- **Start menu:** Shell process names in foreground (`StartMenuExperienceHost`, `SearchHost`, `ShellExperienceHost`, …). Only file name is read, like app rules.
 
-### 2. Grafikkarten-Ausfall
+### 2. GPU device loss
 
-Seit M1 vorhanden (ADR-0003): Das Device wird bei `DEVICE_REMOVED/RESET` neu aufgebaut, bis zu dreimal pro Frame. Die
-Simulation in Core bleibt erhalten. Neu ist, dass Entsperren, Aufwachen und Remote-Verbindung ebenfalls eine Prüfung
-von Monitoren und Device auslösen.
+Since M1 (ADR-0003): device rebuilds on `DEVICE_REMOVED/RESET`, up to three times per frame. Core simulation is preserved. New: unlock, wake, and remote connect also trigger monitor and device checks.
 
-### 3. Lokale Fehlerberichte
+### 3. Local crash reports
 
-`CrashLog` (Core) schreibt einen Textbericht nach `%LOCALAPPDATA%\Weatherly\logs`, die letzten zehn bleiben.
+`CrashLog` (Core) writes a text report under `%LOCALAPPDATA%\<AppInfo.Name>\logs`; last ten kept.
 
-- **Inhalt:** Version, Windows-Version, Architektur, Ort des Fehlers, voller Stacktrace.
-- **Datenschutz:** Profilpfad und Benutzername werden ersetzt. Gesendet wird nichts.
-- **Quellen:** unbehandelte Ausnahmen (App, Tasks, WinUI) sowie Fehler, die der Overlay-Thread abfängt und überlebt.
-  Letztere landen bisher nur im Status und werden nur einmal pro Sitzung geschrieben.
-- **Zugang:** „Erweitert → Fehlerberichte öffnen“.
+- **Content:** version, Windows version, architecture, fault location, full stack trace.
+- **Privacy:** profile path and username redacted. Nothing is sent.
+- **Sources:** unhandled exceptions (app, tasks, WinUI) and errors the overlay thread catches and survives. Latter used to appear only in status; written at most once per session.
+- **Access:** Advanced → Open crash reports.
 
-### 4. Langzeittest
+### 4. Long-run test
 
-- **Core:** `LongRunTests` simuliert zehn Minuten mit allen Effekten, Besuchern und ständig wechselnden Fenstern. Der
-  verwaltete Heap darf nach der Aufwärmphase nicht wachsen.
-- **App:** `--soak=<Minuten>` (`SoakRun`) lässt alle Effekte laufen, lädt Besucher ein und schiebt und skaliert das
-  Fenster. Alle 30 Sekunden misst er privaten Speicher, verwalteten Heap, Handles und GDI- und USER-Objekte.
-  `SoakAnalysis` vergleicht nach der Aufwärmphase den Median des ersten und des letzten Drittels mit einer
-  Grundtoleranz plus einer Rate pro Stunde. Der Bericht nennt dazu CPU-Last und Frame-Zeiten.
-- **CI:** Ein eigener Job läuft bei jedem Push 5 Minuten. Das fängt nur schnelle Lecks. Längere Läufe gehen über „Run
-  workflow“ (höchstens etwa 5,5 Stunden).
-- **8 Stunden:** Der volle Lauf geht auf einem echten PC: `pwsh tools/ci/soak-test.ps1 -Minutes 480`.
+- **Core:** `LongRunTests` simulates ten minutes with all effects, visitors, and constantly changing windows. Managed heap must not grow after warm-up.
+- **App:** `--soak=<minutes>` (`SoakRun`) runs all effects, invites visitors, moves and resizes the window. Every 30 s measures private memory, managed heap, handles, GDI and USER objects. `SoakAnalysis` compares median of first vs last third after warm-up with base tolerance plus rate per hour. Report includes CPU and frame times.
+- **CI:** Dedicated job runs 5 minutes on every push. Catches only fast leaks. Longer runs via workflow dispatch (~5.5 h max).
+- **8 hours:** Full run on a real PC: `pwsh tools/ci/soak-test.ps1 -Minutes 480`.
 
-## Konsequenzen
+## Consequences
 
-- Was Windows hier wirklich tut, lässt sich im CI nicht nachstellen: Sperre, Standby, Spiele im exklusiven Vollbild,
-  Remotedesktop, Startmenü. Das prüft die Checkliste M13.
-- Die Budgets aus PLAN.md, Abschnitt 9 (CPU unter 3 %, Frame unter 2,5 ms auf einer iGPU) gelten für echte Hardware.
-  Der CI-Runner rendert mit WARP auf der CPU und liefert nur Vergleichswerte.
+- Windows behavior here cannot be replayed in CI: lock, standby, exclusive fullscreen games, RDP, Start menu. Checklist M13.
+- PLAN.md section 9 budgets (CPU under 3%, frame under 2.5 ms on iGPU) apply to real hardware. CI runner uses WARP on CPU and yields comparison values only.

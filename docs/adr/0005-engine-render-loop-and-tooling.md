@@ -1,76 +1,51 @@
-# ADR-0005: Engine, Render-Loop und Werkzeuge
+# ADR-0005: Engine, render loop, and tooling
 
-- Status: akzeptiert
-- Datum: 2026-11-11
-- Meilenstein: M3
+- Status: accepted
+- Date: 2026-11-11
+- Milestone: M3
 
-## Kontext
+## Context
 
-Ab M4 kommen die Effekte. Vorher brauchen sie ein Fundament (PLAN.md, M3): fester Zeitschritt,
-Render-Loop mit Idle-Stopp, ein Datenformat zwischen Simulation und GPU, Instancing, Direct2D,
-eine Sandbox und Golden-Images.
+Effects start at M4. Before that they need a foundation (PLAN.md, M3): fixed timestep, render loop with idle stop, a data format between simulation and GPU, instancing, Direct2D, a sandbox, and golden images.
 
-## Entscheidungen
+## Decisions
 
-### 1. Engine in Core, Loop im Host
+### 1. Engine in Core, loop in the host
 
-`SimulationEngine` (Core) kennt Monitore, Fenster, Oberflächen, Wind und die Effekte. Sie läuft mit
-festem Schritt (`FixedStepClock`, 1/120 s, höchstens 8 Schritte pro Frame) und baut pro Frame ein
-`RenderFrame` aus `Sprite`s. Sie ist plattformneutral und läuft identisch in der App, der Sandbox,
-FrameDump und den Tests.
+`SimulationEngine` (Core) knows monitors, windows, surfaces, wind, and effects. It runs with a fixed step (`FixedStepClock`, 1/120 s, at most 8 steps per frame) and builds a `RenderFrame` of `Sprite`s per frame. It is platform-neutral and runs the same in the app, Sandbox, FrameDump, and tests.
 
-Der Render-Loop lebt im `OverlayHost` auf dem Overlay-Thread:
+The render loop lives in `OverlayHost` on the overlay thread:
 
-- **Idle:** blockiert in `GetMessage`. Keine Frames, keine GPU-Arbeit.
-- **Aktiv** (mindestens ein Effekt hat etwas zu tun): leert die Message-Queue ohne zu blockieren und
-  rendert einen Frame pro Durchlauf. Getaktet wird über das Frame-Latency-Waitable der Swap-Chain
-  (MaxFrameLatency 1). Als Schutz vor einer Busy-Loop gilt eine Obergrenze von 240 fps.
-- Hat kein Effekt mehr etwas zu tun, stoppt der Loop selbst und präsentiert noch einen leeren Frame.
+- **Idle:** blocks in `GetMessage`. No frames, no GPU work.
+- **Active** (at least one effect has work): drains the message queue without blocking and renders one frame per pass. Paced by the swap chain’s frame-latency waitable (MaxFrameLatency 1). A 240 fps cap guards against busy-looping.
+- When no effect has work, the loop stops and presents one empty frame.
 
-### 2. Sprites als einziges Format zwischen Simulation und GPU
+### 2. Sprites as the only format between simulation and GPU
 
-Ein `Sprite` ist 48 Bytes: Mitte, halbe Größe, Rotation, Form (Rechteck, weiche Scheibe, Streifen),
-premultiplied Farbe. Alle Partikel-Effekte liefern Sprites. Die GPU zeichnet sie mit einem
-instanzierten Draw aus einem Structured Buffer (`SpriteBatch`). Pro Monitor wird vorher auf der CPU
-gecullt. Flächige Effekte (Nebel, Sonne) bekommen ab M7 eigene Pässe.
+A `Sprite` is 48 bytes: center, half size, rotation, shape (rectangle, soft disc, stripe), premultiplied color. All particle effects output sprites. The GPU draws them with one instanced draw from a structured buffer (`SpriteBatch`). Per monitor, culling happens on the CPU first. Full-screen effects (fog, sun) get their own passes from M7.
 
-Effekte schreiben in Struct-of-Arrays mit fester Kapazität. Damit allokiert der Frame-Loop nichts.
-Geprüft wird das zweimal: im Core-Test (Engine, 600 Frames) und live im Smoke-Test auf Windows (Host
-misst `GC.GetAllocatedBytesForCurrentThread` nach 60 Aufwärm-Frames, Ergebnis: 0 Bytes).
+Effects write struct-of-arrays with fixed capacity so the frame loop allocates nothing. Verified twice: Core test (engine, 600 frames) and live smoke test on Windows (host measures `GC.GetAllocatedBytesForCurrentThread` after 60 warm-up frames: 0 bytes).
 
-### 3. Kalibrier-Tropfen statt sofort Regen
+### 3. Calibration drops instead of rain immediately
 
-`TestDropsEffect` ist ein absichtlich einfacher Effekt: Tropfen fallen, landen auf Kanten, wandern mit
-dem Fenster, fallen beim Schütteln oder Schließen ab und blenden aus. Er prüft jede Engine-Funktion,
-bevor M4 die echte Regen-Optik baut, und bleibt danach als Diagnose-Effekt.
+`TestDropsEffect` is deliberately simple: drops fall, land on edges, move with the window, fall on shake or close, and fade out. It exercises every engine feature before M4 builds real rain visuals and remains a diagnostic effect afterward.
 
 ### 4. Direct2D
 
-`Direct2DCanvas` legt Direct2D über DXGI-Surface-Interop auf dasselbe Device. Gezeichnet wird in jede
-BGRA-Textur, also auch in Swap-Chain-Backbuffer. Genutzt wird es ab M11 (Visitors, Share-Card).
-DirectWrite (Text) kommt mit dem ersten Text.
+`Direct2DCanvas` layers Direct2D over DXGI surface interop on the same device. Drawing goes into any BGRA texture, including the swap-chain back buffer. Used from M11 (visitors, share card). DirectWrite arrives with the first text.
 
-### 5. Werkzeuge
+### 5. Tooling
 
-- **Sandbox** (`tools/Weatherly.Sandbox`): normales Fenster mit Fake-Desktop und ziehbaren
-  Fake-Fenstern, dieselbe Engine und derselbe Renderer wie die App.
-- **FrameDump** (`tools/Weatherly.FrameDump`): spielt JSON-Szenen (`Scenes/*.json`) deterministisch ab
-  und rendert die Capture-Zeitpunkte mit WARP als PNG plus Kontaktbogen.
-- **Golden-Images:** `GoldenImageTests` rendern dieselben Szenen und vergleichen mit
-  `tests/Weatherly.Render.Tests/Goldens/` (Toleranz 2 pro Kanal, höchstens 0,1 % der Pixel).
-  Fehlt ein Golden, schlägt der Test fehl und legt das Bild in die Previews. Übernommen wird es erst
-  nach Sichtprüfung.
+- **Sandbox** (`tools/Sillfall.Sandbox`): normal window with fake desktop and draggable fake windows, same engine and renderer as the app.
+- **FrameDump** (`tools/Sillfall.FrameDump`): plays JSON scenes (`Scenes/*.json`) deterministically and renders capture times with WARP to PNG plus contact sheet.
+- **Golden images:** `GoldenImageTests` render the same scenes and compare to `tests/Sillfall.Render.Tests/Goldens/` (tolerance 2 per channel, at most 0.1% of pixels). Missing a golden fails the test and drops the image in previews. Adoption only after visual review.
 
-### 6. Abweichung: kein Branch `ci-previews/<branch>`
+### 6. Deviation: no `ci-previews/<branch>` branch
 
-PLAN.md sieht vor, dass die CI Vorschauen auf einen eigenen Branch pusht. Die Session darf nur auf
-ihren zugewiesenen Branch schreiben. Ein CI-Job mit Schreibrecht auf andere Branches würde das
-umgehen. Stattdessen landen alle Vorschauen (Render-Tests, FrameDump, Desktop-Screenshots) im
-CI-Artefakt `previews`. Der Agent lädt es herunter und sieht sich die PNGs direkt an. Das erfüllt
-denselben Zweck.
+PLAN.md had CI push previews to a dedicated branch. A session may write only to its assigned branch. A CI job with write access to other branches would bypass that. Instead all previews (render tests, FrameDump, desktop screenshots) go to CI artifact `previews`. The agent downloads it and inspects PNGs directly. Same purpose.
 
-## Konsequenzen
+## Consequences
 
-- Effekte implementieren nur `IEffectSystem` und liefern Sprites. Render-Code brauchen sie nicht.
-- Neue Szenen für Vorschauen und Goldens sind JSON-Dateien, kein Code.
-- Ein Golden ändert sich nur bewusst: Bild prüfen, aus dem Artefakt übernehmen, committen.
+- Effects implement only `IEffectSystem` and output sprites. No render code required in effects.
+- New scenes for previews and goldens are JSON files, not code.
+- A golden changes only deliberately: review image, copy from artifact, commit.

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(SillfallWindowsTargetFramework)</TargetFramework>
+    <SupportedOSPlatformVersion>$(SillfallWindowsMinVersion)</SupportedOSPlatformVersion>
+    <RootNamespace>Sillfall.Audio</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sillfall.Core\Sillfall.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.XAudio2" />
+  </ItemGroup>
+
+</Project>

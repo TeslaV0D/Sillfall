@@ -1,90 +1,81 @@
-# ADR-0015: Sprachen und Barrierefreiheit
+# ADR-0015: Localization and accessibility
 
-- Status: akzeptiert
-- Datum: 2026-11-12
-- Meilenstein: M12
+- Status: accepted
+- Date: 2026-11-12
+- Milestone: M12
 
-## Kontext
+## Context
 
-PLAN.md, M12 verlangt:
+PLAN.md, M12 requires:
 
-- Narrator-Beschriftungen,
-- hohen Kontrast,
-- Reduced Motion,
-- Zustände, die nicht nur an der Farbe hängen,
-- Texte als `.resw` auf Englisch und Deutsch.
+- Narrator labels,
+- high contrast handling,
+- reduced motion,
+- states not conveyed by color alone,
+- `.resw` strings in English and German.
 
-Abnahme: Accessibility Insights ohne kritische Befunde.
+Sign-off: Accessibility Insights with no critical findings.
 
-## Entscheidungen
+## Decisions
 
-### 1. Texte: `.resw`, aber ohne das Ressourcensystem von Windows
+### 1. Strings: `.resw` without Windows MRT
 
-Alle Texte der Oberfläche stehen in `src/Weatherly.Core/Localization/Strings/{en-US,de-DE}/Resources.resw`. `Texts`
-(Core) liest sie mit einem kleinen ResX-Leser aus den eingebetteten Dateien. WinUIs MRT nutzen wir nicht. Gründe:
+All UI strings live in `src/Sillfall.Core/Localization/Strings/{en-US,de-DE}/Resources.resw`. `Texts` (Core) reads them with a small ResX reader from embedded files. We do not use WinUI MRT because:
 
-- verpackt, unverpackt und in Tests gleich,
-- auch Core-Texte sind übersetzbar (Tray-Menü, Pausengründe, Vorlagennamen, Erfolge),
-- keine `resources.pri`-Erzeugung im Build.
+- same behavior packaged, unpackaged, and in tests,
+- Core strings are translatable too (tray menu, pause reasons, template names, achievements),
+- no `resources.pri` generation in build.
 
-Das Format bleibt `.resw`, also können Übersetzungswerkzeuge es bearbeiten.
+Format stays `.resw` so translation tools can edit it.
 
-### 2. Sprache
+### 2. Language
 
-- **Wahl:** Die Sprache folgt Windows (Anzeigesprache) oder der Einstellung „Erweitert → Sprache“.
-- **Wechsel:** Er wirkt sofort. Die offene Seite wird neu gebaut, Menüs und Flyout zeigen die Sprache beim nächsten
-  Öffnen.
-- **Fehlende Texte:** Englisch ist die Basis. Fehlt ein deutscher Text, erscheint der englische. Ein unbekannter
-  Schlüssel erscheint als er selbst, damit er auffällt.
-- **Bleiben englisch:** Diagnosefenster und Smoke-Bericht. Das sind Werkzeuge für Entwickler.
+- **Choice:** Follows Windows display language or Advanced → Language.
+- **Switch:** Immediate. Open page rebuilds; menus and flyout update on next open.
+- **Missing:** English is fallback. Missing German shows English. Unknown keys show as themselves to surface mistakes.
+- **Stay English:** Diagnostics window and smoke report (developer tools).
 
-### 3. Tests halten die Sprachen zusammen
+### 3. Tests keep languages aligned
 
-`LocalizationTests` prüft:
+`LocalizationTests` checks:
 
-- gleiche Schlüssel in beiden Dateien,
-- keine leeren Texte,
-- gleiche Platzhalter,
-- Deutsch wirklich übersetzt,
-- jeder Schlüssel, den der Code per `Texts.Get`/`Texts.Format` verlangt, existiert (aus den Quellen gelesen),
-- jeder aus Enums gebaute Schlüssel existiert.
+- same keys in both files,
+- no empty strings,
+- same placeholders,
+- German actually translated,
+- every key used via `Texts.Get`/`Texts.Format` exists (parsed from sources),
+- every enum-built key exists.
 
-Ein neuer Text ohne Übersetzung bricht also den Build.
+A new string without translation breaks the build.
 
 ### 4. Narrator
 
-- **Namen:** Jedes Bedienelement bekommt einen Namen (`AutomationProperties.Name`). Regler, Schalter und Auswahlen
-  tragen ihre Beschriftung. Die Regler im Flyout heißen „Regen, Stärke“. Die Effekt-Ausklapper tragen den Effektnamen.
-- **Bilder:** Die Besucherbilder tragen den Besuchernamen. Reine Deko-Icons sind für Screenreader ausgeblendet.
-- **Prüfung:** Der Smoke-Test läuft jede Einstellungsseite und das Flyout ab. Hat ein per Tab erreichbares
-  Bedienelement laut UI Automation keinen Namen, schlägt er fehl (`AccessibilityCheck`).
-- **Besucher:** Den Weg für Narrator haben M11 und ADR-0014 gebaut: Tooltip, Tray-Menü, Strg+Alt+V, Hinweis.
+- **Names:** Every control gets `AutomationProperties.Name`. Sliders, toggles, and combos carry their labels. Flyout sliders: “Rain, intensity”. Effect expanders carry effect name.
+- **Images:** Visitor images carry character name. Decorative icons are hidden from screen readers.
+- **Check:** Smoke test walks every settings page and the flyout. Any tab-focusable control without a name fails (`AccessibilityCheck`).
+- **Visitors:** Path for Narrator from M11 and ADR-0014: tooltip, tray menu, Ctrl+Alt+V, hint.
 
-### 5. Hoher Kontrast
+### 5. High contrast
 
-Die Oberfläche nutzt nur Theme-Ressourcen. Im hohen Kontrast übernimmt WinUI deshalb die Systemfarben.
+UI uses only theme resources. In high contrast, WinUI uses system colors.
 
-Halbtransparentes Wetter über dem Bildschirm senkt aber genau den Kontrast, den diese Nutzer eingeschaltet haben.
-Darum pausiert das Wetter im hohen Kontrast. Das lässt sich unter „Erweitert“ abschalten, und die Erkennung läuft über
-`SPI_GETHIGHCONTRAST`. Reduced Motion gibt es seit M9.
+Semi-transparent weather over the screen lowers contrast users enabled. Weather pauses in high contrast. Can be disabled under Advanced; detection via `SPI_GETHIGHCONTRAST`. Reduced motion since M9.
 
-### 6. Zustände nicht nur über Farbe
+### 6. State beyond color
 
-Jeder Zustand hat Text oder Form:
+Every state has text or shape:
 
-- Schalter zeigen „An/Aus“.
-- Erfolge zeigen Häkchen oder Kreis und „(noch nicht)“.
-- Die Sammlung sagt „Noch nicht getroffen“.
-- Der Sync-Status ist Text.
-- Der Korb wird beim Treffer größer, nicht nur heller.
+- Toggles show On/Off.
+- Achievements show check or circle and “(not yet)”.
+- Collection says “Not met yet”.
+- Sync status is text.
+- Basket grows on hit, not only brighter.
 
-### 7. Teilen
+### 7. Share
 
-Die Share Card öffnet jetzt auch das Teilen-Fenster von Windows. Für Desktop-Apps geht das über das Fenster-Handle
-(`DataTransferManagerInterop`). Das Bild wird als PNG-Datei und als Bitmap übergeben.
+Share card now opens Windows share UI. For desktop apps via window handle (`DataTransferManagerInterop`). Image passed as PNG file and bitmap.
 
-## Konsequenzen
+## Consequences
 
-- Neue Texte kommen immer über `Texts.Get("Bereich.Name")` in beide `.resw`-Dateien.
-- Accessibility Insights ist ein Werkzeug auf echtem Windows. Der Smoke-Test deckt die häufigste kritische Klasse ab
-  (Bedienelemente ohne Namen). Den Rest prüft die Checkliste M12.
+- New strings always via `Texts.Get("Area.Name")` in both `.resw` files.
+- Accessibility Insights needs real Windows. Smoke test covers the most common critical class (unnamed controls). Rest is checklist M12.

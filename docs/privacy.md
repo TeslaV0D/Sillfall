@@ -2,14 +2,14 @@
 
 Last updated: 12 November 2026.
 
-This policy describes Weatherly for Windows (the working title; the name on the Microsoft Store may differ).
+This policy describes Sillfall for Windows.
 The German text is [Datenschutzerklärung](privacy.de.md).
 
-Contact: [GitHub issues](https://github.com/TeslaV0D/weatherly_windows/issues).
+Contact: [GitHub issues](https://github.com/TeslaV0D/Sillfall/issues).
 
 ## What the app does
 
-Weatherly draws animated weather on top of the open windows. Clicks pass through the weather.
+Sillfall draws animated weather on top of the open windows. Clicks pass through the weather.
 There is no account, no advertising, and no analytics.
 
 ## Data that stays on this PC
@@ -22,14 +22,14 @@ For an app rule, and to notice that the Start menu or search is in front, the ap
 of that process (for example `notepad.exe`). The file name is kept in the settings only when you add
 a rule. It is not sent anywhere.
 
-Settings, the visitor collection and error reports are files under `%LOCALAPPDATA%\Weatherly`
+Settings, the visitor collection and error reports are files under `%LOCALAPPDATA%\Sillfall`
 (`settings.json`, `collection.json`, and `logs`). An error report contains the version, the Windows
 version, the architecture and the stack trace. The user name and the profile path are replaced before
 the report is written. Reports are not uploaded. You can open the folder from Settings, Advanced,
 and you can delete it.
 
 A packaged install keeps those files with the app; uninstalling the package removes them.
-An unpackaged run uses the real `%LOCALAPPDATA%\Weatherly` folder, which stays until you delete it.
+An unpackaged run uses the real `%LOCALAPPDATA%\Sillfall` folder, which stays until you delete it.
 
 The visitor share card is a picture of names and points. It leaves the PC only if you copy it,
 save it or share it yourself. It does not contain the desktop or window titles.

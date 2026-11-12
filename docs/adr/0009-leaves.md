@@ -1,70 +1,56 @@
-# ADR-0009: Laub
+# ADR-0009: Leaves
 
-- Status: akzeptiert (Optik vorbehaltlich Boss-Abnahme)
-- Datum: 2026-11-11
-- Meilenstein: M6
+- Status: accepted (visuals subject to maintainer sign-off)
+- Date: 2026-11-11
+- Milestone: M6
 
-## Kontext
+## Context
 
-PLAN.md, Abschnitt 4.3:
+PLAN.md, section 4.3:
 
-- Blätter mit Flatter-Physik und Pseudo-3D-Wenden,
-- Liegen auf Oberflächen mit Obergrenze pro 100 px,
-- Cursor-Böe und Schütteln.
+- Leaves with flutter physics and pseudo-3D tumbling,
+- resting on surfaces with a cap per 100 px,
+- cursor gust and shake.
 
-## Entscheidungen
+## Decisions
 
-### 1. Blattform als Sprite-Form
+### 1. Leaf shape as a sprite form
 
-Wie bei den Schneeflocken zeichnet der Sprite-Shader die Blätter direkt (`SpriteShape.Leaf`). Es gibt vier
-Varianten: spitzes Oval, Ahorn, Eiche und schmales Blatt. Alle haben eine dunklere Mittelrippe und einen
-Stiel. Es braucht keine Textur und kein Asset.
+Like snowflakes, the sprite shader draws leaves directly (`SpriteShape.Leaf`). Four variants: pointed oval, maple, oak, and narrow leaf. All have a darker midrib and stem. No texture or asset.
 
-Die Farben kommen aus einer eigenen Herbstpalette: Rot, Orange, Goldgelb, Ocker, Braun und ein spätes
-Grün. Eine eigene Farbe in den Einstellungen ersetzt die Palette.
+Colors come from a dedicated autumn palette: red, orange, golden yellow, ochre, brown, and late green. A custom color in settings replaces the palette.
 
-### 2. Flatter-Physik
+### 2. Flutter physics
 
-- **Wenden:** Jedes Blatt hat eine Wende-Phase. Seine Breite folgt |cos(Phase)|, darunter liegt eine
-  Untergrenze, damit es nie ganz verschwindet. Die Rückseite ist etwas dunkler.
-- **Seitliche Kraft:** Der Auftrieb folgt sin(Phase) und schiebt das Blatt seitlich. Das ergibt das Pendeln.
-- **Fallen:** Steht das Blatt flach zur Luft (cos² groß), fällt es langsamer.
-- **Bremsen:** Luftwiderstand zieht das Blatt zur Windgeschwindigkeit. Die Fallgeschwindigkeit liegt so
-  bei etwa 80–100 px/s × DPI.
+- **Tumble:** Each leaf has a tumble phase. Width follows |cos(phase)| with a floor so it never vanishes. The back is slightly darker.
+- **Lateral force:** Lift follows sin(phase) and pushes sideways for the sway.
+- **Falling:** When the leaf is flat to the air (large cos²), it falls slower.
+- **Drag:** Air resistance pulls toward wind speed. Fall speed ends around 80–100 px/s × DPI.
 
-### 3. Tiefe
+### 3. Depth
 
-70 % der Blätter sind nah. Der Rest ist kleiner, dunkler und fällt hinter den Fenstern. Das ist dieselbe
-Regel wie bei Regen und Schnee.
+70% of leaves are near. The rest are smaller, darker, and fall behind windows. Same rule as rain and snow.
 
-### 4. Liegen
+### 4. Resting
 
-- **Lage:** Ein Blatt liegt flach entlang der Kante, leicht verkippt, und wandert mit seinem Fenster.
-- **Verdeckung:** Verdeckt ein höheres Fenster die Stelle, ist das Blatt dort nicht zu sehen.
-- **Obergrenze:** Eine Kante ist in feste 100-px-Abschnitte geteilt. Liegen in einem Abschnitt schon vier
-  Blätter, rutscht dort das älteste ab. Ein Fenster rund um jede Landestelle reichte nicht: Es ließ Haufen
-  mit bis zu sieben Blättern pro 100 px zu. Ein Test hat das gefunden.
-- **Nach dem Ausschalten:** Liegende Blätter blenden in 12 s aus. Danach stoppt der Render-Loop.
+- **Pose:** A leaf lies flat along the edge, slightly tilted, and moves with its window.
+- **Occlusion:** If a higher window covers the spot, the leaf is not visible there.
+- **Cap:** An edge is split into fixed 100 px segments. Four leaves per segment max; the oldest is pushed off when a fifth lands. A per-window cap around each landing allowed up to seven leaves per 100 px; a test found that.
+- **After turn-off:** Resting leaves fade over 12 s. Then the render loop stops.
 
-### 5. Cursor-Böe
+### 5. Cursor gust
 
-- **Abtasten:** `OverlayHost` liest einmal pro Frame `GetCursorPos`, ohne Hook. Das passiert nur, solange
-  der Render-Loop läuft.
-- **Glätten:** `CursorMotion` glättet die Geschwindigkeit über etwa 50 ms. Ein Sprung schneller als
-  20 000 px/s ist ein Teleport und keine Böe.
-- **Wirkung:** Ab 600 px/s × DPI bekommen Blätter im Umkreis von 90 px × DPI einen Stoß. Er wird nach
-  außen schwächer. Liegende Blätter heben dabei ab.
+- **Sampling:** `OverlayHost` reads `GetCursorPos` once per frame, no hook. Only while the render loop runs.
+- **Smoothing:** `CursorMotion` smooths velocity over ~50 ms. A jump faster than 20,000 px/s is teleport, not a gust.
+- **Effect:** From 600 px/s × DPI, leaves within 90 px × DPI get a push, weaker outward. Resting leaves lift off.
 
-Schwelle und Reichweite sind geschätzt. Die Abnahme muss sie bestätigen.
+Threshold and radius are estimates. Sign-off must confirm.
 
-### 6. Schütteln und Schließen
+### 6. Shake and close
 
-Schütteln wirft alle Blätter des Fensters hoch und zur Seite. Schließen lässt sie fallen. Wie beim Schnee
-landen sie nicht wieder auf dem Fenster, von dem sie kommen.
+Shake throws all leaves on the window up and sideways. Close lets them fall. Like snow, they do not land again on the window they came from.
 
-## Konsequenzen
+## Consequences
 
-- Der Cursor steht jetzt allen Effekten zur Verfügung (`SimulationContext.Cursor`, `CursorVelocity`).
-  Gras (M8) kann ihn fürs Wegdrücken nutzen.
-- **Sandbox:** Mit `--effect=leaves --scatter-leaves` oder den Tasten L und K lassen sich die Blätter
-  testen. Die Maus über eine Kante ziehen oder ein Fenster schütteln.
+- Cursor is available to all effects (`SimulationContext.Cursor`, `CursorVelocity`). Grass (M8) can use it for pushing aside.
+- **Sandbox:** `--effect=leaves --scatter-leaves` or keys L and K to test. Drag the mouse over an edge or shake a window.

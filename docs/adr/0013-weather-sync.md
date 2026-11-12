@@ -1,103 +1,86 @@
-# ADR-0013: Wetter-Sync
+# ADR-0013: Weather sync
 
-- Status: akzeptiert
-- Datum: 2026-11-12
-- Meilenstein: M10
+- Status: accepted
+- Date: 2026-11-12
+- Milestone: M10
 
-## Kontext
+## Context
 
-PLAN.md, Abschnitt 5: Die Effekte sollen echtem Wetter folgen. Gefordert sind:
+PLAN.md, section 5: Effects should follow real weather. Required:
 
-- Provider MET Norway,
-- Standort aus der Ortung oder einer offline gesuchten Stadt,
-- Mapping-Tabelle,
-- Invert,
-- Gewicht pro Element,
-- Pause bei Handeingriff,
-- Pflicht-Attribution.
+- MET Norway provider,
+- location from device geolocation or offline city search,
+- mapping table,
+- invert,
+- weight per element,
+- pause on manual override,
+- mandatory attribution.
 
-## Entscheidungen
+## Decisions
 
-### 1. Netzwerk nur im Provider
+### 1. Network only in the provider
 
-`IWeatherProvider` (Core) ist der Vertrag. `MetNorwayProvider` in `Weather/Providers/` ist die einzige Klasse mit
-Netzwerk-Code (Privacy-Test).
+`IWeatherProvider` (Core) is the contract. `MetNorwayProvider` in `Weather/Providers/` is the only class with network code (privacy test).
 
-- **Rundung:** Der Provider rundet den Standort selbst auf eine Dezimale (etwa 11 km), bevor er die Adresse baut.
-  Getestet in `PrivacyInvariantTests` und `WeatherSyncTests`.
-- **User-Agent:** `<AppInfo.Name>/<Version> github.com/TeslaV0D/weatherly_windows`. Die MET-Bedingungen verlangen
-  eine Kennung mit Kontakt. Über den Nutzer steht darin nichts.
-- **Caching:** `If-Modified-Since` mit dem letzten `Last-Modified`. Bei 304 bleibt die Vorhersage. Fehler kommen als
-  Ergebnis zurück, nie als Exception.
+- **Rounding:** The provider rounds location to one decimal (~11 km) before building the URL. Tested in `PrivacyInvariantTests` and `WeatherSyncTests`.
+- **User-Agent:** `<AppInfo.Name>/<Version> github.com/TeslaV0D/Sillfall`. MET terms require an identifier with contact. Nothing about the user is included.
+- **Caching:** `If-Modified-Since` with last `Last-Modified`. On 304 the forecast is kept. Errors return as results, never as exceptions.
 
-### 2. Polling als Zustandsmaschine ohne Uhr
+### 2. Polling as a state machine without a clock
 
-`WeatherSync` bekommt die Zeit übergeben. So lässt sich der Plan testen, ohne zu warten:
+`WeatherSync` receives time from outside so the schedule is testable without waiting:
 
-- nächste Anfrage laut `Expires`, begrenzt auf 15 bis 60 Minuten,
-- Backoff 1, 2, 4 … bis 30 Minuten,
-- offline gilt die letzte Vorhersage weiter (Zustand `Offline`),
-- ein anderer Ort fängt neu an.
+- next request per `Expires`, clamped 15–60 minutes,
+- backoff 1, 2, 4 … up to 30 minutes,
+- offline keeps the last forecast (`Offline` state),
+- a new location starts fresh.
 
-### 3. Tag und Nacht
+### 3. Day and night
 
-Das Compact-Format hat kein `is_day`, und viele Symbole tragen kein `_day`/`_night`. Deshalb rechnet `SolarPosition`
-den Sonnenstand mit den Almanach-Formeln (auf etwa 1° genau). Getestet mit Berlin, Tromsø (Polarnacht), Sydney und
-dem Äquator.
+Compact format has no `is_day`, and many symbols lack `_day`/`_night`. `SolarPosition` computes sun altitude with almanac formulas (~1° accuracy). Tested with Berlin, Tromsø (polar night), Sydney, and the equator.
 
-### 4. Nebel und Böen ohne Messwert
+### 4. Fog and gusts without direct fields
 
-`fog_area_fraction` und Böen gibt es nur im Complete-Format.
+`fog_area_fraction` and gusts exist only in the Complete format.
 
-- **Nebel:** aus dem Symbol `fog`, plus einer Dunst-Regel aus Feuchte, Wind und Bewölkung.
-- **Böigkeit:** aus der Windgeschwindigkeit.
+- **Fog:** from symbol `fog`, plus a haze rule from humidity, wind, and cloud cover.
+- **Gustiness:** from wind speed.
 
-Der Wechsel auf das Complete-Format lohnt sich derzeit nicht: Die Antwort wäre etwa dreimal so groß.
+Switching to Complete is not worth it yet: response would be ~3× larger.
 
-### 5. Frost hält den Schnee
+### 5. Frost keeps snow on the ground
 
-Bisher schmolz Schnee, sobald die Intensität 0 war. Für „Schmelzen bei > 2 °C“ hat `SnowEffect` jetzt `Frozen`
-(über `OverlayOptions.SnowStays`). Bei Frost bleibt liegender Schnee, Regen taut ihn weiter. Das gilt nur, solange
-der Sync den Schnee steuert, also nicht bei einem pausierten Schnee oder bei Gewicht 0.
+Snow used to melt as soon as intensity hit 0. For “melt above 2 °C”, `SnowEffect` now has `Frozen` (via `OverlayOptions.SnowStays`). With frost, lying snow remains; rain still melts it. Applies only while sync controls snow, not when snow is paused or weight is 0.
 
 ### 6. Invert
 
-Die Regeln stehen in `docs/weather-mapping.md`:
+Rules are in `docs/weather-mapping.md`:
 
-- klar → Regen,
-- nass → Sonne,
-- Hitze → Schnee,
-- Frost taut,
-- Nebel verschwindet,
-- Wind und Laub bleiben.
+- clear → rain,
+- wet → sun,
+- heat → snow,
+- frost thaws,
+- fog clears,
+- wind and leaves unchanged.
 
-PLAN.md nennt nur „spiegeln“. Diese Auslegung ist meine und wird bei der Abnahme bestätigt.
+PLAN.md only says “mirror”. This interpretation is provisional pending maintainer sign-off.
 
-### 7. Städteliste offline
+### 7. Offline city list
 
-GeoNames `cities15000` (CC BY 4.0, im Plan vorgesehen) wird von `tools/cities/build_cities.py` zu einer gzip-TSV
-mit 1,5 MB verdichtet und als Ressource in Core eingebettet.
+GeoNames `cities15000` (CC BY 4.0, per plan) is compressed by `tools/cities/build_cities.py` to a 1.5 MB gzip TSV embedded as a Core resource.
 
-- **Suchschlüssel:** Das Skript legt sie fertig an: Name, ASCII-Name und lateinische Alternativnamen ohne Akzente,
-  dazu die deutsche Schreibweise mit ae/oe/ue. So findet „Muenchen“, „München“ und „Munich“ dieselbe Stadt.
-- **Speicher:** etwa 5 MB, geladen erst beim ersten Suchen.
-- **Postleitzahlen:** Die PLZ-Suche (GeoNames Postal, Download pro Land) ist laut Plan optional. Sie ist
-  zurückgestellt und nicht Teil von M10.
+- **Search keys:** Built by the script: name, ASCII name, Latin alternate names without accents, plus German transliteration with ae/oe/ue so “Muenchen”, “München”, and “Munich” find the same city.
+- **Memory:** ~5 MB, loaded on first search.
+- **Postal codes:** GeoNames postal lookup (per-country download) is optional in the plan. Deferred, not part of M10.
 
-### 8. In der App
+### 8. In the app
 
-- **`AppController`:** Er sieht alle 30 Sekunden nach, ob eine Abfrage fällig ist, und wendet die Vorhersage an. So
-  folgen die Effekte auch dem Stundenwechsel.
-- **Pause bei Handeingriff:** Effekt-Regler, Wind, Tray-Menü und Flyout gehen über `SetIntensity`/`SetWind`.
-  Läuft der Sync, pausiert jeder dieser Eingriffe das betroffene Element. Ein Banner bietet „Resume sync“ an.
-- **Ortung:** `DeviceLocation` nutzt den Windows-Ortungsdienst mit 5 km Genauigkeit. Windows fragt nach der
-  Erlaubnis, im MSIX-Manifest steht die Capability `location`. Die Position wird sofort gerundet und nur im
-  Speicher gehalten.
-- **Smoke-Test:** Er bekommt keinen Provider, der Sync kann dort also nie Netzwerk nutzen.
+- **`AppController`:** Every 30 seconds checks whether a fetch is due and applies the forecast so effects follow the hour boundary.
+- **Pause on manual override:** Effect sliders, wind, tray menu, and flyout go through `SetIntensity`/`SetWind`. While sync runs, each such change pauses that element. A banner offers “Resume sync”.
+- **Location:** `DeviceLocation` uses the Windows location service at 5 km accuracy. Windows prompts for permission; MSIX manifest has `location` capability. Position is rounded immediately and held only in memory.
+- **Smoke test:** No provider; sync never uses the network there.
 
-## Konsequenzen
+## Consequences
 
-- Die Attribution „Weather data: MET Norway (CC BY 4.0)“ und „City list: GeoNames (CC BY 4.0)“ steht in den
-  Sync-Einstellungen und auf der Info-Seite.
-- Ob die Grenzen der Mapping-Tabelle sich gut anfühlen (8 mm/h als „voll“, Nebel 0,75, 15 m/s als voller Wind),
-  zeigt erst echtes Wetter. Die Werte stehen als Konstanten in `WeatherMapper`.
+- Attribution “Weather data: MET Norway (CC BY 4.0)” and “City list: GeoNames (CC BY 4.0)” on sync settings and About.
+- Whether mapping thresholds feel right (8 mm/h as “full”, fog 0.75, 15 m/s full wind) needs real weather. Values are constants in `WeatherMapper`.

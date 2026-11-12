@@ -1,74 +1,81 @@
 # Assets
 
-Jedes Asset im Repo braucht hier einen Eintrag mit Quelle, Lizenz und Autor.
-Der Test `AssetRegistryTests` (läuft im CI-Job `core`) schlägt fehl, wenn
+Every asset in the repository needs a row here with source, license, and author.
+`AssetRegistryTests` (CI job `core`) fails when:
 
-- eine Mediendatei (Bild, Audio, Font) oder irgendeine Datei in einem `Assets/`-Ordner hier fehlt,
-- oder ein Eintrag auf eine Datei zeigt, die es nicht mehr gibt.
+- a media file (image, audio, font) or any file under an `Assets/` folder is missing here, or
+- an entry points at a file that no longer exists.
 
-**Regeln**
+**Rules**
 
-- Keine Charaktere, Namen, Grafiken, Sounds, Texte oder Screenshots der Referenz-App.
-- Erlaubt: selbst erstellt (SVG, prozedural) oder CC0. Andere Lizenzen nur nach Rücksprache mit Boss.
-- Erste Spalte: Pfad relativ zum Repo-Root in Backticks. Ein Pfad mit `/` am Ende deckt den ganzen Ordner ab.
-  Ordner-Einträge sind nur für einheitlich erzeugte Dateien gedacht (z. B. Golden-Images aus dem eigenen Renderer).
+- All characters, names, graphics, sounds, and copy are original to Sillfall or properly licensed (CC0 / MIT).
+- Allowed: self-made (SVG, procedural) or CC0. Other licenses only after maintainer approval.
+- First column: path relative to the repo root in backticks. A trailing `/` covers a whole folder.
+  Folder entries are for uniformly generated files (for example golden images from our own renderer).
 
-## Effekt-Icons
+## Effect icons
 
-Die sechs Effekt-Symbole in Einstellungen und Flyout (Tropfen, Schneestern, Blatt, Nebelstreifen, Sonne, Grashalme)
-sind selbst gezeichnete Pfade im Code (`Ui.IconPath` in `src/Weatherly.App/Ui.cs`), MIT (Projektlizenz),
-Weatherly-Projekt. Keine Dateien, daher kein Tabelleneintrag.
+The six effect symbols in settings and the flyout (drop, snowflake, leaf, fog band, sun, grass blades)
+are hand-drawn paths in code (`Ui.IconPath` in `src/Sillfall.App/Ui.cs`), MIT (project license),
+Sillfall project. No files, so no table row.
 
-## App-Icons
+## App icons
 
-Prozedural gezeichnet (Wolke mit drei Regentropfen auf einer abgerundeten Verlaufsfläche).
-Neu erzeugen mit `python3 tools/icons/generate_app_icons.py` (braucht Pillow).
+Procedurally drawn (cloud with three raindrops on a rounded gradient).
+Regenerate with `python3 tools/icons/generate_app_icons.py` (requires Pillow).
 
-| Datei | Quelle | Lizenz | Autor |
+| File | Source | License | Author |
 |---|---|---|---|
-| `src/Weatherly.App/Assets/AppIcon.ico` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/SplashScreen.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/Square150x150Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/Square44x44Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/Square44x44Logo.targetsize-24_altform-unplated.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/Square44x44Logo.targetsize-48_altform-lightunplated.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/StoreLogo.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.App/Assets/Wide310x150Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Sillfall.App/Assets/AppIcon.ico` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/SplashScreen.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/Square150x150Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/Square44x44Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/Square44x44Logo.targetsize-24_altform-unplated.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/Square44x44Logo.targetsize-48_altform-lightunplated.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/StoreLogo.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
+| `src/Sillfall.App/Assets/Wide310x150Logo.scale-200.png` | `tools/icons/generate_app_icons.py` | MIT (project license) | Sillfall project |
 
-## Golden-Images
+## README media
 
-Referenzbilder der Render-Tests (`GoldenImageTests`), gerendert vom eigenen Renderer mit WARP aus den
-Szenen in `tools/Weatherly.FrameDump/Scenes/`. Neue oder geänderte Goldens werden nach Sichtprüfung aus
-dem CI-Artefakt `previews` (`render/golden-actual-*.png`) übernommen.
+WARP preview frames copied from golden tests for the GitHub README gallery.
 
-| Datei | Quelle | Lizenz | Autor |
+| File | Source | License | Author |
 |---|---|---|---|
-| `tests/Weatherly.Render.Tests/Goldens/` | `GoldenImageTests` (eigener Renderer, WARP) | MIT (Projektlizenz) | Weatherly-Projekt |
+| `docs/media/` | `tests/Sillfall.Render.Tests/Goldens/` (own renderer, WARP) | MIT (project license) | Sillfall project |
+
+## Golden images
+
+Reference frames for render tests (`GoldenImageTests`), produced by our renderer with WARP from scenes in
+`tools/Sillfall.FrameDump/Scenes/`. New or changed goldens are taken from the CI `previews` artifact
+(`render/golden-actual-*.png`) after visual review.
+
+| File | Source | License | Author |
+|---|---|---|---|
+| `tests/Sillfall.Render.Tests/Goldens/` | `GoldenImageTests` (own renderer, WARP) | MIT (project license) | Sillfall project |
 
 ## Visitors
 
-Eigene Figuren und Requisiten, flach-geometrisch, von Boss am 12.11.2026 abgenommen (ADR-0014). Gezeichnet werden sie
-mit dem SVG-Renderer von Direct2D (`VisitorPainter`). Augen, Füße und Gesichtsausdrücke sind benannte Teile bzw.
-werden im Code aus den Augenpositionen erzeugt (`VisitorArt`).
+Original flat-geometric characters and props (ADR-0014). Drawn with Direct2D’s SVG renderer (`VisitorPainter`).
+Eyes, feet, and expressions are named parts or derived in code (`VisitorArt`).
 
-| Datei | Quelle | Lizenz | Autor |
+| File | Source | License | Author |
 |---|---|---|---|
-| `src/Weatherly.Render/Visitors/pip.svg` | Visitor Pip (Schnecke), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/tuck.svg` | Visitor Tuck (Pinguin), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/bristle.svg` | Visitor Bristle (Igel), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/lumen.svg` | Visitor Lumen (Glühwürmchen), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/sol.svg` | Visitor Sol (Katze), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/drift.svg` | Visitor Drift (Wölkchen), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/sprout.svg` | Visitor Sprout (Topfpflanze), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/nim.svg` | Visitor Nim (Maus), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/umbrella.svg` | Requisit Schirm, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/snowball.svg` | Requisit Schneeball, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/lantern.svg` | Requisit Laterne, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/leaf.svg` | Requisit Blatt, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
-| `src/Weatherly.Render/Visitors/box.svg` | Sammelkorb, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Sillfall.Render/Visitors/pip.svg` | Visitor Pip (snail), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/tuck.svg` | Visitor Tuck (penguin), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/bristle.svg` | Visitor Bristle (hedgehog), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/lumen.svg` | Visitor Lumen (firefly), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/sol.svg` | Visitor Sol (cat), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/drift.svg` | Visitor Drift (cloud), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/sprout.svg` | Visitor Sprout (potted plant), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/nim.svg` | Visitor Nim (mouse), hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/umbrella.svg` | Prop umbrella, hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/snowball.svg` | Prop snowball, hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/lantern.svg` | Prop lantern, hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/leaf.svg` | Prop leaf, hand-drawn SVG | MIT (project license) | Sillfall project |
+| `src/Sillfall.Render/Visitors/box.svg` | Collection box, hand-drawn SVG | MIT (project license) | Sillfall project |
 
-## Daten
+## Data
 
-| Datei | Quelle | Lizenz | Autor |
+| File | Source | License | Author |
 |---|---|---|---|
-| `src/Weatherly.Core/Weather/Cities/cities15000.tsv.gz` | GeoNames `cities15000`, verdichtet mit `tools/cities/build_cities.py` | CC BY 4.0 (Attribution in der App) | GeoNames (geonames.org) |
+| `src/Sillfall.Core/Weather/Cities/cities15000.tsv.gz` | GeoNames `cities15000`, packed with `tools/cities/build_cities.py` | CC BY 4.0 (attribution in app) | GeoNames (geonames.org) |

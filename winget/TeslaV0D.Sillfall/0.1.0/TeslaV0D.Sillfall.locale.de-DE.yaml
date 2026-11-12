@@ -1,0 +1,14 @@
+PackageIdentifier: TeslaV0D.Sillfall
+PackageVersion: 0.1.0
+PackageLocale: de-DE
+Publisher: Sillfall Development
+PrivacyUrl: https://github.com/TeslaV0D/Sillfall/blob/main/docs/privacy.de.md
+PackageName: Sillfall
+License: MIT
+ShortDescription: Animiertes Wetter über deinen offenen Fenstern. Klicks gehen hindurch.
+Description: |-
+  Sillfall zeichnet Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras über die offenen Fenster.
+  Das Wetter liegt auf den Kanten und macht Platz für ein Vollbildspiel, den Sperrbildschirm und das Startmenü.
+  Klicks gehen hindurch. Der Wetter-Sync ist optional und sendet nur einen auf etwa 11 km gerundeten Standort.
+ManifestType: locale
+ManifestVersion: 1.9.0

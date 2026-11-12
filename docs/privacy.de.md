@@ -2,14 +2,13 @@
 
 Stand: 12. November 2026.
 
-Diese Erklärung beschreibt Weatherly für Windows (der Arbeitstitel; der Name im Microsoft Store kann
-abweichen). Die englische Fassung ist [Privacy policy](privacy.md).
+Diese Erklärung beschreibt Sillfall für Windows. Die englische Fassung ist [Privacy policy](privacy.md).
 
-Kontakt: [GitHub-Issues](https://github.com/TeslaV0D/weatherly_windows/issues).
+Kontakt: [GitHub-Issues](https://github.com/TeslaV0D/Sillfall/issues).
 
 ## Was die App tut
 
-Weatherly zeichnet animiertes Wetter über die offenen Fenster. Klicks gehen durch das Wetter hindurch.
+Sillfall zeichnet animiertes Wetter über die offenen Fenster. Klicks gehen durch das Wetter hindurch.
 Es gibt kein Konto, keine Werbung und keine Analyse.
 
 ## Daten, die auf diesem PC bleiben
@@ -22,14 +21,14 @@ Für eine App-Regel und um zu erkennen, dass das Startmenü oder die Suche vorn 
 Dateinamen des Prozesses (zum Beispiel `notepad.exe`). Der Dateiname landet nur dann in den
 Einstellungen, wenn du eine Regel anlegst. Gesendet wird er nicht.
 
-Einstellungen, die Besuchersammlung und Fehlerberichte liegen unter `%LOCALAPPDATA%\Weatherly`
+Einstellungen, die Besuchersammlung und Fehlerberichte liegen unter `%LOCALAPPDATA%\Sillfall`
 (`settings.json`, `collection.json` und `logs`). Ein Fehlerbericht enthält Version, Windows-Version,
 Architektur und den Stacktrace. Benutzername und Profilpfad werden ersetzt, bevor der Bericht
 geschrieben wird. Berichte werden nicht hochgeladen. Den Ordner öffnest du unter Einstellungen,
 Erweitert, und du kannst ihn löschen.
 
 Eine Installation als Paket hält diese Dateien bei der App; das Deinstallieren entfernt sie.
-Ein Start ohne Paket nutzt den echten Ordner `%LOCALAPPDATA%\Weatherly`, der bleibt, bis du ihn löschst.
+Ein Start ohne Paket nutzt den echten Ordner `%LOCALAPPDATA%\Sillfall`, der bleibt, bis du ihn löschst.
 
 Die Teilen-Karte der Besucher ist ein Bild mit Namen und Punkten. Sie verlässt den PC nur, wenn du sie
 selbst kopierst, speicherst oder teilst. Desktop und Fenstertitel sind nicht darauf.

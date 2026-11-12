@@ -3,12 +3,12 @@
     Builds the MSIX package for one architecture and signs it with a development certificate.
 
 .DESCRIPTION
-    Publishes Weatherly.App as an MSIX (x64 or ARM64). The identity stamped into the manifest is the
+    Publishes Sillfall.App as an MSIX (x64 or ARM64). The identity stamped into the manifest is the
     development identity, unless the reserved store identity is passed in:
 
-        WEATHERLY_PACKAGE_NAME
-        WEATHERLY_PACKAGE_PUBLISHER            certificate subject, must start with CN=
-        WEATHERLY_PUBLISHER_DISPLAY_NAME
+        SILLFALL_PACKAGE_NAME
+        SILLFALL_PACKAGE_PUBLISHER            certificate subject, must start with CN=
+        SILLFALL_PUBLISHER_DISPLAY_NAME
 
     Two packages are written:
 
@@ -27,16 +27,17 @@ param(
 
     [string] $Configuration = 'Release',
 
-    [string] $OutputDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'weatherly-package')
+    [string] $OutputDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-package')
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
-$project = Join-Path $repoRoot 'src' 'Weatherly.App' 'Weatherly.App.csproj'
+$project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
 function Read-BuildProperty([string] $Name) {
     [xml] $props = Get-Content -Raw (Join-Path $repoRoot 'Directory.Build.props')
-    $value = @($props.Project.PropertyGroup.$Name) | Where-Object { $_ }
+    # @() around the whole pipeline: a single match must stay an array, or [0] takes its first character.
+    $value = @(@($props.Project.PropertyGroup.$Name) | Where-Object { $_ })
     if (-not $value) {
         throw "Directory.Build.props has no $Name."
     }
@@ -74,9 +75,9 @@ if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
     throw "Tag $($env:GITHUB_REF_NAME) does not match v$version from Directory.Build.props."
 }
 
-$publisher = $env:WEATHERLY_PACKAGE_PUBLISHER
+$publisher = $env:SILLFALL_PACKAGE_PUBLISHER
 if ($publisher -and $publisher -notmatch '^CN=.+') {
-    throw 'WEATHERLY_PACKAGE_PUBLISHER must be a certificate subject starting with CN=.'
+    throw 'SILLFALL_PACKAGE_PUBLISHER must be a certificate subject starting with CN=.'
 }
 
 $rawDir = Join-Path $OutputDirectory 'raw'
@@ -85,22 +86,22 @@ New-Item -ItemType Directory -Force -Path $rawDir | Out-Null
 $publish = @(
     'publish', $project,
     '-c', $Configuration,
-    '-p:Platform=' + $Platform,
-    '-p:RuntimeIdentifier=win-' + $Platform.ToLowerInvariant(),
+    "-p:Platform=$Platform",
+    "-p:RuntimeIdentifier=win-$($Platform.ToLowerInvariant())",
     '-p:WindowsPackageType=MSIX',
     '-p:GenerateAppxPackageOnBuild=true',
     '-p:AppxBundle=Never',
     '-p:AppxPackageSigningEnabled=false',
-    '-p:AppxPackageDir=' + $rawDir
+    "-p:AppxPackageDir=$rawDir/"
 )
-if ($env:WEATHERLY_PACKAGE_NAME) {
-    $publish += '-p:WeatherlyPackageName=' + $env:WEATHERLY_PACKAGE_NAME
+if ($env:SILLFALL_PACKAGE_NAME) {
+    $publish += '-p:SillfallPackageName=' + $env:SILLFALL_PACKAGE_NAME
 }
 if ($publisher) {
-    $publish += '-p:WeatherlyPackagePublisher=' + $publisher
+    $publish += '-p:SillfallPackagePublisher=' + $publisher
 }
-if ($env:WEATHERLY_PUBLISHER_DISPLAY_NAME) {
-    $publish += '-p:WeatherlyPackagePublisherDisplayName=' + $env:WEATHERLY_PUBLISHER_DISPLAY_NAME
+if ($env:SILLFALL_PUBLISHER_DISPLAY_NAME) {
+    $publish += '-p:SillfallPackagePublisherDisplayName=' + $env:SILLFALL_PUBLISHER_DISPLAY_NAME
 }
 
 Write-Host "Publishing $product $packageVersion ($Platform)"

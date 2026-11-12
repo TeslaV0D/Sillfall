@@ -1,114 +1,85 @@
-# ADR-0012: Einstellungen, Laufzeitregeln und Oberfläche
+# ADR-0012: Settings, runtime policy, and UI
 
-- Status: akzeptiert (Optik und Bedienung vorbehaltlich Boss-Abnahme)
-- Datum: 2026-11-12
-- Meilenstein: M9
+- Status: accepted (visuals and UX subject to maintainer sign-off)
+- Date: 2026-11-12
+- Milestone: M9
 
-## Kontext
+## Context
 
-PLAN.md, Abschnitt 7 sieht die vollständige Oberfläche vor:
+PLAN.md, section 7 defines the full UI:
 
-- Tray-Flyout,
-- Einstellungsfenster mit zehn Seiten,
-- pro Effekt Farbe, Helligkeit und fest/zufällig,
-- Vorlagen mit Teilen,
-- Einstellungen pro Monitor,
-- App-Regeln,
-- Leistung und Akku,
-- Autostart,
-- eine einzige laufende Instanz,
-- das Protokoll `weatherly://`,
-- versionierte Einstellungen mit Migration.
+- Tray flyout,
+- settings window with ten pages,
+- per-effect color, brightness, fixed/random,
+- templates with sharing,
+- per-monitor settings,
+- app rules,
+- performance and battery,
+- autostart,
+- single instance,
+- `sillfall://` protocol,
+- versioned settings with migration.
 
-## Entscheidungen
+## Decisions
 
-### 1. Ein Modell, ein Controller
+### 1. One model, one controller
 
-- `AppSettings` (Core) ist das einzige gespeicherte Modell, versioniert. Version 1 aus dem MVP wird beim
-  Laden migriert. Werte werden beim Laden bereinigt.
-- Der `AppController` (App) ist der einzige Ort, der Einstellungen ändert. Er schreibt sie 0,5 s nach der
-  letzten Änderung und wendet sie höchstens alle 60 ms an.
-- Aus Einstellungen, Systemzustand und Zufallsläufen entstehen die `OverlayOptions`. Dafür sind
-  `RuntimePolicy`, `IntensityDirector` und `RuntimeOptions` in Core zuständig, alle getestet.
-- Was der Controller selbst setzt, schreibt er nie in die Einstellungen zurück: Pausen, Zufallswerte und
-  den Akku-Faktor.
+- `AppSettings` (Core) is the only persisted model, versioned. Version 1 from the MVP migrates on load. Values are sanitized on load.
+- `AppController` (App) is the only place that changes settings. Persists 0.5 s after the last change and applies at most every 60 ms.
+- `OverlayOptions` come from settings, system state, and random runs via `RuntimePolicy`, `IntensityDirector`, and `RuntimeOptions` in Core, all tested.
+- What the controller sets at runtime is never written back: pauses, random draws, battery factor.
 
-### 2. Laufzeitregeln
+### 2. Runtime policy
 
-**Pause.** Gründe in dieser Reihenfolge:
+**Pause.** Reasons in this order:
 
-1. Hauptschalter,
-2. Reduced Motion (immer, oder nach der Windows-Einstellung „Animationen anzeigen“),
-3. Akku mit „Pause“,
-4. App-Regel für das Programm im Vordergrund.
+1. Master switch,
+2. Reduced motion (always, or following Windows “Show animations”),
+3. Battery with “Pause”,
+4. App rule for the foreground program.
 
 **Smoothness.**
 
-| Einstellung | Bildrate |
+| Setting | Frame rate |
 |---|---|
-| Auto | 60 fps, im Akkubetrieb 30 |
-| Geringster Verbrauch | 30 fps |
-| Ausgewogen | 60 fps |
-| Am flüssigsten | Monitorrate |
+| Auto | 60 fps, 30 on battery |
+| Least energy | 30 fps |
+| Balanced | 60 fps |
+| Smoothest | Monitor refresh |
 
-„Reduzieren“ im Akkubetrieb halbiert die Intensität und begrenzt auf 30 fps.
+“Reduce” on battery halves intensity and caps at 30 fps.
 
-**Systemzustand.** Der Overlay-Host liest Stromquelle, Animationseinstellung und den Dateinamen des
-Programms im Vordergrund und meldet Änderungen. Von einem Programm wird nur der Dateiname gelesen, nie ein
-Titel.
+**System state.** Overlay host reads power source, animation setting, and foreground program file name and reports changes. Only the file name is read, never a window title.
 
-**Bekannt:** Auf Windows Server, also auch auf dem CI-Runner, sind Animationen standardmäßig aus. Mit
-„Windows folgen“ pausiert die App dort. Für Nutzer ist das gewollt. Der Smoke-Test schaltet die
-Laufzeitregeln ab.
+**Known:** On Windows Server (including the CI runner) animations are off by default. With “Follow Windows” the app pauses there. Intended for users. Smoke test disables runtime policy.
 
-### 3. Pro Monitor und App-Regeln
+### 3. Per monitor and app rules
 
-- **Monitore:** Ausgeschaltete Monitore bekommen kein Overlay. Die anderen zeichnen mit eigener Deckkraft,
-  als Faktor in den Sprite- und Atmosphären-Shadern.
-- **„Über diesen Fenstern ausblenden“:** Die Fenster des Programms werden nach dem Zeichnen wieder
-  transparent gemacht (ohne Blending). Ausgeschnitten wird das ganze Fensterrechteck, auch wo ein anderes
-  Fenster darüber liegt. Ein exakter Zuschnitt lohnt die Komplexität derzeit nicht.
+- **Monitors:** Disabled monitors get no overlay. Others draw with their own opacity as a factor in sprite and atmosphere shaders.
+- **“Hide over this app’s windows”:** That program’s windows are made transparent again after drawing (no blending). The full window rectangle is cut out even where another window stacks above. Exact clipping is not worth the complexity yet.
 
-### 4. Oberfläche im Code statt in XAML
+### 4. UI in code instead of XAML
 
-Das Einstellungsfenster ist ein `NavigationView` mit zehn Seiten. Das Flyout ist ein kleines, rahmenloses
-Fenster mit Acrylic über dem Tray. Beide bestehen aus wenig XAML; die Seiten baut C#-Code aus gemeinsamen
-Bausteinen (`Ui`).
+Settings window is a `NavigationView` with ten pages. Flyout is a small borderless window with acrylic above the tray. Little XAML; pages are built in C# from shared `Ui` blocks.
 
-- **Warum:** Die WinUI-App baut nur unter Windows. Code-Fehler zeigt das CI zuverlässig, XAML-Fehler oft
-  erst zur Laufzeit. Gleiche Bausteine sehen außerdem überall gleich aus.
-- **Seiten:** Effekte, Vorlagen, Wetter-Sync (Platzhalter bis M10), Visitors (Platzhalter bis M11), Sound,
-  Displays, Apps, Leistung (mit Live-Zahlen), Erweitert, Info.
-- **Prüfung:** Der Smoke-Lauf `--settings-tour` zeigt jede Seite und das Flyout und speichert sie als PNG
-  in die Previews. Die Seiten lassen sich so ohne Windows-Desktop ansehen.
+- **Why:** WinUI app builds only on Windows. CI catches code errors reliably; XAML errors often appear only at runtime. Shared blocks look consistent.
+- **Pages:** Effects, Templates, Weather sync (placeholder until M10), Visitors (placeholder until M11), Sound, Displays, Apps, Performance (live numbers), Advanced, About.
+- **Check:** Smoke run `--settings-tour` shows each page and the flyout and saves PNGs to previews. Pages can be reviewed without a Windows desktop.
 
-### 5. Fenster und Lebensdauer
+### 5. Windows and lifetime
 
-- **Hintergrund-App:** Die App läuft im Infobereich (`DispatcherShutdownMode.OnExplicitShutdown`). Nur
-  „Quit“ beendet sie.
-- **Klicks auf das Tray-Symbol:** Ein Linksklick öffnet das Flyout, der Menüpunkt „Open“ die
-  Einstellungen.
-- **Diagnosefenster:** Das bisherige Testfenster (`MainWindow`) bleibt als Diagnosefenster erreichbar
-  (Erweitert). Es gehören ihm weiter Overlay-Host, Tray-Icon und die Single-Instance-Sperre. Der
-  Smoke-Test steuert es.
-- **Ohne Tray-Icon:** Lehnt die Shell das Icon ab, beendet das Schließen der Einstellungen die App. Sonst
-  bliebe sie unerreichbar im Hintergrund.
+- **Background app:** Runs in the notification area (`DispatcherShutdownMode.OnExplicitShutdown`). Only “Quit” exits.
+- **Tray clicks:** Left click opens flyout; menu “Open” opens settings.
+- **Diagnostics window:** Former test window (`MainWindow`) stays reachable (Advanced). It still owns overlay host, tray icon, and single-instance lock. Smoke test drives it.
+- **No tray icon:** If the shell rejects the icon, closing settings exits the app. Otherwise it would be unreachable in the background.
 
-### 6. Eine Instanz, Links, Autostart
+### 6. Single instance, links, autostart
 
-- **Eine Instanz:** Ein benannter Mutex pro Sitzung und ein verstecktes Nachrichtenfenster. Ein zweiter
-  Start schickt seine Kommandozeile per `WM_COPYDATA` an die laufende Instanz und beendet sich.
-- **`weatherly://scene?d=…`:** Bei MSIX steht das Protokoll im Manifest. Unverpackt registriert die App es
-  bei jedem Start für den Benutzer. Ein Link wird bereinigt, angewendet und als Vorlage behalten.
-- **Autostart:** Bei MSIX über den `StartupTask` (standardmäßig aus), unverpackt über den Run-Schlüssel.
-  Der Autostart-Weg startet mit `--background` nur im Infobereich.
+- **Single instance:** Named mutex per session and a hidden message window. A second launch sends its command line via `WM_COPYDATA` to the running instance and exits.
+- **`sillfall://scene?d=…`:** Packaged MSIX declares the protocol in the manifest. Unpackaged, the app registers it per user on each start. A link is sanitized, applied, and kept as a template.
+- **Autostart:** Packaged via `StartupTask` (off by default), unpackaged via Run key. Autostart path uses `--background` for notification area only.
 
-## Konsequenzen
+## Consequences
 
-- Was Windows wirklich tut, prüft nur die Abnahme auf echter Hardware (Checkliste M9):
-  - Flyout-Position und Fokus-Verhalten,
-  - Autostart über MSIX,
-  - Protokoll-Aktivierung,
-  - Akku-Wechsel,
-  - eine App im Vordergrund.
-- Die Sprache der Oberfläche ist vorerst Englisch. Deutsch folgt mit M12 über `.resw`.
+- Windows behavior on real hardware is sign-off only (checklist M9): flyout position and focus, MSIX autostart, protocol activation, battery switch, foreground app rule.
+- UI language is English for now. German arrives in M12 via `.resw`.

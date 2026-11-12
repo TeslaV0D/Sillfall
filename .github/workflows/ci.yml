@@ -42,16 +42,16 @@ jobs:
       # Everything except the WinUI app. The Windows libraries cross-compile on Linux,
       # which catches most mistakes minutes before the Windows job reports.
       - name: Restore
-        run: dotnet restore Weatherly.CrossPlatform.slnf
+        run: dotnet restore Sillfall.CrossPlatform.slnf
 
       - name: Check formatting
-        run: dotnet format Weatherly.CrossPlatform.slnf --verify-no-changes --no-restore
+        run: dotnet format Sillfall.CrossPlatform.slnf --verify-no-changes --no-restore
 
       - name: Build
-        run: dotnet build Weatherly.CrossPlatform.slnf -c Release --no-restore
+        run: dotnet build Sillfall.CrossPlatform.slnf -c Release --no-restore
 
-      - name: Test Weatherly.Core
-        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+      - name: Test Sillfall.Core
+        run: dotnet test --project tests/Sillfall.Core.Tests -c Release --no-build
 
   windows:
     name: Windows (${{ matrix.platform }})
@@ -69,31 +69,31 @@ jobs:
           global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore Weatherly.slnx -p:Platform=${{ matrix.platform }}
+        run: dotnet restore Sillfall.slnx -p:Platform=${{ matrix.platform }}
 
       - name: Build solution
-        run: dotnet build Weatherly.slnx -c Release -p:Platform=${{ matrix.platform }} --no-restore
+        run: dotnet build Sillfall.slnx -c Release -p:Platform=${{ matrix.platform }} --no-restore
 
       # The runner is an x64 machine: tests and the app can only run in the x64 leg. ARM64 is build-only.
       - name: Check formatting
         if: matrix.platform == 'x64'
-        run: dotnet format Weatherly.slnx --verify-no-changes --no-restore
+        run: dotnet format Sillfall.slnx --verify-no-changes --no-restore
 
-      - name: Test Weatherly.Core
+      - name: Test Sillfall.Core
         if: matrix.platform == 'x64'
-        run: dotnet test --project tests/Weatherly.Core.Tests -c Release --no-build
+        run: dotnet test --project tests/Sillfall.Core.Tests -c Release --no-build
 
       # Each test that renders saves its frame as PNG into the preview folder.
-      - name: Test Weatherly.Render (WARP)
+      - name: Test Sillfall.Render (WARP)
         if: matrix.platform == 'x64'
         env:
-          WEATHERLY_PREVIEW_DIR: ${{ runner.temp }}/previews/render
-        run: dotnet test --project tests/Weatherly.Render.Tests -c Release --no-build
+          SILLFALL_PREVIEW_DIR: ${{ runner.temp }}/previews/render
+        run: dotnet test --project tests/Sillfall.Render.Tests -c Release --no-build
 
-      # Preview frames of every scene in tools/Weatherly.FrameDump/Scenes, rendered headless with WARP.
+      # Preview frames of every scene in tools/Sillfall.FrameDump/Scenes, rendered headless with WARP.
       - name: Render FrameDump previews
         if: always() && matrix.platform == 'x64'
-        run: dotnet run --project tools/Weatherly.FrameDump -c Release -p:Platform=x64 -- --out "${{ runner.temp }}/previews/framedump"
+        run: dotnet run --project tools/Sillfall.FrameDump -c Release -p:Platform=x64 -- --out "${{ runner.temp }}/previews/framedump"
 
       # Runs even when a render test failed (for example a golden still waiting for review), so every
       # push gets the full picture.
@@ -172,9 +172,9 @@ jobs:
       - name: Build the MSIX
         shell: pwsh
         env:
-          WEATHERLY_PACKAGE_NAME: ${{ vars.WEATHERLY_PACKAGE_NAME }}
-          WEATHERLY_PACKAGE_PUBLISHER: ${{ vars.WEATHERLY_PACKAGE_PUBLISHER }}
-          WEATHERLY_PUBLISHER_DISPLAY_NAME: ${{ vars.WEATHERLY_PUBLISHER_DISPLAY_NAME }}
+          SILLFALL_PACKAGE_NAME: ${{ vars.SILLFALL_PACKAGE_NAME }}
+          SILLFALL_PACKAGE_PUBLISHER: ${{ vars.SILLFALL_PACKAGE_PUBLISHER }}
+          SILLFALL_PUBLISHER_DISPLAY_NAME: ${{ vars.SILLFALL_PUBLISHER_DISPLAY_NAME }}
         run: ./tools/ci/package.ps1 -Platform ${{ matrix.platform }} -OutputDirectory "$env:RUNNER_TEMP/packages"
 
       - name: Upload the MSIX
@@ -191,6 +191,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      # Steps cannot read secrets in `if:`; the job env can. "true" when the reserved identity and the signing secrets are set.
+      PUBLIC_SIGNING: ${{ vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != '' }}
     steps:
       - name: Download packages
         uses: actions/download-artifact@v6
@@ -200,7 +203,7 @@ jobs:
           path: packages
 
       - name: Prepare the trusted copies
-        if: vars.WEATHERLY_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        if: env.PUBLIC_SIGNING == 'true'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path trusted | Out-Null
@@ -209,7 +212,7 @@ jobs:
           }
 
       - name: Sign with Azure Artifact Signing
-        if: vars.WEATHERLY_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        if: env.PUBLIC_SIGNING == 'true'
         uses: azure/artifact-signing-action@v2.0.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}

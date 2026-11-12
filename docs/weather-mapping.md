@@ -1,55 +1,52 @@
-# Wetter-Mapping
+# Weather mapping
 
-Wie aus der Vorhersage Effekte werden (PLAN.md, Abschnitt 5). Code: `WeatherMapper` in
-`src/Weatherly.Core/Weather/`. Jede Zeile hat einen Test in `WeatherMapperTests`.
+How forecast data becomes effects (PLAN.md, section 5). Code: `WeatherMapper` in `src/Sillfall.Core/Weather/`. Each row has a test in `WeatherMapperTests`.
 
-Quelle ist MET Norway, `locationforecast/2.0/compact`. Verwendet wird der Schritt, in dem die aktuelle Zeit liegt.
-Niederschlag und Symbol kommen aus `next_1_hours`, sonst aus `next_6_hours` (Menge geteilt durch 6).
+Source is MET Norway, `locationforecast/2.0/compact`. The step containing the current time is used. Precipitation and symbol come from `next_1_hours`, otherwise from `next_6_hours` (amount divided by 6).
 
-## Niederschlag
+## Precipitation
 
-| Eingabe | Ergebnis |
+| Input | Result |
 |---|---|
-| Menge in mm/h | Intensität auf Log-Skala: 0,1 mm/h → 0,15 … ≥ 8 mm/h → 1,0. Unter 0,05 mm/h: 0 |
-| Symbol mit `rain`/`drizzle` | Regen, mindestens leicht (`light…` 0,2 mm/h, normal 1 mm/h, `heavy…` 4 mm/h). MET meldet bei Schauern oft 0,0 mm |
-| Symbol mit `snow` | Schnee (Symbol schlägt Temperatur) |
-| Symbol mit `sleet` | halb Regen, halb Schnee |
-| Menge ohne passendes Symbol | Schnee bei ≤ 1 °C, sonst Regen |
+| Amount in mm/h | Intensity on log scale: 0.1 mm/h → 0.15 … ≥ 8 mm/h → 1.0. Below 0.05 mm/h: 0 |
+| Symbol with `rain`/`drizzle` | Rain, at least light (`light…` 0.2 mm/h, normal 1 mm/h, `heavy…` 4 mm/h). MET often reports 0.0 mm for showers |
+| Symbol with `snow` | Snow (symbol overrides temperature) |
+| Symbol with `sleet` | Half rain, half snow |
+| Amount without matching symbol | Snow at ≤ 1 °C, else rain |
 
-## Liegender Schnee
+## Lying snow
 
-| Temperatur | Ergebnis |
+| Temperature | Result |
 |---|---|
-| ≤ 2 °C | Frost: Schnee bleibt liegen, wenn es aufhört zu schneien (Regen taut ihn trotzdem) |
-| > 2 °C | Schnee schmilzt, sobald es nicht mehr schneit |
+| ≤ 2 °C | Frost: snow stays on surfaces when snowfall stops (rain still melts it) |
+| > 2 °C | Snow melts when snowfall stops |
 
-## Nebel, Sonne, Wind, Laub
+## Fog, sun, wind, leaves
 
-| Eingabe | Ergebnis |
+| Input | Result |
 |---|---|
-| Symbol `fog` | Nebel 0,75 |
-| Feuchte ≥ 97 %, Wind < 3 m/s, Bewölkung ≥ 90 % | Dunst: Nebel 0,3 |
-| Bewölkung, Tag/Nacht | Sonne = 1 − Bewölkung, nur tagsüber, nicht bei Niederschlag oder dichtem Nebel |
-| Tag/Nacht | Aus dem Sonnenstand berechnet (`SolarPosition`), weil das Compact-Format keinen Tag-Wert liefert |
-| `wind_speed`, `wind_from_direction` | Wind = Geschwindigkeit · sin(Richtung, in die er weht) · 400/15. Osten ist rechts, 15 m/s füllen den Regler (±400). Nordwind weht in den Bildschirm hinein und gibt 0 |
-| `wind_speed` | Böigkeit 0,3 + v/20, höchstens 1 (das Compact-Format hat keine Böen) |
-| Sep–Nov (Süden: Mär–Mai), Wind > 4 m/s | Laub 0,3 + (v − 4)/10, höchstens 1 |
-| – | Gras folgt keinem Wetter (es wächst bei Regen schneller) |
+| Symbol `fog` | Fog 0.75 |
+| Humidity ≥ 97%, wind < 3 m/s, cloud cover ≥ 90% | Haze: fog 0.3 |
+| Cloud cover, day/night | Sun = 1 − cloud cover, daytime only, not during precipitation or dense fog |
+| Day/night | From sun altitude (`SolarPosition`); compact format has no day flag |
+| `wind_speed`, `wind_from_direction` | Wind = speed · sin(direction blowing toward) · 400/15. East is right; 15 m/s fills the slider (±400). North wind blows into the screen → 0 |
+| `wind_speed` | Gustiness 0.3 + v/20, max 1 (compact has no gust field) |
+| Sep–Nov (southern hemisphere: Mar–May), wind > 4 m/s | Leaves 0.3 + (v − 4)/10, max 1 |
+| – | Grass does not follow weather (grows faster in rain) |
 
 ## Invert
 
-| Normal | Invertiert |
+| Normal | Inverted |
 |---|---|
-| klarer Himmel | Regen (Stärke = 1 − Bewölkung) |
-| Regen, Schnee oder Nebel (tagsüber) | Sonne |
-| Hitze ab 15 °C (voll bei 30 °C) | Schnee, statt Regen |
-| Frost | Liegender Schnee taut. Wärme über 2 °C hält ihn |
-| Nebel | verschwindet |
-| Wind, Laub | bleiben |
+| Clear sky | Rain (strength = 1 − cloud cover) |
+| Rain, snow, or fog (daytime) | Sun |
+| Heat from 15 °C (full at 30 °C) | Snow instead of rain |
+| Frost | Lying snow thaws. Warmth above 2 °C keeps it |
+| Fog | Clears |
+| Wind, leaves | Unchanged |
 
-## Mischen (Custom Sync)
+## Blending (custom sync)
 
-- Pro Element (Regen, Schnee, Laub, Nebel, Sonne, Wind): `final = lerp(manuell, Wetter, Gewicht)`. Das Gewicht ist 0–100 %, Standard 100 %.
-- Bewegt der Nutzer einen Regler, während der Sync läuft, wird dieses Element pausiert und behält den manuellen
-  Wert, bis „Sync fortsetzen“ gedrückt wird.
-- Der Akku-Faktor wirkt nach dem Mischen.
+- Per element (rain, snow, leaves, fog, sun, wind): `final = lerp(manual, weather, weight)`. Weight is 0–100%, default 100%.
+- Moving a slider while sync runs pauses that element at the manual value until “Resume sync”.
+- Battery factor applies after blending.
