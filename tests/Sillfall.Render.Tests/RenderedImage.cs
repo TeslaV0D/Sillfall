@@ -42,7 +42,7 @@ internal sealed class RenderedImage(byte[] premultipliedBgra, PixelSize size)
     /// </summary>
     public void SavePreview(string name)
     {
-        string directory = Environment.GetEnvironmentVariable("WEATHERLY_PREVIEW_DIR") is { Length: > 0 } configured
+        string directory = Environment.GetEnvironmentVariable("SILLFALL_PREVIEW_DIR") is { Length: > 0 } configured
             ? configured
             : Path.Combine(AppContext.BaseDirectory, "previews");
 

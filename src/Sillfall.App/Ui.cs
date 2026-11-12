@@ -201,6 +201,20 @@ internal static class Ui
         return button;
     }
 
+    /// <summary>A link that opens in the browser. Narrator reads <paramref name="text"/>.</summary>
+    public static HyperlinkButton Link(string text, string url)
+    {
+        var link = new HyperlinkButton
+        {
+            Content = text,
+            NavigateUri = new Uri(url),
+            Padding = new Thickness(0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(link, text);
+        return link;
+    }
+
     /// <summary>
     /// Names an expander for Narrator. The focus lands on the toggle button in its header, a part of the template, which
     /// does not take the expander's name: it gets the name once the template is applied.

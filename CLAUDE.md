@@ -4,8 +4,9 @@ Sillfall is a native Windows app that renders animated weather on the edges of o
 The full plan is in [PLAN.md](PLAN.md): feature inventory, technical requirements, effect specs,
 and milestones M0–M14 (order is binding).
 
-Status: **M13 (hardening)** is implemented. The MVP tray cut (ADR-0008) and all six effects are in tree.
-Progress per milestone lives in `docs/manual-tests/`.
+Status: **M14 (release)**. MSIX for x64 and ARM64, privacy policy, store listing, and winget manifest are in tree
+(ADR-0017). Store certification and the name reservation are in checklist M14. Progress per milestone lives in
+`docs/manual-tests/`.
 
 ## Working rules (from PLAN.md §13)
 
@@ -58,6 +59,11 @@ Weather sync (ADR-0013): `MetNorwayProvider`, `WeatherSync`, `WeatherMapper`, `W
 
 Visitors (ADR-0014): `VisitorSystem`, SVG art under `src/Sillfall.Render/Visitors/`, hit windows in `OverlayHost`.
 
+Release (ADR-0017): `tools/ci/package.ps1` builds the MSIX (x64/ARM64), unsigned for the Store and signed with a
+development certificate for sideloading. The `package` job runs on pull requests and tags `v*`. A tag drafts a
+release; Azure Artifact Signing signs only when the reserved identity and the secrets are set. Privacy policy:
+`docs/privacy.md` (German: `docs/privacy.de.md`). Store text: `docs/store/listing.md`. winget: `winget/`.
+
 Hardening (ADR-0016): `SystemState` / `RuntimePolicy`, `CrashLog`, soak via `tools/ci/soak-test.ps1`.
 
 Allowed project references: Platform, Render, and Audio depend only on Core. App depends on all.
@@ -89,9 +95,11 @@ Use `dotnet test --project <path>` (Microsoft.Testing.Platform via `global.json`
 | `core` | ubuntu-latest | Format, cross-platform build, Core tests |
 | `windows` | windows-latest, x64 + ARM64 | Full solution build; x64 also format, Core + Render tests, smoke test |
 | `soak` | windows-latest, x64 | 5-minute app soak (`tools/ci/soak-test.ps1`) |
-| `package` | windows-latest, x64 and ARM64 | Unsigned MSIX (`tools/ci/package.ps1`) |
+| `package` | windows-latest, x64 and ARM64 | MSIX (`tools/ci/package.ps1`), artifacts `msix-x64` and `msix-ARM64`. Pull requests, “Run workflow”, and tags `v*` |
+| `release` | windows-latest | Tags `v*` only: draft GitHub release, Artifact Signing when the secrets are set |
 
-`package` publishes an unsigned MSIX per architecture (`tools/ci/package.ps1`, artifact `msix-*`). Store signing and winget submission are documented in `docs/release/`.
+`package` signs with a development certificate. Public signing happens on a tag once the Artifact Signing secrets
+are set (ADR-0017). Store submission and winget are in checklist M14.
 
 ## Code conventions
 
@@ -99,6 +107,8 @@ Use `dotnet test --project <path>` (Microsoft.Testing.Platform via `global.json`
 - Code, identifiers, and comments in **English**. Product docs (this file, ADRs, checklists) in **English**.
 - Package versions in `Directory.Packages.props`.
 - Visible strings via `Texts.Get` / `Texts.Format` with both `.resw` locales (ADR-0015).
+- Every new control needs a Narrator name (`AutomationProperties.Name`; the `Ui` helpers set it). The smoke test
+  (`AccessibilityCheck`) checks every settings page.
 - Premultiplied alpha in all shaders. Coordinates are physical pixels.
 - Tests: xUnit v3 + AwesomeAssertions (ADR-0002). Names: `Method_State_Expectation`.
 - Win32 APIs listed alphabetically in `src/Sillfall.Platform/NativeMethods.txt`.

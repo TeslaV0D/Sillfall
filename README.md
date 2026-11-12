@@ -13,7 +13,7 @@ Animated weather for Windows — rain, snow, fog, leaves, sunlight, and grass th
   <img src="docs/media/sun.png" alt="Warm sunlight between windows" width="32%" />
 </p>
 
-**Status:** Milestone **M13** (hardening) is in tree. Next up is **M14** (release packaging). See [PLAN.md](PLAN.md).
+**Status:** Milestone **M14** (release): MSIX for x64 and ARM64, privacy policy, store listing, and winget manifest. Store certification and the name reservation are tracked in [checklist M14](docs/manual-tests/M14.md). See [PLAN.md](PLAN.md).
 
 ## Features
 
@@ -79,9 +79,9 @@ Sillfall reads **window geometry** only. It does not read titles or contents, do
 - [docs/adr](docs/adr) — architecture decisions
 - [docs/manual-tests](docs/manual-tests) — Windows checklists
 - [docs/weather-mapping.md](docs/weather-mapping.md) — forecast → effect mapping
-- [docs/PRIVACY.md](docs/PRIVACY.md) — privacy policy
-- [docs/release/STORE.md](docs/release/STORE.md) — Microsoft Store listing checklist
-- [docs/release/WINGET.md](docs/release/WINGET.md) — winget submission
+- [docs/privacy.md](docs/privacy.md) — privacy policy ([Deutsch](docs/privacy.de.md))
+- [docs/store/listing.md](docs/store/listing.md) — Microsoft Store listing text
+- [winget/](winget) — winget manifest (submitted after the first signed release)
 
 ## License
 

@@ -1,0 +1,25 @@
+PackageIdentifier: TeslaV0D.Sillfall
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Sillfall Development
+PublisherUrl: https://github.com/TeslaV0D/Sillfall
+PublisherSupportUrl: https://github.com/TeslaV0D/Sillfall/issues
+PrivacyUrl: https://github.com/TeslaV0D/Sillfall/blob/main/docs/privacy.md
+Author: TeslaV0D
+PackageName: Sillfall
+PackageUrl: https://github.com/TeslaV0D/Sillfall
+License: MIT
+LicenseUrl: https://github.com/TeslaV0D/Sillfall/blob/main/LICENSE
+Copyright: Copyright © 2026 Anton
+ShortDescription: Animated weather on top of your open windows. Clicks pass through.
+Description: |-
+  Sillfall draws rain, snow, fog, falling leaves, sunlight and grass on top of your open windows.
+  The weather lands on window edges and gets out of the way for a full-screen game, the lock screen and the Start menu.
+  Clicks pass through. Weather sync is optional and sends only a location rounded to about 11 km.
+Tags:
+- weather
+- rain
+- snow
+ReleaseNotesUrl: https://github.com/TeslaV0D/Sillfall/releases/tag/v0.1.0
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

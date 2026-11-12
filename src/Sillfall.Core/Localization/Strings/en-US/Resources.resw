@@ -8,6 +8,7 @@
   <data name="About.Assets" xml:space="preserve"><value>All graphics and sounds are made by the app itself or for it; see ASSETS.md.</value></data>
   <data name="About.Credits" xml:space="preserve"><value>Credits</value></data>
   <data name="About.Privacy" xml:space="preserve"><value>Privacy</value></data>
+  <data name="About.PrivacyPolicy" xml:space="preserve"><value>Privacy policy</value></data>
   <data name="About.PrivacyText" xml:space="preserve"><value>The app reads only where windows are and how big they are, never their titles or contents. It does not record the screen. App rules use the app's file name, on this PC only. Nothing is collected. Only when you switch the weather sync on, a location rounded to about 11 km is sent to the weather service, and nothing else.</value></data>
   <data name="About.Tagline" xml:space="preserve"><value>Animated weather on top of your open windows.</value></data>
   <data name="Achievement.EveryWeather" xml:space="preserve"><value>Every weather</value></data>

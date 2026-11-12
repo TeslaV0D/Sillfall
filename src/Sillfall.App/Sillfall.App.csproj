@@ -58,4 +58,47 @@
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
 
+  <!--
+    Identity stamped into a copy of Package.appxmanifest when an MSIX is built (ADR-0017).
+    The defaults match the manifest. A release overrides them with the name reserved in Partner Center;
+    the certificate subject has to be the same publisher string.
+  -->
+  <PropertyGroup>
+    <SillfallPackageName Condition="'$(SillfallPackageName)' == ''">Sillfall.Dev</SillfallPackageName>
+    <SillfallPackagePublisher Condition="'$(SillfallPackagePublisher)' == ''">CN=Sillfall Development</SillfallPackagePublisher>
+    <SillfallPackagePublisherDisplayName Condition="'$(SillfallPackagePublisherDisplayName)' == ''">Sillfall</SillfallPackagePublisherDisplayName>
+    <SillfallPackageDisplayName Condition="'$(SillfallPackageDisplayName)' == ''">$(Product)</SillfallPackageDisplayName>
+    <SillfallPackageDescription Condition="'$(SillfallPackageDescription)' == ''">Animated weather that settles on the edges of your open windows.</SillfallPackageDescription>
+    <!-- Directory.Build.props keeps three version numbers. MSIX wants four; the package script checks the same rule. -->
+    <SillfallPackageVersion Condition="'$(SillfallPackageVersion)' == ''">$(Version).0</SillfallPackageVersion>
+  </PropertyGroup>
+
+  <!--
+    Runs only for a real package build. Replacing the AppxManifest item here is early enough:
+    _GenerateCurrentProjectAppxManifest reads @(AppxManifest) afterwards (Windows App SDK MSIX targets).
+    Do not add an AppxManifest item at evaluation time. The smoke test builds with WindowsPackageType=None,
+    and the SDK rejects that combination.
+  -->
+  <Target Name="StampPackageManifest" BeforeTargets="BeforeGenerateAppxManifest" Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">
+    <PropertyGroup>
+      <_StampedManifest>$(IntermediateOutputPath)Package.stamped.appxmanifest</_StampedManifest>
+      <_ManifestNamespaces>&lt;Namespace Prefix='m' Uri='http://schemas.microsoft.com/appx/manifest/foundation/windows10' /&gt;&lt;Namespace Prefix='uap' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10' /&gt;&lt;Namespace Prefix='uap5' Uri='http://schemas.microsoft.com/appx/manifest/uap/windows10/5' /&gt;</_ManifestNamespaces>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Copy SourceFiles="@(AppxManifest)" DestinationFiles="$(_StampedManifest)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Identity/@Name" Value="$(SillfallPackageName)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Identity/@Publisher" Value="$(SillfallPackagePublisher)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Identity/@Version" Value="$(SillfallPackageVersion)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Properties/m:DisplayName" Value="$(SillfallPackageDisplayName)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Properties/m:PublisherDisplayName" Value="$(SillfallPackagePublisherDisplayName)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Applications/m:Application/uap:VisualElements/@DisplayName" Value="$(SillfallPackageDisplayName)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Applications/m:Application/uap:VisualElements/@Description" Value="$(SillfallPackageDescription)" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Applications/m:Application/m:Extensions/uap:Extension/uap:Protocol/uap:DisplayName" Value="$(SillfallPackageDisplayName) scene" Namespaces="$(_ManifestNamespaces)" />
+    <XmlPoke XmlInputPath="$(_StampedManifest)" Query="/m:Package/m:Applications/m:Application/m:Extensions/uap5:Extension/uap5:StartupTask/@DisplayName" Value="$(SillfallPackageDisplayName)" Namespaces="$(_ManifestNamespaces)" />
+    <ItemGroup>
+      <AppxManifest Remove="@(AppxManifest)" />
+      <AppxManifest Include="$(_StampedManifest)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

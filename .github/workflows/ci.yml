@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - "claude/**"
+    tags:
+      - "v*"
   pull_request:
   workflow_dispatch:
     inputs:
@@ -85,7 +87,7 @@ jobs:
       - name: Test Sillfall.Render (WARP)
         if: matrix.platform == 'x64'
         env:
-          WEATHERLY_PREVIEW_DIR: ${{ runner.temp }}/previews/render
+          SILLFALL_PREVIEW_DIR: ${{ runner.temp }}/previews/render
         run: dotnet test --project tests/Sillfall.Render.Tests -c Release --no-build
 
       # Preview frames of every scene in tools/Sillfall.FrameDump/Scenes, rendered headless with WARP.
@@ -149,11 +151,13 @@ jobs:
           path: ${{ runner.temp }}/soak/
           if-no-files-found: ignore
 
-  # Unsigned MSIX for x64 and ARM64 (M14). Microsoft Store or a trusted cert signs the bits that ship.
+  # MSIX for x64 and ARM64 (M14). Pull requests prove the package builds. A version tag also drafts a release
+  # and, when the store identity and Artifact Signing secrets are set, signs a copy for winget.
   package:
-    name: MSIX (${{ matrix.platform }})
+    name: Package (${{ matrix.platform }})
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -165,13 +169,77 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Publish MSIX
+      - name: Build the MSIX
         shell: pwsh
-        run: ./tools/ci/package.ps1 -Platform ${{ matrix.platform }} -OutputDirectory artifacts/msix
+        env:
+          SILLFALL_PACKAGE_NAME: ${{ vars.SILLFALL_PACKAGE_NAME }}
+          SILLFALL_PACKAGE_PUBLISHER: ${{ vars.SILLFALL_PACKAGE_PUBLISHER }}
+          SILLFALL_PUBLISHER_DISPLAY_NAME: ${{ vars.SILLFALL_PUBLISHER_DISPLAY_NAME }}
+        run: ./tools/ci/package.ps1 -Platform ${{ matrix.platform }} -OutputDirectory "$env:RUNNER_TEMP/packages"
 
-      - name: Upload MSIX
+      - name: Upload the MSIX
         uses: actions/upload-artifact@v6
         with:
           name: msix-${{ matrix.platform }}
-          path: artifacts/msix/
+          path: ${{ runner.temp }}/packages/
           if-no-files-found: error
+
+  release:
+    name: Draft release
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v6
+        with:
+          pattern: msix-*
+          merge-multiple: true
+          path: packages
+
+      - name: Prepare the trusted copies
+        if: vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path trusted | Out-Null
+          Get-ChildItem packages -Filter *.unsigned.msix | ForEach-Object {
+            Copy-Item $_.FullName (Join-Path trusted ($_.Name -replace '\.unsigned\.msix$', '.msix'))
+          }
+
+      - name: Sign with Azure Artifact Signing
+        if: vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != ''
+        uses: azure/artifact-signing-action@v2.0.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ github.workspace }}\trusted
+          files-folder-filter: msix
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Publish the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          @(
+            "Draft release of ${{ github.ref_name }}."
+            ""
+            "*.unsigned.msix is the store upload. Partner Center signs it. It only matches a reservation when the package identity variables were set for this tag."
+            "*.msix next to a .cer is signed with this run's development certificate. Install the .cer into Trusted People before sideloading."
+            "When Azure Artifact Signing ran, the trusted .msix replaces the development .msix. That file is the one winget should use."
+          ) | Set-Content -Encoding utf8 notes.md
+          if (Test-Path trusted) {
+            $files = @(Get-ChildItem trusted -Filter *.msix) + @(Get-ChildItem packages -Recurse -File | Where-Object { $_.Name -like '*.unsigned.msix' -or $_.FullName -match '\\Dependencies\\' })
+          }
+          else {
+            $files = @(Get-ChildItem packages -Recurse -File)
+          }
+          gh release create "${{ github.ref_name }}" @($files.FullName) --draft --title "${{ github.ref_name }}" --notes-file notes.md

@@ -8,6 +8,7 @@
   <data name="About.Assets" xml:space="preserve"><value>Alle Grafiken und Sounds stammen von der App selbst oder wurden für sie gemacht; siehe ASSETS.md.</value></data>
   <data name="About.Credits" xml:space="preserve"><value>Danksagung</value></data>
   <data name="About.Privacy" xml:space="preserve"><value>Datenschutz</value></data>
+  <data name="About.PrivacyPolicy" xml:space="preserve"><value>Datenschutzerklärung</value></data>
   <data name="About.PrivacyText" xml:space="preserve"><value>Die App liest nur, wo Fenster sind und wie groß sie sind, nie ihre Titel oder Inhalte. Sie nimmt den Bildschirm nicht auf. App-Regeln nutzen den Dateinamen der App, nur auf diesem PC. Es wird nichts gesammelt. Nur wenn du den Wetter-Sync einschaltest, geht ein auf etwa 11 km gerundeter Standort an den Wetterdienst, sonst nichts.</value></data>
   <data name="About.Tagline" xml:space="preserve"><value>Animiertes Wetter über deinen offenen Fenstern.</value></data>
   <data name="Achievement.EveryWeather" xml:space="preserve"><value>Jedes Wetter</value></data>

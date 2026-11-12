@@ -172,7 +172,8 @@ XAudio2 mastering + category submixes. Procedural rain. Default: muted.
 - `core` (ubuntu): format, cross-platform build, Core tests
 - `windows` (windows-latest): full solution, WARP render tests, smoke test, preview artifact
 - `soak`: short soak each push; longer via workflow_dispatch
-- `package`: unsigned MSIX (x64 and ARM64) via `tools/ci/package.ps1`. Store signing is a Partner Center step (`docs/release/STORE.md`).
+- `package`: MSIX (x64 and ARM64) via `tools/ci/package.ps1`, unsigned for the Store plus a development-signed copy (ADR-0017)
+- `release` (tags `v*`): draft GitHub release, Azure Artifact Signing when the secrets are set
 
 ---
 
@@ -197,7 +198,7 @@ XAudio2 mastering + category submixes. Procedural rain. Default: muted.
 | **M13** | Hardening | M | Fullscreen/lock/RDP/Start, crash logs, soak | Soak + budgets on reference hardware |
 | **M14** | Release | M | MSIX x64/ARM64, Store listing, privacy policy, winget, signing, trademark check | Store certification |
 
-**Current:** M13 complete in code; manual soak/checklist on real Windows still open. **Next:** M14.
+**Current:** M14 in code (ADR-0017). Open: name reservation, store certification and winget (checklist M14), plus the manual checklists on real Windows.
 
 ---
 
