@@ -496,9 +496,11 @@ public partial class App : Application
 
             if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun || smokeTest.Grass || smokeTest.Visitors)
             {
-                // Window to the top, weather still off: the script takes a clear screenshot first.
+                // Window to the top, weather still off: the script takes a clear screenshot first. A visitor stands on
+                // the window's top edge, so it gets room above it to be seen whole.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
-                window.AppWindow.Move(new PointInt32(window.AppWindow.Position.X, workArea.Y + 12));
+                int room = smokeTest.Visitors ? 120 : 12;
+                window.AppWindow.Move(new PointInt32(window.AppWindow.Position.X, workArea.Y + room));
                 await Task.Delay(TimeSpan.FromMilliseconds(300));
             }
 
