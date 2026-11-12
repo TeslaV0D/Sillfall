@@ -12,7 +12,12 @@ public sealed class RenderFrame
     /// <summary>Most windows the atmosphere passes take into account: the topmost ones.</summary>
     public const int MaxOccluders = 64;
 
+    /// <summary>Most visitors drawn at once.</summary>
+    public const int MaxVisitors = 4;
+
     private readonly PixelRect[] _occluders = new PixelRect[MaxOccluders];
+    private readonly VisitorPose[] _visitors = new VisitorPose[MaxVisitors];
+    private int _visitorCount;
     private readonly PixelRect[] _cutouts = new PixelRect[MaxOccluders];
     private int _cutoutCount;
     private Sprite[] _sprites;
@@ -56,6 +61,9 @@ public sealed class RenderFrame
     /// </summary>
     public ReadOnlySpan<PixelRect> Occluders => _occluders.AsSpan(0, _occluderCount);
 
+    /// <summary>Visitors, drawn on top of all weather (PLAN.md, section 4.7: render order).</summary>
+    public ReadOnlySpan<VisitorPose> Visitors => _visitors.AsSpan(0, _visitorCount);
+
     /// <summary>Windows the user's app rules keep clear of weather: nothing is drawn over them.</summary>
     public ReadOnlySpan<PixelRect> Cutouts => _cutouts.AsSpan(0, _cutoutCount);
 
@@ -64,9 +72,19 @@ public sealed class RenderFrame
         _count = 0;
         _occluderCount = 0;
         _cutoutCount = 0;
+        _visitorCount = 0;
         Surfaces = null;
         Fog = default;
         Sun = default;
+    }
+
+    /// <summary>Adds a visitor. Beyond <see cref="MaxVisitors"/> they are ignored.</summary>
+    public void AddVisitor(in VisitorPose pose)
+    {
+        if (_visitorCount < MaxVisitors)
+        {
+            _visitors[_visitorCount++] = pose;
+        }
     }
 
     /// <summary>Adds a window to keep clear of weather. Beyond <see cref="MaxOccluders"/> they are ignored.</summary>

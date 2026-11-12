@@ -114,6 +114,15 @@ public sealed record PerformanceConfig
     public BatteryBehavior Battery { get; set; } = BatteryBehavior.Reduce;
 }
 
+/// <summary>The visitors (PLAN.md, section 6).</summary>
+public sealed record VisitorConfig
+{
+    public Visitors.VisitorFrequency Frequency { get; set; } = Visitors.VisitorFrequency.Sometimes;
+
+    /// <summary>Opt-in: visitors can be picked up and dropped into the box (small hit windows follow them).</summary>
+    public bool Interactive { get; set; }
+}
+
 public sealed record AdvancedConfig
 {
     public bool ExcludeFromCapture { get; set; }
@@ -167,6 +176,8 @@ public sealed record AppSettings
     public AdvancedConfig Advanced { get; set; } = new();
 
     public WeatherSyncConfig WeatherSync { get; set; } = new();
+
+    public VisitorConfig Visitors { get; set; } = new();
 
     /// <summary>The user's own templates (presets are built in and not stored).</summary>
     public List<Scenes.Scene> Templates { get; set; } = [];
@@ -239,6 +250,10 @@ public sealed record AppSettings
             ReducedMotion = Enum.IsDefined(Advanced.ReducedMotion) ? Advanced.ReducedMotion : ReducedMotion.FollowSystem,
         },
         WeatherSync = (WeatherSync ?? new()).Sanitized(),
+        Visitors = Visitors is null ? new() : Visitors with
+        {
+            Frequency = Enum.IsDefined(Visitors.Frequency) ? Visitors.Frequency : Weatherly.Core.Visitors.VisitorFrequency.Sometimes,
+        },
         Templates = [.. (Templates ?? []).Where(scene => scene is not null).Select(scene => scene.Sanitized())],
     };
 
