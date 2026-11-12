@@ -6,19 +6,19 @@ using System.Text.Json.Serialization;
 namespace Weatherly.Core.Scenes;
 
 /// <summary>
-/// Templates as files (<c>.wscene</c>, JSON) and as links (<c>weatherly://scene?d=…</c>: the same JSON, deflated
+/// Templates as files (<c>.sillscene</c>, JSON) and as links (<c>sillfall://scene?d=…</c>: the same JSON, deflated
 /// and Base64url-encoded). Everything read is size-limited and sanitized: files and links come from anyone.
 /// </summary>
 public static class SceneCodec
 {
-    public const string FileExtension = ".wscene";
+    public const string FileExtension = ".sillscene";
 
-    public const string LinkPrefix = "weatherly://scene?d=";
+    public static string LinkPrefix { get; } = $"{AppInfo.UriScheme}://scene?d=";
 
     /// <summary>Largest file or decoded link accepted, in bytes. A scene is a few hundred.</summary>
     public const int MaxSize = 16 * 1024;
 
-    private const string Format = "weatherly-scene";
+    private const string Format = "sillfall-scene";
 
     public static string ToJson(Scene scene)
     {
@@ -26,7 +26,7 @@ public static class SceneCodec
         return JsonSerializer.Serialize(new SceneFile { Scene = scene.Sanitized() }, SceneJsonContext.Default.SceneFile);
     }
 
-    /// <summary>Reads a <c>.wscene</c> file's text. Returns <see langword="false"/> with a reason for anything that is not a scene.</summary>
+    /// <summary>Reads a <c>.sillscene</c> file's text. Returns <see langword="false"/> with a reason for anything that is not a scene.</summary>
     public static bool TryFromJson(string json, out Scene scene, out string? error)
     {
         scene = new Scene();

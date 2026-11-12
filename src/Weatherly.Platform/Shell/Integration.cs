@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using Weatherly.Core;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -6,13 +7,13 @@ namespace Weatherly.Platform.Shell;
 
 /// <summary>
 /// How the app hooks into Windows when it runs without a package (unpackaged builds, development): autostart via
-/// the Run key and the <c>weatherly://</c> protocol in the user's classes. A packaged (MSIX) app declares both in
+/// the Run key and the <c>sillfall://</c> protocol in the user's classes. A packaged (MSIX) app declares both in
 /// its manifest instead and must not touch the registry for them.
 /// </summary>
 public static class Integration
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ProtocolKey = @"Software\Classes\weatherly";
+    private static string ProtocolKey => $@"Software\Classes\{AppInfo.UriScheme}";
 
     /// <summary>Command-line switch of an autostart: start in the notification area, without a window.</summary>
     public const string BackgroundSwitch = "--background";
@@ -47,7 +48,7 @@ public static class Integration
     }
 
     /// <summary>
-    /// Registers <c>weatherly://</c> for the current user so scene links open this executable (unpackaged only).
+    /// Registers <c>sillfall://</c> for the current user so scene links open this executable (unpackaged only).
     /// Rewritten on every start, so a moved build keeps working.
     /// </summary>
     public static void RegisterProtocol(string displayName, string executablePath)

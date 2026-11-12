@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Weatherly.Core;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.DataExchange;
@@ -9,12 +10,12 @@ namespace Weatherly.Platform.Shell;
 /// <summary>
 /// One app per user session (PLAN.md, section 7: single instance). The first start claims a named mutex and
 /// opens a hidden message window; later starts find that window, hand over their command line (for example a
-/// <c>weatherly://</c> link) with WM_COPYDATA and exit.
+/// <c>sillfall://</c> link) with WM_COPYDATA and exit.
 /// </summary>
 public sealed class SingleInstance : IDisposable
 {
-    private const string MutexName = @"Local\Weatherly.SingleInstance";
-    private const string WindowClass = "Weatherly.Instance";
+    private static readonly string MutexName = $@"Local\{AppInfo.Name}.SingleInstance";
+    private static readonly string WindowClass = $"{AppInfo.Name}.Instance";
 
     /// <summary>Marks our WM_COPYDATA messages ('WL').</summary>
     private const nuint MessageTag = 0x574C;

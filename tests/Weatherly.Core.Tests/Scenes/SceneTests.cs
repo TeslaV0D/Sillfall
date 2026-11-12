@@ -22,7 +22,7 @@ public class SceneTests
 
         SceneCodec.TryFromJson(json, out Scene scene, out string? error).Should().BeTrue(error);
         scene.Should().BeEquivalentTo(s_scene.Sanitized());
-        json.Should().Contain("\"format\": \"weatherly-scene\"");
+        json.Should().Contain("\"format\": \"sillfall-scene\"");
     }
 
     [Fact]
@@ -41,8 +41,8 @@ public class SceneTests
     [Theory]
     [InlineData("")]
     [InlineData("https://example.com/scene?d=abc")]
-    [InlineData("weatherly://scene?d=!!!")]
-    [InlineData("weatherly://scene?d=AAAA")]
+    [InlineData("sillfall://scene?d=!!!")]
+    [InlineData("sillfall://scene?d=AAAA")]
     public void Link_RejectsAnythingElse(string link)
     {
         SceneCodec.TryFromLink(link, out _, out string? error).Should().BeFalse();
@@ -54,7 +54,7 @@ public class SceneTests
     [InlineData("{ \"format\": \"something-else\", \"scene\": { } }")]
     [InlineData("[1, 2, 3]")]
     [InlineData("not json")]
-    [InlineData("{ \"format\": \"weatherly-scene\", \"version\": 99, \"scene\": { } }")]
+    [InlineData("{ \"format\": \"sillfall-scene\", \"version\": 99, \"scene\": { } }")]
     public void Json_RejectsWhatIsNotAScene(string json)
     {
         SceneCodec.TryFromJson(json, out _, out string? error).Should().BeFalse();
@@ -64,7 +64,7 @@ public class SceneTests
     [Fact]
     public void Json_TooLarge_IsRejected()
     {
-        string json = "{ \"format\": \"weatherly-scene\", \"scene\": { \"name\": \"" + new string('x', SceneCodec.MaxSize) + "\" } }";
+        string json = "{ \"format\": \"sillfall-scene\", \"scene\": { \"name\": \"" + new string('x', SceneCodec.MaxSize) + "\" } }";
 
         SceneCodec.TryFromJson(json, out _, out _).Should().BeFalse();
     }
@@ -73,7 +73,7 @@ public class SceneTests
     public void ALinkThatInflatesTooMuch_IsRejected()
     {
         // A small link that decompresses to a lot: a deflate bomb must not get through.
-        string huge = "{ \"format\": \"weatherly-scene\", \"scene\": { \"name\": \"" + new string('a', 200_000) + "\" } }";
+        string huge = "{ \"format\": \"sillfall-scene\", \"scene\": { \"name\": \"" + new string('a', 200_000) + "\" } }";
         using var compressed = new MemoryStream();
         using (var deflate = new System.IO.Compression.DeflateStream(compressed, System.IO.Compression.CompressionLevel.SmallestSize))
         {

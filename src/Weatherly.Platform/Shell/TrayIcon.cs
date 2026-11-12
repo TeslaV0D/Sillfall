@@ -13,7 +13,7 @@ namespace Weatherly.Platform.Shell;
 /// </summary>
 public sealed partial class TrayIcon : IDisposable
 {
-    private const string WindowClass = "Weatherly.TrayIcon";
+    private const string WindowClass = "Sillfall.TrayIcon";
     private const uint IconId = 1;
     private const uint CallbackMessage = PInvoke.WM_APP + 1;
 

@@ -71,7 +71,7 @@ public sealed partial class OverlayHost : IDisposable
     private const uint PollIntervalMilliseconds = 100;
 
     /// <summary>Class name prefix of all overlay windows. The window tracker skips windows with it.</summary>
-    private const string OverlayClassPrefix = "Weatherly.Overlay.";
+    private const string OverlayClassPrefix = "Sillfall.Overlay.";
 
     /// <summary>
     /// Display changes arrive as a burst of messages (one per window and per changed property).
@@ -165,7 +165,7 @@ public sealed partial class OverlayHost : IDisposable
         _engine.Add(_visitors);
         _thread = new Thread(Run)
         {
-            Name = "Weatherly overlay",
+            Name = "Sillfall overlay",
             IsBackground = true,
         };
     }

@@ -1,19 +1,18 @@
 namespace Weatherly.Core;
 
 /// <summary>
-/// Single source of truth for the product identity. "Weatherly" is a working title:
-/// everything user-visible must read the name from here so it can be swapped before release.
+/// Single source of truth for the product identity. Everything user-visible must read the name from here.
 /// </summary>
 public static class AppInfo
 {
     /// <summary>User-visible product name.</summary>
-    public const string Name = "Weatherly";
+    public const string Name = "Sillfall";
 
     /// <summary>Folder name below <c>%LOCALAPPDATA%</c> for settings, collection and logs.</summary>
     public const string DataFolderName = Name;
 
-    /// <summary>URI scheme for shared scene links (<c>weatherly://scene?d=…</c>).</summary>
-    public const string UriScheme = "weatherly";
+    /// <summary>URI scheme for shared scene links (<c>sillfall://scene?d=…</c>).</summary>
+    public const string UriScheme = "sillfall";
 
     /// <summary>Product version, taken from the assembly so it follows <c>Directory.Build.props</c>.</summary>
     public static Version Version { get; } =

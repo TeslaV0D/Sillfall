@@ -302,7 +302,7 @@ public partial class App : Application
     /// <summary>A scene link from the command line (unpackaged) or from a protocol activation (packaged).</summary>
     private static string? FindSceneLink()
     {
-        string? fromCommandLine = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("weatherly:", StringComparison.OrdinalIgnoreCase));
+        string? fromCommandLine = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith(AppInfo.UriScheme + ":", StringComparison.OrdinalIgnoreCase));
         if (fromCommandLine is not null)
         {
             return fromCommandLine;
@@ -342,7 +342,7 @@ public partial class App : Application
     /// <summary>A later start handed over its command line: show the settings, and apply a scene link if there is one.</summary>
     private void OnInstanceMessage(string message)
     {
-        if (message.StartsWith("weatherly:", StringComparison.OrdinalIgnoreCase))
+        if (message.StartsWith(AppInfo.UriScheme + ":", StringComparison.OrdinalIgnoreCase))
         {
             ApplySceneLink(message);
         }

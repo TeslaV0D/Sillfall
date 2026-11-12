@@ -10,15 +10,15 @@
 
   <!-- Development identity. Name and Publisher are replaced with the Store reservation in M14. -->
   <Identity
-    Name="Weatherly.Dev"
-    Publisher="CN=Weatherly Development"
+    Name="Sillfall.Dev"
+    Publisher="CN=Sillfall Development"
     Version="0.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="eea4a309-960d-4b58-ae92-8b844afa60a4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
   <Properties>
-    <DisplayName>Weatherly</DisplayName>
-    <PublisherDisplayName>Weatherly Development</PublisherDisplayName>
+    <DisplayName>Sillfall</DisplayName>
+    <PublisherDisplayName>Sillfall</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <uap10:PackageIntegrity>
       <uap10:Content Enforcement="on" />
@@ -36,8 +36,8 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="Weatherly"
-        Description="Animated weather on top of your open windows."
+        DisplayName="Sillfall"
+        Description="Animated weather that settles on the edges of your open windows."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -45,15 +45,15 @@
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
       <Extensions>
-        <!-- Scene links: weatherly://scene?d=... (ADR-0012). -->
+        <!-- Scene links: sillfall://scene?d=... -->
         <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="weatherly">
-            <uap:DisplayName>Weatherly scene</uap:DisplayName>
+          <uap:Protocol Name="sillfall">
+            <uap:DisplayName>Sillfall scene</uap:DisplayName>
           </uap:Protocol>
         </uap:Extension>
         <!-- Autostart, off until the user switches it on in the settings. -->
         <uap5:Extension Category="windows.startupTask">
-          <uap5:StartupTask TaskId="WeatherlyStartup" Enabled="false" DisplayName="Weatherly" />
+          <uap5:StartupTask TaskId="SillfallStartup" Enabled="false" DisplayName="Sillfall" />
         </uap5:Extension>
       </Extensions>
     </Application>

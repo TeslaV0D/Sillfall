@@ -5,7 +5,7 @@ public class AppInfoTests
     [Fact]
     public void Name_IsTheWorkingTitle()
     {
-        AppInfo.Name.Should().Be("Weatherly");
+        AppInfo.Name.Should().Be("Sillfall");
     }
 
     [Fact]

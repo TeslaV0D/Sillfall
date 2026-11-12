@@ -1,52 +1,85 @@
-# Weatherly for Windows
+# Sillfall
 
-Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
-die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
+Animated weather for Windows — rain, snow, fog, leaves, sunlight, and grass that settle on the edges of your open windows. Effects follow window geometry. Clicks pass through.
 
-**Status:** Meilenstein M13 (Härtung): Pause bei Vollbild-Spielen, Präsentation, Sperre, Standby, Remotedesktop und
-offenem Startmenü, lokale Fehlerberichte ohne Telemetrie, Langzeittest auf Speicher- und Handle-Lecks. Davor:
-Sprachen und Barrierefreiheit, Besucher, Wetter-Sync, Einstellungen und alle sechs Wettereffekte.
+<p align="center">
+  <img src="docs/media/rain.png" alt="Heavy rain settling on window tops" width="48%" />
+  <img src="docs/media/snow.png" alt="Snow gathering on window edges" width="48%" />
+</p>
+
+<p align="center">
+  <img src="docs/media/leaves.png" alt="Autumn leaves drifting and landing" width="32%" />
+  <img src="docs/media/fog.png" alt="Soft fog across the desktop" width="32%" />
+  <img src="docs/media/sun.png" alt="Warm sunlight between windows" width="32%" />
+</p>
+
+**Status:** Milestone **M13** (hardening) is in tree. Next up is **M14** (release packaging). See [PLAN.md](PLAN.md).
+
+## Features
+
+- **Six effects** — rain (splashes, puddles, rivulets), snow (accumulation & melt), fog, autumn leaves, sunlight / god-rays, grass on window tops
+- **Window-aware** — weather lands on visible edges; closing or shaking a window sheds snow and leaves
+- **Click-through** — overlays stay out of the way; optional interactive visitors use separate hit windows
+- **Weather sync** — optional live conditions via MET Norway (offline city search, invert, per-effect blend)
+- **Scenes** — save and share looks as `.sillscene` files or `sillfall://` links
+- **Visitors** — eight original characters that visit window edges; collect them locally
+- **Privacy-first** — reads window geometry only; no titles, no screen contents, no analytics
+- **English & German** UI, Narrator labels, high contrast, reduced-motion options
+
+## Quick start
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). The WinUI app needs **Windows 10 2004** or newer.
 
 ```bash
-dotnet run --project tools/Weatherly.Sandbox
-``` Der Fahrplan steht in
-[PLAN.md](PLAN.md).
-
-**Privacy:** Weatherly liest nur Fenstergeometrie. Keine Fenstertitel, keine Inhalte, keine Analytics.
-Diese Zusagen sind als Tests abgesichert.
-
-## Bauen
-
-Voraussetzung: [.NET-10-SDK](https://dotnet.microsoft.com/download), für die App Windows 10 2004 oder neuer.
-
-Unter Windows:
-
-```bash
+# Full solution (Windows)
 dotnet build Weatherly.slnx -p:Platform=x64
-```
-
-```bash
 dotnet run --project src/Weatherly.App -p:WindowsPackageType=None
-```
 
-Unter Linux lässt sich alles außer der WinUI-App bauen und der Kern testen:
+# Effect sandbox with fake windows (Windows)
+dotnet run --project tools/Weatherly.Sandbox
 
-```bash
+# Core on Linux (simulation & tests)
 dotnet build Weatherly.CrossPlatform.slnf
-```
-
-```bash
 dotnet test --project tests/Weatherly.Core.Tests
 ```
 
-## Dokumentation
+## Gallery
 
-- [PLAN.md](PLAN.md): Implementierungsplan und Meilensteine
-- [CLAUDE.md](CLAUDE.md): Arbeitsregeln, Struktur und Konventionen
-- [ASSETS.md](ASSETS.md): Herkunft und Lizenz jedes Assets
-- [docs/adr](docs/adr): Architekturentscheidungen
-- [docs/manual-tests](docs/manual-tests): Checklisten für Tests auf echtem Windows
+| Rain on sills | Snow banks | Grass + rain |
+|---|---|---|
+| ![Rain](docs/media/rain.png) | ![Snow](docs/media/snow.png) | ![Grass](docs/media/grass.png) |
 
-## Lizenz
+| Leaves | Fog | Sun & fog |
+|---|---|---|
+| ![Leaves](docs/media/leaves.png) | ![Fog](docs/media/fog.png) | ![Sun and fog](docs/media/sun-and-fog.png) |
+
+These frames are deterministic WARP renders from `tools/Weatherly.FrameDump` (overlay only, transparent background shown as black).
+
+## Architecture (short)
+
+| Project | Role |
+|---|---|
+| `Weatherly.Core` | Simulation, surfaces, weather mapping, settings (platform-neutral) |
+| `Weatherly.Platform` | Win32 overlays, window tracking, tray, shell integration |
+| `Weatherly.Render` | Direct3D 11 / DirectComposition / Direct2D |
+| `Weatherly.Audio` | XAudio2 |
+| `Weatherly.App` | WinUI 3 tray, settings, MSIX packaging |
+
+Product display name and URI scheme come from `AppInfo` (`Sillfall`, `sillfall://`). Assembly / project names still use the historical `Weatherly.*` identifiers until a bulk rename in packaging work.
+
+## Privacy
+
+Sillfall reads **window geometry** only. It does not read titles or contents, does not capture the screen, and ships without telemetry. Crash reports stay on disk under `%LOCALAPPDATA%\Sillfall\logs`. These rules are enforced by automated invariant tests.
+
+## Documentation
+
+- [PLAN.md](PLAN.md) — product plan and milestones
+- [CLAUDE.md](CLAUDE.md) — contributor / agent conventions
+- [ASSETS.md](ASSETS.md) — source and license for every asset
+- [docs/adr](docs/adr) — architecture decisions
+- [docs/manual-tests](docs/manual-tests) — Windows checklists
+- [docs/weather-mapping.md](docs/weather-mapping.md) — forecast → effect mapping
+
+## License
 
 [MIT](LICENSE)
