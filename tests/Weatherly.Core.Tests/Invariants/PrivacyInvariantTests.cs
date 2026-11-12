@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Weatherly.Core.Tests.Support;
 
 namespace Weatherly.Core.Tests.Invariants;
@@ -21,7 +22,9 @@ public class PrivacyInvariantTests
         "StretchBlt",
         "PrintWindow",
         "CopyFromScreen",
-        "GetPixel",
+        // GDI's GetPixel, matched as a whole word: RenderTargetBitmap.GetPixelsAsync renders the app's own
+        // controls (the smoke test's pictures of the settings pages), not the screen.
+        @"\bGetPixel\b",
         "Windows.Graphics.Capture",
         "GraphicsCapture",
         "DuplicateOutput",
@@ -72,6 +75,21 @@ public class PrivacyInvariantTests
         Repo.ProductSourceFiles().Should().Contain("src/Weatherly.Platform/NativeMethods.txt");
     }
 
+    [Theory]
+    [InlineData("COLORREF c = GetPixel(hdc, 1, 2);", true)]
+    [InlineData("GetPixel", true)]
+    [InlineData("byte[] p = (await bitmap.GetPixelsAsync()).ToArray();", false)]
+    public void Scan_MatchesGdiGetPixelOnly(string line, bool expected)
+    {
+        // Guards the whole-word pattern above against a change that lets GDI's GetPixel through.
+        s_screenCaptureApis.Any(needle => Matches(line, needle)).Should().Be(expected);
+    }
+
+    /// <summary>A needle is a plain substring, unless it starts with <c>\b</c>: then it is a regular expression.</summary>
+    private static bool Matches(string line, string needle) => needle.StartsWith(@"\b", StringComparison.Ordinal)
+        ? Regex.IsMatch(line, needle, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))
+        : line.Contains(needle, StringComparison.OrdinalIgnoreCase);
+
     private static List<string> FindUsages(IEnumerable<string> files, string[] needles)
     {
         var usages = new List<string>();
@@ -89,7 +107,7 @@ public class PrivacyInvariantTests
 
                 foreach (string needle in needles)
                 {
-                    if (lines[i].Contains(needle, StringComparison.OrdinalIgnoreCase))
+                    if (Matches(lines[i], needle))
                     {
                         usages.Add($"{file}:{i + 1}: {needle}");
                     }
