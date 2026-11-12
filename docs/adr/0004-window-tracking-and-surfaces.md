@@ -1,90 +1,62 @@
-# ADR-0004: Fenster-Tracking und Oberflächen
+# ADR-0004: Window tracking and surfaces
 
-- Status: akzeptiert
-- Datum: 2026-11-11
-- Meilenstein: M2
+- Status: accepted
+- Date: 2026-11-11
+- Milestone: M2
 
-## Kontext
+## Context
 
-Die Effekte brauchen die sichtbaren Kanten der offenen Fenster: Oberkanten (Schnee, Laub, Pfützen,
-Gras), Seiten (Rinnsale) und einen Boden pro Monitor. PLAN.md, Abschnitte 2, 3.2 und 3.3 legen die
-Win32-Seite fest. Offen waren die genauen Verdeckungsregeln, wer welche Fenster ignoriert und wo das
-Tracking läuft.
+Effects need the visible edges of open windows: top edges (snow, leaves, puddles, grass), sides (gutters), and one ground per monitor. PLAN.md, sections 2, 3.2, and 3.3 define the Win32 side. Open questions were exact occlusion rules, which windows to ignore, and where tracking runs.
 
-## Entscheidungen
+## Decisions
 
-### 1. Tracking auf dem Overlay-Thread
+### 1. Tracking on the overlay thread
 
-`OverlayHost` besitzt auch das Tracking. Die WinEvent-Hooks brauchen eine Message-Loop, und der
-Overlay-Thread hat schon eine. Snapshot, Oberflächen und Darstellung bleiben so auf einem Thread,
-ohne Locks.
+`OverlayHost` owns tracking too. WinEvent hooks need a message loop, and the overlay thread already has one. Snapshot, surfaces, and drawing stay on one thread without locks.
 
-- Hooks (`WINEVENT_OUTOFCONTEXT`, schmale Bereiche): Vordergrund, Move/Size Start/Ende, Minimieren
-  Start/Ende, Objekt Destroy/Show/Hide/Reorder, LocationChange, Cloaked/Uncloaked. Objekt-Events zählen
-  nur für ganze Fenster (`OBJID_WINDOW`, `CHILDID_SELF`), also nicht für Caret, Cursor oder Controls.
-- Ereignisse werden gebündelt: Das erste startet einen 16-ms-Timer, weitere bis dahin lösen nichts aus.
-  So entsteht höchstens ein Snapshot pro Frame, auch beim Ziehen eines Fensters.
-- Zusätzlich ein 10-Hz-Poll für Änderungen ohne Event. Er läuft nur, solange Overlays existieren.
-- Ein Snapshot, der dem vorigen gleicht, löst nichts aus. Im Leerlauf wird also nicht gezeichnet.
+- Hooks (`WINEVENT_OUTOFCONTEXT`, narrow ranges): foreground, move/size start/end, minimize start/end, object destroy/show/hide/reorder, location change, cloaked/uncloaked. Object events count only for whole windows (`OBJID_WINDOW`, `CHILDID_SELF`), not caret, cursor, or controls.
+- Events are coalesced: the first starts a 16 ms timer; more until then do nothing. At most one snapshot per frame, even while dragging a window.
+- Additional 10 Hz poll for changes without events. Runs only while overlays exist.
+- A snapshot identical to the previous one triggers nothing. Idle does not redraw.
 
-### 2. Welche Fenster zählen
+### 2. Which windows count
 
-`EnumWindows` liefert die Z-Order von oben nach unten. Ignoriert werden unsichtbare, minimierte und
-cloaked Fenster (andere virtuelle Desktops, suspendierte Store-Apps), Tool-Fenster, klick-durchlässige
-Layered-Fenster (Overlays, auch fremde), Fenster unter 100 × 60 px sowie die Shell-Klassen `Progman`,
-`WorkerW` (Desktop) und `Shell_TrayWnd`, `Shell_SecondaryTrayWnd` (Taskleisten). Die eigenen Overlays
-erkennt das Tracking am Klassennamen-Präfix.
+`EnumWindows` yields Z-order top to bottom. Ignored: invisible, minimized, and cloaked windows (other virtual desktops, suspended Store apps), tool windows, click-through layered windows (overlays, including third-party), windows under 100 × 60 px, and shell classes `Progman`, `WorkerW` (desktop), `Shell_TrayWnd`, `Shell_SecondaryTrayWnd` (taskbars). Own overlays are recognized by class-name prefix.
 
-Gelesen werden nur Geometrie und der Klassenname. Bounds kommen von `DWMWA_EXTENDED_FRAME_BOUNDS`,
-nicht von `GetWindowRect`, damit die unsichtbaren Resize-Ränder nicht mitzählen.
+Only geometry and class name are read. Bounds come from `DWMWA_EXTENDED_FRAME_BOUNDS`, not `GetWindowRect`, so invisible resize borders are excluded.
 
-### 3. Verdeckungsregeln
+### 3. Occlusion rules
 
-| Oberfläche | Lage | Verdeckt, wenn ein höheres Fenster … |
+| Surface | Location | Occluded when a higher window … |
 |---|---|---|
-| Oberkante | Zeile über `Top` | … die Kantenzeile oder die Zeile darüber bedeckt. Liegt ein Fenster direkt auf der Kante, ist kein Platz für Schnee. |
-| Seite links/rechts | Spalte direkt außerhalb des Rahmens | … diese Spalte oder die Randspalte des Fensters bedeckt. |
-| Boden | Unterkante der Arbeitsfläche (Taskleistenoberkante) | … bis zum Boden reicht (auch durch das Fenster selbst, z. B. maximiert). |
+| Top edge | Row above `Top` | … covers the edge row or the row above it. A window flush on the edge leaves no room for snow. |
+| Left/right side | Column just outside the frame | … covers that column or the window’s margin column. |
+| Ground | Bottom of the work area (top of taskbar) | … reaches down to the ground (including through the window itself, e.g. maximized). |
 
-Dazu kommt: Alles wird pro Monitor geschnitten. Eine Oberkante auf der Monitoroberkante (maximiertes
-Fenster) hat keinen Platz und entfällt. Ein Fenster über zwei Monitore liefert zwei Stücke mit
-gleichem Schlüssel.
+Everything is clipped per monitor. A top edge on the monitor top (maximized window) has no slot and is dropped. A window spanning two monitors yields two pieces with the same key.
 
-### 4. Identität und lokale Koordinaten
+### 4. Identity and local coordinates
 
-Jedes Stück trägt einen `SurfaceKey(Fenster-Id, Kante)` und den `Origin` der ganzen Kante (linke
-Fensterkante bzw. obere). Akkumulationen ab M4 speichern relativ zum Origin und wandern so mit dem
-Fenster. Verdeckte Teile fallen aus der Liste, die Daten dahinter bleiben beim Effekt erhalten.
+Each piece carries `SurfaceKey(window id, edge)` and the `Origin` of the full edge (left window edge or top). Accumulations from M4 onward store relative to origin and move with the window. Occluded parts drop from the list; data behind them remains in the effect.
 
-Der Boden ist an den Monitor-Index gebunden. Ändert sich die Monitorliste, beginnt der Boden leer.
-Das ist selten und unkritisch.
+Ground is bound to monitor index. If the monitor list changes, ground starts empty. Rare and acceptable.
 
-### 5. Bewegung und Shake
+### 5. Motion and shake
 
-`WindowMotionTracker` leitet aus aufeinanderfolgenden Snapshots Ereignisse ab: erschienen,
-verschwunden (geschlossen, versteckt, minimiert), bewegt (mit Geschwindigkeit in px/s), Größe
-geändert, geschüttelt. Shake: mindestens drei Richtungswechsel in 600 ms mit über 20 px Ausschlag,
-getrennt für x und y.
+`WindowMotionTracker` derives events from consecutive snapshots: appeared, gone (closed, hidden, minimized), moved (with velocity in px/s), resized, shaken. Shake: at least three direction changes within 600 ms with over 20 px swing, separately for x and y.
 
-### 6. Keine Allokationen beim Ziehen
+### 6. No allocations while dragging
 
-`SurfaceExtractor`, `WindowSnapshot` und `SurfaceSet` sind wiederverwendbar und nach dem Aufwärmen
-allokationsfrei (per Test mit `GC.GetAllocatedBytesForCurrentThread` geprüft). Ausnahme: Ein neues
-Fenster legt im Motion-Tracker einmalig einen Zustand an.
+`SurfaceExtractor`, `WindowSnapshot`, and `SurfaceSet` are reusable and allocation-free after warm-up (checked with `GC.GetAllocatedBytesForCurrentThread`). Exception: a new window allocates state once in the motion tracker.
 
-### 7. Prüfung ohne Desktop
+### 7. Verification without a desktop
 
-- 36 Unit-Tests für Verdeckung und Clipping, dazu Tests für Bewegung und Shake.
-- WARP-Tests rendern den Debug-Layer und prüfen, dass jedes gezeichnete Pixel in einem Band der
-  extrahierten Oberflächen liegt und umgekehrt.
-- Im Smoke-Test verschiebt die App ihr eigenes Fenster und prüft, dass das Tracking die neue Position
-  pixelgenau übernimmt. Das Skript prüft im Desktop-Screenshot, dass die Debug-Linien genau auf den
-  zwei Zeilen über und den zwei Spalten neben dem App-Fenster liegen. Die Fensterposition liest es
-  dafür selbst über DWM, unabhängig vom Tracker.
+- 36 unit tests for occlusion and clipping, plus motion and shake tests.
+- WARP tests render the debug layer and check every drawn pixel lies in a band of extracted surfaces and vice versa.
+- In the smoke test the app moves its own window and checks tracking adopts the new position exactly. The script checks the desktop screenshot: debug lines sit on the two rows above and two columns beside the app window. Window position is read via DWM independently of the tracker.
 
-## Konsequenzen
+## Consequences
 
-- Ein 10-Hz-Poll kostet auch im Leerlauf etwas CPU (ein `EnumWindows` pro 100 ms). Das ist gewollt
-  (PLAN.md) und wird in M13 auf Referenz-Hardware gemessen.
-- Fenster, die ihre Geometrie ohne Event ändern, werden spätestens nach 100 ms erkannt.
-- Popup-Menüs, Tooltips und ähnliches sind meist Tool-Fenster oder zu klein und bekommen keine Kanten.
+- A 10 Hz poll costs some CPU even when idle (one `EnumWindows` per 100 ms). Intentional (PLAN.md) and measured on reference hardware in M13.
+- Windows that change geometry without events are seen within at most 100 ms.
+- Popup menus, tooltips, and similar are usually tool windows or too small and get no edges.

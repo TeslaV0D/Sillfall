@@ -1,8 +1,6 @@
-# Manuelle Checkliste MVP-Cut – Tray und Einstellungen
+# Manual checklist MVP cut – Tray and settings
 
-Automatisch geprüft: Menü-Modell (Häkchen, Befehle, Pause), Tooltip, Speichern und Laden der
-Einstellungen (auch kaputte Dateien). Auf dem Windows-Runner prüft der Smoke-Test, dass die Shell das
-Tray-Icon annimmt.
+Already automated: menu model (checks, commands, pause), tooltip, save and load settings (including corrupt files). Windows runner smoke test verifies shell accepts the tray icon.
 
 ## Start
 
@@ -10,34 +8,34 @@ Tray-Icon annimmt.
 dotnet run --project src/Weatherly.App -p:WindowsPackageType=None
 ```
 
-## 1. Tray-Icon
+## 1. Tray icon
 
-- [ ] Das Icon erscheint im Infobereich (eventuell im Überlauf „^“). Hover zeigt z. B. „Weatherly: clear sky“.
-- [ ] Rechtsklick öffnet das Menü. Ein Klick daneben schließt es wieder.
-- [ ] Linksklick öffnet das Fenster.
-- [ ] Regen → Stark: Es regnet, im Menü ist „Heavy“ markiert, der Tooltip sagt „rain 100 %“.
-- [ ] Schnee → Leicht, dann „Pause all effects“: alles weg. Noch einmal: alles wieder da.
-- [ ] Sound an/aus über das Menü.
-- [ ] Explorer im Task-Manager neu starten: Das Icon kommt zurück.
+- [ ] Icon in notification area (may be in overflow “^”). Hover shows e.g. “Sillfall: clear sky”.
+- [ ] Right-click opens menu. Click outside closes.
+- [ ] Left-click opens window.
+- [ ] Rain → Heavy: it rains; menu shows “Heavy”; tooltip “rain 100 %”.
+- [ ] Snow → Light, then “Pause all effects”: all off. Again: back on.
+- [ ] Sound on/off from menu.
+- [ ] Restart Explorer in Task Manager: icon returns.
 
-## 2. Fenster
+## 2. Window
 
-- [ ] Fenster schließen (X): Das Fenster verschwindet, das Wetter läuft weiter, das Icon bleibt.
-- [ ] Über das Icon wieder öffnen: Die Regler zeigen den aktuellen Stand.
-- [ ] „Quit“: Icon, Fenster und Wetter sind weg, kein Prozess bleibt übrig.
+- [ ] Close (X): window hides; weather continues; icon remains.
+- [ ] Open via icon: sliders show current state.
+- [ ] Quit: icon, window, weather gone; no process left.
 
-## 3. Einstellungen
+## 3. Settings
 
-- [ ] Regen 60 %, Schnee leicht, Sound an, Quit, neu starten: Alles ist wie vorher.
-- [ ] Datei `%LOCALAPPDATA%\Weatherly\settings.json` mit Unsinn füllen und starten: Die App startet mit Standardwerten.
+- [ ] Rain 60%, snow light, sound on, Quit, restart: same state.
+- [ ] Corrupt `%LOCALAPPDATA%\<AppInfo.Name>\settings.json`: app starts with defaults.
 
-## 4. Alltag (ein Arbeitstag)
+## 4. Daily use (one workday)
 
-- [ ] Ein paar Stunden mit leichtem Regen oder Schnee laufen lassen: Stört nichts, keine Klicks gehen verloren, kein Fokusklau.
-- [ ] Notizen zu allem, was nervt oder gefällt:
+- [ ] Run light rain or snow for hours: no lost clicks, no focus steal, not annoying.
+- [ ] Notes on likes and annoyances:
 
-## Ergebnis
+## Results
 
-| Datum | Windows-Version | Ergebnis | Anmerkungen |
+| Date | Windows version | Result | Notes |
 |---|---|---|---|
 |  |  |  |  |

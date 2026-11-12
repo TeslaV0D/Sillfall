@@ -1,90 +1,57 @@
-# ADR-0003: Overlay-Architektur
+# ADR-0003: Overlay architecture
 
-- Status: akzeptiert
-- Datum: 2026-11-11
-- Meilenstein: M1
+- Status: accepted
+- Date: 2026-11-11
+- Milestone: M1
 
-## Kontext
+## Context
 
-PLAN.md, Abschnitt 3.1 legt die Technik fest: ein Fenster pro Monitor, DirectComposition, premultiplied
-Alpha, Click-Through über `WS_EX_TRANSPARENT`. Offen waren: auf welchem Thread die Overlays leben,
-wie Monitor-Änderungen behandelt werden und wie sich das Ganze ohne Windows-Desktop prüfen lässt.
+PLAN.md, section 3.1 fixes the technology: one window per monitor, DirectComposition, premultiplied alpha, click-through via `WS_EX_TRANSPARENT`. Open questions were: which thread owns the overlays, how monitor changes are handled, and how to verify behavior without a Windows desktop.
 
-## Entscheidungen
+## Decisions
 
-### 1. Eigener Overlay-Thread mit eigener Message-Loop
+### 1. Dedicated overlay thread with its own message loop
 
-`OverlayHost` startet einen Thread mit Win32-Message-Loop. Dort leben alle Overlay-Fenster, das
-D3D11-Device und die DirectComposition-Objekte. Die App spricht nur über thread-sichere Methoden
-(`Start`, `Apply`, `GetStatus`, `Dispose`) mit dem Host.
+`OverlayHost` starts a thread with a Win32 message loop. All overlay windows, the D3D11 device, and DirectComposition objects live there. The app talks to the host only through thread-safe methods (`Start`, `Apply`, `GetStatus`, `Dispose`).
 
-Gründe: Die Overlays hängen nicht am WinUI-Dispatcher. Ein blockierter UI-Thread lässt sie nicht
-einfrieren, und das Tool-Fenster bzw. später der Tray funktioniert unabhängig davon. Außerdem bleibt
-der Host in der Sandbox-App und in Tests ohne WinUI nutzbar.
+Rationale: Overlays are not tied to the WinUI dispatcher. A blocked UI thread does not freeze them, and the tool window or tray can work independently. The host also remains usable in the Sandbox app and in tests without WinUI.
 
-### 2. Schichtentrennung über `IOverlayRenderer`
+### 2. Layer separation via `IOverlayRenderer`
 
-Platform (Fenster) und Render (D3D/DComp) kennen sich nicht. Der Vertrag `IOverlayRenderer` /
-`IOverlaySurface` liegt in Core. Die App verdrahtet beides. So bleibt die Regel „Platform, Render
-und Audio kennen nur Core“ aus `ArchitectureTests` gültig.
+Platform (windows) and Render (D3D/DComp) do not reference each other. Contract `IOverlayRenderer` / `IOverlaySurface` lives in Core. The app wires both. That keeps the rule “Platform, Render, and Audio reference only Core” from `ArchitectureTests` intact.
 
-### 3. Monitor-Änderungen: Neuaufbau statt Anpassen
+### 3. Monitor changes: rebuild instead of patch
 
-Bei `WM_DISPLAYCHANGE`, `WM_DPICHANGED` und Änderungen der Arbeitsfläche wird nach 250 ms Ruhe
-neu geplant (`OverlayLayoutPlanner`, in Core getestet). Ein Overlay, dessen Monitor Position,
-Größe oder DPI geändert hat, wird zerstört und neu erstellt, statt Fenster und Swap-Chain
-anzupassen. Das passiert selten und hinterlässt keinen veralteten Zustand. Ändern sich nur
-Arbeitsfläche oder Primär-Flag, bleibt das Overlay bestehen.
+On `WM_DISPLAYCHANGE`, `WM_DPICHANGED`, and work-area changes, after 250 ms of quiet the layout is replanned (`OverlayLayoutPlanner`, tested in Core). An overlay whose monitor changed position, size, or DPI is destroyed and recreated instead of resizing the window and swap chain. That is rare and avoids stale state. If only work area or primary flag changes, the overlay stays.
 
-Identität eines Monitors ist der Gerätename (`\\.\DISPLAY1`). Wechselt Windows beim Umstecken
-den Namen, wird das Overlay neu erstellt. Das ist harmlos.
+Monitor identity is the device name (`\\.\DISPLAY1`). If Windows renames a monitor when cables change, the overlay is recreated. That is harmless.
 
-### 4. Topmost bleibt nicht von allein oben
+### 4. Topmost does not stay on top by itself
 
-`WS_EX_TOPMOST` allein reicht nicht. Der Screenshot im CI hat gezeigt: Das App-Fenster, das nach
-den Overlays aktiviert wurde, lag über ihnen, ebenso die Taskleiste. Deshalb hört der Host per
-`SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` auf Vordergrundwechsel und
-schiebt die Overlays dann wieder an die Spitze des Topmost-Bands (`SetWindowPos(HWND_TOPMOST)`
-ohne Aktivierung). Der Hook läuft außerhalb fremder Prozesse, es wird nichts injiziert.
+`WS_EX_TOPMOST` alone is not enough. CI screenshots showed: the app window activated after the overlays sat above them, as did the taskbar. So the host listens with `SetWinEventHook(EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT)` for foreground changes and pushes overlays back to the top of the topmost band (`SetWindowPos(HWND_TOPMOST)` without activation). The hook runs out-of-process; nothing is injected.
 
-Der Check „Z-order“ läuft vom Overlay in der Z-Order nach oben und listet sichtbare Fenster, die
-den Monitor überlappen (nur Klassenname und Topmost-Flag, nie Titel). Ein normales Fenster darüber
-ist ein Fehler. Andere Topmost-Fenster werden nur gemeldet.
+The “Z-order” check walks from the overlay upward and lists visible windows overlapping the monitor (class name and topmost flag only, never titles). A normal window above is an error. Other topmost windows are only reported.
 
-Start-Menü, Suche und Benachrichtigungen liegen in eigenen Z-Order-Bändern über allen Desktop-
-Fenstern. Darüber kommt das Overlay nicht, und das ist so gewollt. Das Ausblenden bei offenem
-Start-Menü folgt in M13.
+Start menu, search, and notifications sit in their own Z-order bands above desktop windows. The overlay cannot go above them, by design. Hiding when the start menu is open follows in M13.
 
-### 5. Device-Lost
+### 5. Device lost
 
-Meldet `Present` `DXGI_ERROR_DEVICE_REMOVED/RESET/HUNG`, werden alle Surfaces freigegeben,
-das Device neu erstellt und die Surfaces neu angelegt. Nach drei erfolglosen Versuchen bleibt
-der Fehler im Status sichtbar. Ein Test dafür auf echter Hardware steht in der Checkliste M1.
+If `Present` returns `DXGI_ERROR_DEVICE_REMOVED/RESET/HUNG`, all surfaces are released, the device is recreated, and surfaces are rebuilt. After three failed attempts the error stays visible in status. A test on real hardware is in checklist M1.
 
-### 6. Kein Render-Loop in M1
+### 6. No render loop in M1
 
-M1 zeigt ein statisches Testmuster. Es wird nur bei Änderungen gezeichnet (Start, Optionen,
-Monitore). Damit ist „0 % GPU im Idle“ trivial erfüllt und messbar: Der Smoke-Test vergleicht
-die Frame-Zähler zweier Messungen. Der Frame-Loop mit festem Zeitschritt kommt in M3.
+M1 shows a static test pattern. Drawing happens only on changes (start, options, monitors). That makes “0% GPU when idle” trivial and measurable: the smoke test compares frame counters between two measurements. The fixed-timestep frame loop arrives in M3.
 
-### 7. Verifikation ohne Windows-Desktop
+### 7. Verification without a Windows desktop
 
-- **WARP-Tests** rendern das Testmuster offscreen und prüfen Pixel gegen `TestPatternLayout`,
-  die gleiche Definition, aus der der Shader seine Konstanten bekommt.
-- **Selbstprüfung der App:** `OverlayDiagnostics` wertet gemessene Fensterzustände aus
-  (Styles, `WindowFromPoint`-Hit-Test, Vordergrundfenster, Display-Affinity, Frame-Zähler).
-- **Screenshot im CI:** Das Smoke-Skript fotografiert den Desktop des Windows-Runners und prüft,
-  dass das Muster wirklich auf dem Bildschirm ist, auch über dem zentrierten App-Fenster, und dass
-  es bei Screenshot-Ausschluss fehlt.
-- Alle Bilder landen im CI-Artefakt `previews`.
+- **WARP tests** render the test pattern offscreen and compare pixels to `TestPatternLayout`, the same definition the shader uses for constants.
+- **App self-check:** `OverlayDiagnostics` evaluates measured window state (styles, `WindowFromPoint` hit test, foreground window, display affinity, frame counters).
+- **CI screenshot:** The smoke script captures the Windows runner desktop and checks that the pattern is on screen, including above the centered app window, and missing when screenshot exclusion is on.
+- All images go to CI artifact `previews`.
 
-Was das nicht abdeckt (echte Mausklicks durch das Overlay, Multi-Monitor mit gemischter DPI,
-Hot-Plug, GPU-Last auf echter Hardware), steht in `docs/manual-tests/M1.md`.
+What that does not cover (real mouse clicks through the overlay, multi-monitor mixed DPI, hot-plug, GPU load on real hardware) is in `docs/manual-tests/M1.md`.
 
-## Konsequenzen
+## Consequences
 
-- Jeder Aufruf von außen ist ein Thread-Wechsel mit Warten. Für Optionen und Status ist das
-  unkritisch. Pro-Frame-Daten (ab M3) gehen nicht über diesen Weg, sondern entstehen auf dem
-  Overlay-Thread selbst.
-- `WindowFromPoint` als Click-Through-Probe ist ein starker Hinweis, aber kein Beweis. Den liefert
-  erst der Klick auf echter Hardware.
+- Every call from outside is a thread switch with waiting. Fine for options and status. Per-frame data (from M3 onward) does not go this way; it is produced on the overlay thread.
+- `WindowFromPoint` as a click-through probe is a strong hint, not proof. Proof requires clicks on real hardware.

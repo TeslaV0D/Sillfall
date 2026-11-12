@@ -1,77 +1,61 @@
-# ADR-0010: Nebel und Sonnenlicht
+# ADR-0010: Fog and sunlight
 
-- Status: akzeptiert (Optik vorbehaltlich Boss-Abnahme)
-- Datum: 2026-11-11
-- Meilenstein: M7
+- Status: accepted (visuals subject to maintainer sign-off)
+- Date: 2026-11-11
+- Milestone: M7
 
-## Kontext
+## Context
 
-PLAN.md, Abschnitte 4.4 und 4.5:
+PLAN.md, sections 4.4 and 4.5:
 
-- Nebel als fBm-Rauschen mit Domain-Warping in Viertelauflösung,
-- God-Rays mit einer Maske der Fenster,
-- Glühen und Staub.
+- Fog as fBm noise with domain warping at quarter resolution,
+- god rays with a mask of windows,
+- glow and dust.
 
-Bis M6 bestand jeder Frame nur aus Sprites. Für Vollbild-Effekte brauchte es einen zweiten Weg vom Core
-zum Renderer.
+Until M6 every frame was sprites only. Full-screen effects needed a second path from Core to the renderer.
 
-## Entscheidungen
+## Decisions
 
-### 1. Parameter statt Sprites
+### 1. Parameters instead of sprites
 
-`RenderFrame` trägt zwei Ebenen: `FogLayer` (Dichte, Drift, Phase, Farbe, Maximaldeckung) und `SunLayer`
-(Stärke, Position, Farbe). Dazu kommen die Fenster-Rechtecke als Verdecker, höchstens 64, die obersten zuerst.
+`RenderFrame` carries two layers: `FogLayer` (density, drift, phase, color, max opacity) and `SunLayer` (strength, position, color). Plus window rectangles as occluders, at most 64, topmost first.
 
-- Core simuliert nur diese wenigen Zahlen: Nebel zieht ein und ab, driftet mit dem Wind und atmet, die
-  Sonne wandert langsam.
-- Gezeichnet wird im Renderer. Damit bleibt die Simulation testbar und frei von Windows.
-- Die Verdecker füllt die Engine nur, solange Nebel oder Sonne sichtbar sind.
+- Core simulates only these numbers: fog eases in and out, drifts with wind and breathes; the sun moves slowly.
+- Drawing is in the renderer. Simulation stays testable and Windows-free.
+- Occluders are filled only while fog or sun is visible.
 
-### 2. Ein Durchlauf in Viertelauflösung
+### 2. One pass at quarter resolution
 
-`AtmospherePass` (Render) zeichnet in drei Schritten:
+`AtmospherePass` (Render) draws in three steps:
 
-1. Eine Maske der Fenster in Viertelauflösung: Himmel weiß, Fenster schwarz.
-2. Nebel und Strahlen in einem einzigen Pixel-Shader in Viertelauflösung, in eine Half-Float-Textur.
-   8 Bit würden beim dünnen Nebel Stufen zeigen.
-3. Bilineare Hochskalierung über das Ziel, premultiplied.
+1. Window mask at quarter res: sky white, windows black.
+2. Fog and rays in one pixel shader at quarter res into a half-float texture. 8-bit would band in thin fog.
+3. Bilinear upscale over the target, premultiplied.
 
-Nebel und Sonne liegen hinter allen Sprites (PLAN.md, Abschnitt 4.7). Die Texturen werden pro
-Monitorgröße zwischengespeichert, für bis zu 4 Größen.
+Fog and sun sit behind all sprites (PLAN.md, section 4.7). Textures are cached per monitor size, up to 4 sizes.
 
-### 3. Nebel
+### 3. Fog
 
-- **Form:** 4 Oktaven Value-Noise mit Domain-Warping. Die Merkmalsgröße ist etwa 380 px × DPI. Der
-  Nebel wandert mit 60 % des Windes plus einer Grunddrift von 6 px/s.
-- **Höhe:** Nach unten wird er dichter.
-- **Deckung:** höchstens 35 %, über Fenstern nur 45 % davon. Ein heller Saum über den Oberkanten lässt
-  die Fenster aus dem Nebel ragen.
+- **Shape:** 4 octaves value noise with domain warping. Feature size ~380 px × DPI. Fog moves at 60% of wind plus a base drift of 6 px/s.
+- **Height:** Denser toward the bottom.
+- **Opacity:** at most 35%, over windows only 45% of that. A bright rim on top edges lets windows emerge from fog.
 
-### 4. Sonnenlicht
+### 4. Sunlight
 
-- **Position:** Die Sonne steht knapp über der oberen rechten oder linken Ecke des Desktops und wandert
-  über Minuten um wenige Prozent.
-- **Strahlen:** 48 Schritte durch die Maske in Richtung Sonne, mit Abklingen 0,965. Der Anteil freien
-  Himmels, quadriert, ergibt die Strahlen. Fenster werfen dadurch lange Schatten.
-- **Glühen:** um die Sonne. Über Fenstern bleibt nur 35 % des Lichts übrig, damit Inhalte lesbar bleiben.
-- **Staub:** 100 Partikel schweben im Lichtkegel. Sie funkeln und werden zur Sonne hin heller.
+- **Position:** Sun sits just above the desktop’s upper right or left corner and wanders a few percent over minutes.
+- **Rays:** 48 steps through the mask toward the sun with decay 0.965. Free-sky fraction, squared, yields rays. Windows cast long shadows.
+- **Glow:** around the sun. Over windows only 35% of light remains so content stays readable.
+- **Dust:** 100 particles drift in the cone. They sparkle and brighten toward the sun.
 
-Additives Licht über einem transparenten Overlay ist nur bedingt möglich. Das Licht wird deshalb als
-warmer Farbanteil mit wenig Deckung ausgegeben (Alpha = 30 % der Helligkeit). Ob das auf echten Desktops
-warm statt milchig wirkt, entscheidet die Abnahme.
+Additive light on a transparent overlay is limited. Light is emitted as warm color with low opacity (alpha = 30% of brightness). Whether that reads warm rather than milky on real desktops is for sign-off.
 
-Das Licht ist damit „überhell“ im Sinne von premultiplied Alpha (Farbe größer als Alpha), also additiv.
-PNGs speichern straight Alpha und schneiden solche Werte ab. Die Vorschauen zeigen das Licht deshalb etwas
-schwächer, als es auf dem Bildschirm ist. Der Golden-Vergleich schickt das gerenderte Bild durch denselben
-PNG-Weg, bevor er vergleicht.
+That makes the light “overbright” in premultiplied terms (color greater than alpha), i.e. additive. PNGs store straight alpha and clip such values. Previews look slightly weaker than on screen. Golden comparison runs the render through the same PNG path before compare.
 
-### 5. Ohne Wetter-Sync
+### 5. Without weather sync
 
-Das Tag-Nacht-Verhalten (`is_day`) und die Stärke nach Bewölkung kommen mit M10. Die Seite der Sonne ist
-im Code einstellbar (`SunEffect.Side`). In den Einstellungen erscheint sie mit M9.
+Day/night behavior (`is_day`) and strength from cloud cover arrive with M10. Sun side is configurable in code (`SunEffect.Side`). It appears in settings with M9.
 
-## Konsequenzen
+## Consequences
 
-- Die GPU-Kosten wachsen: Nebel kostet etwa 60 ALU-Operationen pro Viertelpixel, die Sonne 48
-  Texturzugriffe. Gemessen wird auf Referenz-Hardware, siehe Checkliste M7.
-- Golden-Images `fog`, `sun` und `sun-and-fog` sowie WARP-Tests für Verdeckung, Höhenverlauf und Schatten.
+- GPU cost grows: fog ~60 ALU ops per quarter pixel, sun 48 texture samples. Measured on reference hardware; see checklist M7.
+- Golden images `fog`, `sun`, and `sun-and-fog`, plus WARP tests for occlusion, height falloff, and shadows.

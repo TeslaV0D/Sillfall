@@ -1,29 +1,25 @@
-# ADR-0002: AwesomeAssertions statt FluentAssertions
+# ADR-0002: AwesomeAssertions instead of FluentAssertions
 
-- Status: akzeptiert
-- Datum: 2026-11-11
-- Meilenstein: M0
+- Status: accepted
+- Date: 2026-11-11
+- Milestone: M0
 
-## Kontext
+## Context
 
-PLAN.md nennt FluentAssertions für die Tests. Seit Version 8 steht FluentAssertions unter einer
-Lizenz von Xceed, die für kommerzielle Nutzung eine bezahlte Lizenz verlangt. Weatherly soll
-verkauft werden.
+PLAN.md names FluentAssertions for tests. Since version 8, FluentAssertions is under an Xceed license that requires a paid license for commercial use. Sillfall is intended to be sold.
 
-## Optionen
+## Options
 
-1. **FluentAssertions 8 mit bezahlter Lizenz.** Laufende Kosten für eine reine Test-Bibliothek.
-2. **FluentAssertions 7.x einfrieren.** Letzte Version unter Apache 2.0. Bekommt keine neuen Features.
-3. **AwesomeAssertions.** Community-Fork von FluentAssertions unter Apache 2.0, aktiv gepflegt,
-   gleiche API (`value.Should().Be(…)`), anderer Namespace.
+1. **FluentAssertions 8 with a paid license.** Ongoing cost for a test-only library.
+2. **Pin FluentAssertions 7.x.** Last version under Apache 2.0. No new features.
+3. **AwesomeAssertions.** Community fork of FluentAssertions under Apache 2.0, actively maintained, same API (`value.Should().Be(…)`), different namespace.
 
-## Entscheidung
+## Decision
 
-Option 3: **AwesomeAssertions**. Keine Lizenzkosten, kein eingefrorener Stand, und die Tests lesen
-sich genau so, wie der Plan es vorsieht.
+Option 3: **AwesomeAssertions**. No license cost, no frozen dependency, and tests read the same way the plan describes.
 
-## Konsequenzen
+## Consequences
 
-- In Testprojekten ist `AwesomeAssertions` als globales `using` eingetragen.
-- Ein späterer Wechsel zurück wäre ein Austausch von Paket und Namespace.
-- Boss kann die Entscheidung jederzeit kippen, falls eine FluentAssertions-Lizenz vorhanden ist.
+- Test projects use `AwesomeAssertions` as a global `using`.
+- Switching back later is a package and namespace swap.
+- The maintainer can reverse this decision if a FluentAssertions license is available.

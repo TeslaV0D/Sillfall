@@ -1,74 +1,61 @@
-# ADR-0008: MVP-Cut – Tray-Icon und gespeicherte Einstellungen
+# ADR-0008: MVP cut – tray icon and persisted settings
 
-- Status: akzeptiert
-- Datum: 2026-11-11
-- Meilenstein: MVP-Cut (nach M5, PLAN.md, Abschnitt 12)
+- Status: accepted
+- Date: 2026-11-11
+- Milestone: MVP cut (after M5, PLAN.md, section 12)
 
-## Kontext
+## Context
 
-Nach M5 soll laut Plan eine erste Version für den Alltag stehen: M0–M5 plus ein minimales Tray-Menü.
-Bisher war die App ein Testfenster. Schließen beendete das Wetter, und nichts blieb gespeichert.
+After M5 the plan calls for a daily-driver build: M0–M5 plus a minimal tray menu. Until then the app was a test window. Closing ended the weather and nothing persisted.
 
-## Entscheidungen
+## Decisions
 
-### 1. Tray-Icon über Win32
+### 1. Tray icon via Win32
 
-`TrayIcon` (Platform) benutzt `Shell_NotifyIcon` mit einem versteckten Fenster auf dem UI-Thread der App.
-WinUI 3 bringt kein Tray-Icon mit, und ein Fremdpaket lohnt sich für ein Icon mit Menü nicht.
+`TrayIcon` (Platform) uses `Shell_NotifyIcon` with a hidden window on the app UI thread. WinUI 3 has no tray icon; a third-party package is not worth it for icon plus menu.
 
-- Es ist ein unsichtbares Top-Level-Fenster und kein Message-Only-Fenster. Nur Top-Level-Fenster bekommen
-  `TaskbarCreated`, und damit kommt das Icon nach einem Explorer-Neustart wieder. Unsichtbare Fenster
-  ignoriert das Fenster-Tracking.
-- `Shell_NotifyIcon` und `NOTIFYICONDATAW` sind selbst deklariert. CsWin32 erzeugt sie nur für eine feste
-  CPU-Architektur, weil das Struct auf x86 anders gepackt ist. Die App erscheint nur für x64 und ARM64,
-  dort gilt dasselbe Layout.
-- Das Menü (`TrayMenu`, Core) ist ein Datenmodell und getestet. Es wird bei jedem Öffnen neu gebaut und
-  zeigt deshalb immer den aktuellen Stand.
+- It is an invisible top-level window, not message-only. Only top-level windows receive `TaskbarCreated`, so the icon returns after an Explorer restart. Invisible windows are ignored by window tracking.
+- `Shell_NotifyIcon` and `NOTIFYICONDATAW` are declared manually. CsWin32 emits them only for a fixed CPU architecture because the struct packing differs on x86. The app ships only x64 and ARM64 with the same layout.
+- Menu (`TrayMenu`, Core) is a data model and tested. Rebuilt on each open so it always reflects current state.
 
-Menü:
+Menu:
 
-- „Open Weatherly“ (auch Linksklick),
-- Regen und Schnee jeweils Aus, Leicht, Mittel, Stark,
+- “Open Sillfall” (also left-click),
+- Rain and Snow each Off, Light, Medium, Heavy,
 - Sound,
-- „Pause all effects“,
-- „Quit“.
+- “Pause all effects”,
+- “Quit”.
 
-Der Tooltip sagt, was gerade läuft.
+Tooltip describes what is running.
 
-### 2. Schließen versteckt das Fenster
+### 2. Close hides the window
 
-Mit Tray-Icon versteckt Schließen das Fenster nur, das Wetter läuft weiter. Erst „Quit“ im Tray beendet
-die App. Lehnt die Shell das Icon ab, verhält sich das Fenster wie bisher. Sonst gäbe es keinen Weg mehr
-zurück.
+With a tray icon, close only hides the window; weather keeps running. Only “Quit” in the tray exits. If the shell rejects the icon, behavior reverts to before so there is still a way back.
 
-### 3. Einstellungen als JSON
+### 3. Settings as JSON
 
-`SettingsStore` (Core) speichert `UserSettings` in `%LOCALAPPDATA%\<AppInfo.Name>\settings.json`:
+`SettingsStore` (Core) saves `UserSettings` under `%LOCALAPPDATA%\<AppInfo.Name>\settings.json`:
 
 - Pause,
-- Regen,
-- Regen-Tiefe,
-- Schnee,
+- Rain,
+- Rain depth,
+- Snow,
 - Sound.
 
-Geschrieben wird 0,5 s nach der letzten Änderung, damit ein gezogener Regler nicht bei jedem Schritt
-eine Datei schreibt. Die Datei wird erst als Temp-Datei geschrieben und dann ausgetauscht. Eine
-kaputte oder handbearbeitete Datei ergibt Standardwerte bzw. geklemmte Werte und nie einen Absturz.
-`Version` ist für Migrationen vorgesehen, sobald die Einstellungen mit M9 wachsen.
+Writes happen 0.5 s after the last change so dragging a slider does not hit disk every step. File is written to a temp file then swapped. Corrupt or hand-edited files yield defaults or clamped values, never a crash. `Version` is reserved for migration as settings grow in M9.
 
-Der Smoke-Test liest und schreibt keine Einstellungen. Er startet immer im selben Zustand.
+Smoke test does not read or write settings. It always starts in the same state.
 
-### 4. Kein Testmuster mehr beim normalen Start
+### 4. No test pattern on normal start
 
-Bisher zeigte die App beim Start das Kalibriermuster. Beim normalen Start bleibt es jetzt aus, im Testfenster
-lässt es sich weiter einschalten. Der Smoke-Test verlangt es weiterhin.
+The app used to show the calibration pattern at launch. Normal start leaves it off; the test window can still enable it. Smoke test still requires it.
 
-## Nicht im MVP
+## Not in the MVP
 
-Diese Punkte folgen mit M9:
+These arrive with M9:
 
 - Autostart,
-- Tray-Flyout,
-- Einstellungsfenster,
-- Farben,
-- Random-Modus.
+- Tray flyout,
+- Settings window,
+- Colors,
+- Random mode.
