@@ -591,8 +591,8 @@ public sealed partial class SettingsWindow : Window
         var status = new InfoBar { IsOpen = false, IsClosable = true };
         Add(status);
         string shortcut = _controller.Window.CollectShortcutRegistered
-            ? Texts.Format("Visitors.Shortcut", Platform.Overlay.OverlayHost.CollectShortcut)
-            : Texts.Format("Visitors.ShortcutTaken", Platform.Overlay.OverlayHost.CollectShortcut);
+            ? Texts.Format("Visitors.Shortcut", Texts.Get("Visitors.ShortcutKeys"))
+            : Texts.Format("Visitors.ShortcutTaken", Texts.Get("Visitors.ShortcutKeys"));
         Add(Ui.Card(Ui.Stack(
             Ui.Choice(Texts.Get("Visitors.Frequency"), [Texts.Get("Visitors.Frequency.Never"), Texts.Get("Visitors.Frequency.Rarely"), Texts.Get("Visitors.Frequency.Sometimes"), Texts.Get("Visitors.Frequency.Often")], (int)config.Frequency,
                 index => _controller.Update(s => s with { Visitors = s.Visitors with { Frequency = (VisitorFrequency)index } })),
@@ -612,7 +612,7 @@ public sealed partial class SettingsWindow : Window
         VisitorAlbum album = _controller.Album;
         Add(Ui.Heading(Texts.Get("Visitors.Collection")));
         Add(Ui.Note(Texts.Format("Visitors.Summary", album.TotalCollected, album.Points, album.BestCombo)));
-        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 158, ItemHeight = 214 };
+        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 168, ItemHeight = 248 };
         foreach (VisitorProfile profile in VisitorCatalog.All)
         {
             int count = album.CountOf(profile.Kind);

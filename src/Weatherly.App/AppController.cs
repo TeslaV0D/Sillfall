@@ -276,7 +276,7 @@ internal sealed class AppController
         _visitorsOnScreen++;
         PlaySound(VisitorSound.Arrive, e.Kind);
         string name = VisitorCatalog.Get(e.Kind).Name;
-        string how = Settings.Visitors.Interactive ? Texts.Format("Visitors.HowInteractive", OverlayHost.CollectShortcut) : Texts.Format("Visitors.HowKeyboard", OverlayHost.CollectShortcut);
+        string how = Settings.Visitors.Interactive ? Texts.Format("Visitors.HowInteractive", Texts.Get("Visitors.ShortcutKeys")) : Texts.Format("Visitors.HowKeyboard", Texts.Get("Visitors.ShortcutKeys"));
         _window.Tray?.SetTooltip(Texts.Format("Visitors.VisitingTooltip", Core.AppInfo.Name, name, how));
         if (Settings.Visitors.Announce)
         {

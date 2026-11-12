@@ -264,6 +264,7 @@ Frame rate limit: {1}. {2}</value></data>
   <data name="Visitors.ShareCard" xml:space="preserve"><value>Share card</value></data>
   <data name="Visitors.ShareCardButton" xml:space="preserve"><value>Share…</value></data>
   <data name="Visitors.Shortcut" xml:space="preserve"><value>Press {0} or use the tray menu to collect a visitor without the mouse.</value></data>
+  <data name="Visitors.ShortcutKeys" xml:space="preserve"><value>Ctrl+Alt+V</value></data>
   <data name="Visitors.ShortcutTaken" xml:space="preserve"><value>{0} is taken by another program; the tray menu collects visitors without the mouse.</value></data>
   <data name="Visitors.Summary" xml:space="preserve"><value>{0} collected, {1} points, best combo {2}. Rarer visitors are worth more, and twice as much in their favourite weather.</value></data>
   <data name="Visitors.Visiting" xml:space="preserve"><value>{0} is visiting</value></data>

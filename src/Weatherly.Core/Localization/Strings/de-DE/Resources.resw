@@ -264,6 +264,7 @@ Bildratengrenze: {1}. {2}</value></data>
   <data name="Visitors.ShareCard" xml:space="preserve"><value>Karte zum Teilen</value></data>
   <data name="Visitors.ShareCardButton" xml:space="preserve"><value>Teilen…</value></data>
   <data name="Visitors.Shortcut" xml:space="preserve"><value>Drücke {0} oder nutze das Tray-Menü, um einen Besucher ohne Maus einzusammeln.</value></data>
+  <data name="Visitors.ShortcutKeys" xml:space="preserve"><value>Strg+Alt+V</value></data>
   <data name="Visitors.ShortcutTaken" xml:space="preserve"><value>{0} ist von einem anderen Programm belegt; das Tray-Menü sammelt Besucher ohne Maus ein.</value></data>
   <data name="Visitors.Summary" xml:space="preserve"><value>{0} eingesammelt, {1} Punkte, beste Combo {2}. Seltenere Besucher sind mehr wert, in ihrem Lieblingswetter doppelt so viel.</value></data>
   <data name="Visitors.Visiting" xml:space="preserve"><value>{0} ist zu Besuch</value></data>
