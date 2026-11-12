@@ -112,6 +112,8 @@ public sealed class OverlayHost : IDisposable
     private readonly Core.Effects.Fog.FogEffect _fog = new();
     private readonly Core.Effects.Sun.SunEffect _sun = new();
     private readonly Core.Effects.Grass.GrassEffect _grass = new();
+    private readonly Core.Visitors.VisitorSystem _visitors = new((ulong)Environment.TickCount64);
+    private readonly Core.Visitors.VisitorScheduler _visitorScheduler = new((ulong)Environment.TickCount64 + 1);
     private readonly Core.Simulation.CursorMotion _cursor = new();
     private bool _trackingPending;
     private float _rainHitsPerSecond;
@@ -143,6 +145,7 @@ public sealed class OverlayHost : IDisposable
         _engine.Add(_rain);
         _engine.Add(_snow);
         _engine.Add(_leaves);
+        _engine.Add(_visitors);
         _thread = new Thread(Run)
         {
             Name = "Weatherly overlay",
@@ -204,6 +207,51 @@ public sealed class OverlayHost : IDisposable
             return true;
         });
     }
+
+    /// <summary>
+    /// Lets a visitor come now (<paramref name="kind"/>, or one chosen by the weather), regardless of the frequency: for
+    /// "invite a visitor" and the smoke test. With <paramref name="onWindow"/> it appears in the middle of that window's top
+    /// edge. Returns whether one appeared (there may be no room or no visible edge).
+    /// </summary>
+    public bool SpawnVisitor(Core.Visitors.VisitorKind? kind = null, nint onWindow = 0) => Invoke(() =>
+    {
+        if (_overlays.Count == 0)
+        {
+            return false;
+        }
+
+        UpdateWindows(force: true);
+        Core.Visitors.VisitorKind who = kind ?? _visitorScheduler.Choose(_visitors.Mood);
+        bool spawned;
+        int index = onWindow == 0 ? -1 : _engine.Context.Windows.IndexOf(onWindow);
+        if (index >= 0)
+        {
+            Core.Geometry.PixelRect bounds = _engine.Context.Windows[index].Bounds;
+            spawned = _visitors.SpawnAt(who, _engine.Context, new SurfaceKey(onWindow, SurfaceEdge.Top), bounds.Left + (bounds.Width / 2f));
+        }
+        else
+        {
+            spawned = _visitors.Spawn(who, _engine.Context);
+        }
+
+        UpdateAnimation();
+        return spawned;
+    });
+
+    /// <summary>Collects the visitor that came first (keyboard and Narrator alternative). Returns who, or null.</summary>
+    public Core.Visitors.VisitorKind? CollectVisitor() => Invoke(() =>
+    {
+        Core.Visitors.VisitorKind? kind = _visitors.CollectOldest();
+        if (kind is not null)
+        {
+            VisitorCollected?.Invoke(this, new VisitorCollectedEventArgs(kind.Value, _visitors.Mood));
+        }
+
+        return kind;
+    });
+
+    /// <summary>A visitor was collected (dropped into the box or by keyboard). Raised on the overlay thread.</summary>
+    public event EventHandler<VisitorCollectedEventArgs>? VisitorCollected;
 
     /// <summary>Splashes per second of the rain in the last frame. Thread-safe, for the rain sound.</summary>
     public float RainHitsPerSecond => Volatile.Read(ref _rainHitsPerSecond);
@@ -518,6 +566,7 @@ public sealed class OverlayHost : IDisposable
 
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == PollTimerId:
                     UpdateWindows(force: false);
+                    InviteVisitorWhenDue();
                     return new LRESULT(0);
 
                 case CommandMessage when isControlWindow:
@@ -700,6 +749,26 @@ public sealed class OverlayHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Visitors are planned on the wall clock: the render loop sleeps while nothing moves, so the idle poll asks the
+    /// scheduler and wakes the loop for a visit.
+    /// </summary>
+    private void InviteVisitorWhenDue()
+    {
+        double now = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+        if (!_visitorScheduler.IsDue(now))
+        {
+            return;
+        }
+
+        _visitorScheduler.PlanNext(now);
+        if (_visitors.Count < Core.Visitors.VisitorScheduler.MaxAtOnce(_options.Visitors)
+            && _visitors.Spawn(_visitorScheduler.Choose(_visitors.Mood), _engine.Context))
+        {
+            UpdateAnimation();
+        }
+    }
+
     /// <summary>The poll runs only while overlays exist, so switched-off overlays cost nothing.</summary>
     private void UpdatePolling()
     {
@@ -757,6 +826,21 @@ public sealed class OverlayHost : IDisposable
         _engine.Context.Wind.Base = _options.Wind;
         _engine.Context.Wind.Gustiness = Math.Clamp(_options.Gustiness, 0f, 1f);
         _grass.RainIntensity = _options.Rain.ClampedIntensity;
+
+        // Visitors feel the weather the user sees; they come as often as the user wants.
+        _visitors.Mood = new Core.Visitors.WeatherMood(
+            _options.Rain.ClampedIntensity,
+            _options.Snow.ClampedIntensity,
+            _options.Leaves.ClampedIntensity,
+            _options.Fog.ClampedIntensity,
+            _options.Sun.ClampedIntensity,
+            Math.Clamp(MathF.Abs(_options.Wind.X) / 400f, 0f, 1f),
+            _options.Grass.ClampedIntensity);
+        _visitorScheduler.SetFrequency(_options.Visitors, Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency);
+        if (_options.Visitors == Core.Visitors.VisitorFrequency.Never)
+        {
+            _visitors.LeaveAll();
+        }
 
         // App rules may have changed: processes are looked up again as they show up.
         _hiddenProcessNames = new HashSet<string>(_options.HideOverProcesses, StringComparer.OrdinalIgnoreCase);
@@ -840,7 +924,7 @@ public sealed class OverlayHost : IDisposable
     {
         SurfaceSet? surfaces = _options.ShowSurfaces ? _engine.Context.Surfaces : null;
         // Fog and sunlight have no sprites, only layers: they are content too.
-        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere ? _engine.Frame : null;
+        Core.Rendering.RenderFrame? scene = _engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere || _engine.Frame.Visitors.Length > 0 ? _engine.Frame : null;
 
         for (int attempt = 0; attempt < DeviceRecoveryAttempts; attempt++)
         {
@@ -913,6 +997,7 @@ public sealed class OverlayHost : IDisposable
             _lastError)
         {
             Windows = [.. _engine.Context.Windows.Windows],
+            Visitors = [.. Enumerable.Range(0, _visitors.Count).Select(index => _visitors[index])],
             Surfaces = [.. _engine.Context.Surfaces.Segments],
             WindowUpdates = _engine.WindowUpdates,
             WindowEvents = new Dictionary<WindowEventKind, long>(_engine.WindowEventCounts),

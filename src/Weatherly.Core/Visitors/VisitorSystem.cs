@@ -132,8 +132,9 @@ public sealed class VisitorSystem : IEffectSystem
     }
 
     /// <summary>Lets <paramref name="kind"/> appear at column <paramref name="x"/> of a surface (tests, smoke test).</summary>
-    internal bool SpawnAt(VisitorKind kind, SimulationContext context, SurfaceKey surface, float x)
+    public bool SpawnAt(VisitorKind kind, SimulationContext context, SurfaceKey surface, float x)
     {
+        ArgumentNullException.ThrowIfNull(context);
         _scale = context.PixelScale;
         if (_count >= Capacity)
         {
@@ -266,6 +267,7 @@ public sealed class VisitorSystem : IEffectSystem
                 Tilt = tilt,
                 Stretch = stretch,
                 Bob = bob,
+                Walking = v.State is VisitorState.Walking or VisitorState.Sulking,
                 Step = v.Step - MathF.Floor(v.Step),
                 Blink = v.Blink,
                 Prop = v.Prop,

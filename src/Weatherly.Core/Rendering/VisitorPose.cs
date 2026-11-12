@@ -52,6 +52,9 @@ public struct VisitorPose
     /// <summary>Lift of the body over the feet in pixels (walking bounce, hovering).</summary>
     public float Bob { get; set; }
 
+    /// <summary>Walking: the feet take turns (<see cref="Step"/>).</summary>
+    public bool Walking { get; set; }
+
     /// <summary>Walk cycle, 0 to 1: the feet swap at 0.5.</summary>
     public float Step { get; set; }
 

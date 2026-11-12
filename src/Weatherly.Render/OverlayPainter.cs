@@ -36,11 +36,15 @@ public sealed class OverlayPainter : IDisposable
     private readonly SpriteBatch _sprites;
     private readonly AtmospherePass _atmosphere;
     private readonly ID3D11BlendState _replace;
+    private readonly ID3D11Device _device;
+    private Direct2DCanvas? _canvas;
+    private VisitorPainter? _visitors;
 
     public OverlayPainter(ID3D11Device device)
     {
         ArgumentNullException.ThrowIfNull(device);
 
+        _device = device;
         _context = device.ImmediateContext;
         _fullscreenTriangle = device.CreateVertexShader(ShaderLibrary.Load("FullscreenTriangle.vs"));
         _testPattern = device.CreatePixelShader(ShaderLibrary.Load("TestPattern.ps"));
@@ -81,6 +85,12 @@ public sealed class OverlayPainter : IDisposable
 
             _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites, frame.Opacity);
 
+            // Visitors walk on top of the weather (PLAN.md, section 4.7), drawn with Direct2D on the same target.
+            if (scene.Visitors.Length > 0)
+            {
+                DrawVisitors(target, MonitorArea(frame, size), scene.Visitors, frame.Opacity);
+            }
+
             // App rules: windows of some processes stay clear. Their rectangles are cut back to transparent.
             if (scene.Cutouts.Length > 0)
             {
@@ -100,6 +110,8 @@ public sealed class OverlayPainter : IDisposable
 
     public void Dispose()
     {
+        _visitors?.Dispose();
+        _canvas?.Dispose();
         _replace.Dispose();
         _atmosphere.Dispose();
         _sprites.Dispose();
@@ -111,6 +123,25 @@ public sealed class OverlayPainter : IDisposable
         _fullscreenTriangle.Dispose();
 
         // The immediate context belongs to the device and is released with it.
+    }
+
+    /// <summary>Direct2D comes up on the first visitor: most frames never need it.</summary>
+    private void DrawVisitors(ID3D11RenderTargetView target, PixelRect area, ReadOnlySpan<Core.Rendering.VisitorPose> visitors, float opacity)
+    {
+        _context.ClearState();
+        _canvas ??= new Direct2DCanvas(_device);
+        _visitors ??= new VisitorPainter(_canvas.Context);
+        using ID3D11Resource resource = target.Resource;
+        using ID3D11Texture2D texture = resource.QueryInterface<ID3D11Texture2D>();
+        _canvas.Begin(texture);
+        try
+        {
+            _visitors.Draw(visitors, area, opacity);
+        }
+        finally
+        {
+            _canvas.End();
+        }
     }
 
     /// <summary>

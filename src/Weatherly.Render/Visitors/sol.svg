@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Sol, the cat. Own design (ASSETS.md). Faces the viewer; the sunglasses are its eyes. -->
+  <path d="M44 52 C54 52 56 44 52 38" stroke="#E08A35" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <ellipse cx="32" cy="49" rx="12.5" ry="10" fill="#F0A04B"/>
+  <ellipse cx="32" cy="51" rx="7" ry="6.5" fill="#F8D3A0"/>
+  <path d="M20 22 L21 10 L29 18 Z" fill="#F0A04B"/>
+  <path d="M44 22 L43 10 L35 18 Z" fill="#F0A04B"/>
+  <circle cx="32" cy="29" r="13.5" fill="#F0A04B"/>
+  <rect x="21" y="25" width="9.5" height="6.5" rx="3" fill="#2E3440"/>
+  <rect x="33.5" y="25" width="9.5" height="6.5" rx="3" fill="#2E3440"/>
+  <rect x="29.5" y="26.5" width="5" height="1.8" rx="0.9" fill="#2E3440"/>
+  <rect x="23" y="26.3" width="3" height="1.4" rx="0.7" fill="#FFFFFF" opacity="0.7"/>
+  <rect x="35.5" y="26.3" width="3" height="1.4" rx="0.7" fill="#FFFFFF" opacity="0.7"/>
+  <path d="M30 35 Q32 37.5 34 35" stroke="#7A4A22" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+  <g id="foot-left"><ellipse cx="26" cy="58.5" rx="4.5" ry="2.6" fill="#E08A35"/></g>
+  <g id="foot-right"><ellipse cx="38" cy="58.5" rx="4.5" ry="2.6" fill="#E08A35"/></g>
+</svg>

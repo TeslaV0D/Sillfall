@@ -408,6 +408,7 @@ Invoke-WeatherRun -Name 'leaves'
 Invoke-WeatherRun -Name 'fog'
 Invoke-WeatherRun -Name 'sun'
 Invoke-WeatherRun -Name 'grass'
+Invoke-WeatherRun -Name 'visitors'
 Invoke-SettingsTour
 Invoke-SandboxRun
 

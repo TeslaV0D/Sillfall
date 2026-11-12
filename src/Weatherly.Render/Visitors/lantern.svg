@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Prop: lantern, hanging at the side; the hook is at the anchor (32, 24). Own design (ASSETS.md). -->
+  <circle cx="32" cy="36" r="11" fill="#FFD966" opacity="0.3"/>
+  <path d="M28 24 Q32 19 36 24" stroke="#4C566A" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <rect x="27" y="24" width="10" height="3" rx="1" fill="#4C566A"/>
+  <rect x="28" y="27" width="8" height="11" rx="2" fill="#FFE599"/>
+  <rect x="27" y="38" width="10" height="3" rx="1" fill="#4C566A"/>
+</svg>

@@ -52,6 +52,9 @@ public sealed record OverlayStatus(
     /// <summary>Tracked application windows, topmost first.</summary>
     public IReadOnlyList<TrackedWindow> Windows { get; init; } = [];
 
+    /// <summary>Visitors on screen (milestone M11).</summary>
+    public IReadOnlyList<Visitors.VisitorInfo> Visitors { get; init; } = [];
+
     /// <summary>Visible surfaces computed from <see cref="Windows"/>.</summary>
     public IReadOnlyList<SurfaceSegment> Surfaces { get; init; } = [];
 

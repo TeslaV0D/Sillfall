@@ -58,6 +58,8 @@ public static class RuntimeOptions
             Wind = new Vector2(windSpeed, 0f),
             Gustiness = gustiness,
             SnowStays = snowStays,
+            Visitors = settings.Visitors.Frequency,
+            VisitorsInteractive = settings.Visitors.Interactive,
         };
     }
 

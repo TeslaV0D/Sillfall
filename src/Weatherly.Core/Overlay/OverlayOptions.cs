@@ -69,6 +69,12 @@ public sealed record OverlayOptions
     /// <summary>Per-monitor settings by device name. Monitors without an entry show the weather at full opacity.</summary>
     public IReadOnlyList<Settings.DisplayConfig> Displays { get; init; } = [];
 
+    /// <summary>How often visitors come (milestone M11). Off by default for the host; the app sets the user's choice.</summary>
+    public Visitors.VisitorFrequency Visitors { get; init; } = Core.Visitors.VisitorFrequency.Never;
+
+    /// <summary>Visitors can be picked up and dropped into the box (opt-in, milestone M11).</summary>
+    public bool VisitorsInteractive { get; init; }
+
     /// <summary>Settings of one monitor, or the defaults.</summary>
     public Settings.DisplayConfig Display(string deviceName)
     {

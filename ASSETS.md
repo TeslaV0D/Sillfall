@@ -45,6 +45,27 @@ dem CI-Artefakt `previews` (`render/golden-actual-*.png`) übernommen.
 |---|---|---|---|
 | `tests/Weatherly.Render.Tests/Goldens/` | `GoldenImageTests` (eigener Renderer, WARP) | MIT (Projektlizenz) | Weatherly-Projekt |
 
+## Visitors
+
+Eigene Figuren und Requisiten, flach-geometrisch, von Boss am 12.11.2026 abgenommen (ADR-0014). Gezeichnet werden sie
+mit dem SVG-Renderer von Direct2D (`VisitorPainter`). Augen, Füße und Gesichtsausdrücke sind benannte Teile bzw.
+werden im Code aus den Augenpositionen erzeugt (`VisitorArt`).
+
+| Datei | Quelle | Lizenz | Autor |
+|---|---|---|---|
+| `src/Weatherly.Render/Visitors/pip.svg` | Visitor Pip (Schnecke), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/tuck.svg` | Visitor Tuck (Pinguin), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/bristle.svg` | Visitor Bristle (Igel), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/lumen.svg` | Visitor Lumen (Glühwürmchen), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/sol.svg` | Visitor Sol (Katze), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/drift.svg` | Visitor Drift (Wölkchen), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/sprout.svg` | Visitor Sprout (Topfpflanze), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/nim.svg` | Visitor Nim (Maus), von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/umbrella.svg` | Requisit Schirm, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/snowball.svg` | Requisit Schneeball, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/lantern.svg` | Requisit Laterne, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+| `src/Weatherly.Render/Visitors/leaf.svg` | Requisit Blatt, von Hand als SVG gezeichnet | MIT (Projektlizenz) | Weatherly-Projekt |
+
 ## Daten
 
 | Datei | Quelle | Lizenz | Autor |

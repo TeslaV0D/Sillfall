@@ -63,6 +63,7 @@ public sealed partial class MainWindow : Window
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
         _overlay.SystemStateChanged += OnOverlaySystemStateChanged;
+        _overlay.VisitorCollected += OnOverlayVisitorCollected;
         Closed += OnClosed;
         AppWindow.Closing += OnClosing;
 
@@ -79,6 +80,15 @@ public sealed partial class MainWindow : Window
 
     /// <summary>Raised on the UI thread when the power source, the animation setting or the foreground app changed.</summary>
     public event EventHandler? SystemStateChanged;
+
+    /// <summary>A visitor was collected (box or keyboard). Raised on the UI thread.</summary>
+    public event EventHandler<VisitorCollectedEventArgs>? VisitorCollected;
+
+    /// <summary>Lets a visitor come now ("invite", smoke test), optionally onto a given window.</summary>
+    public bool InviteVisitor(Core.Visitors.VisitorKind? kind = null, nint onWindow = 0) => _overlay.SpawnVisitor(kind, onWindow);
+
+    /// <summary>Collects the visitor that came first: the keyboard alternative to drag and drop.</summary>
+    public Core.Visitors.VisitorKind? CollectVisitor() => _overlay.CollectVisitor();
 
     /// <summary>Volume of the rain sound, 0 to 1.</summary>
     public float SoundVolume { get; set; } = 0.6f;
@@ -336,6 +346,7 @@ public sealed partial class MainWindow : Window
         _sound = null;
         _overlay.LayoutChanged -= OnOverlayLayoutChanged;
         _overlay.SystemStateChanged -= OnOverlaySystemStateChanged;
+        _overlay.VisitorCollected -= OnOverlayVisitorCollected;
         _overlay.Dispose();
         _tray?.Dispose();
         _tray = null;
@@ -348,6 +359,9 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Called on the overlay thread when the system state changed: passed on to the UI thread.</summary>
+    private void OnOverlayVisitorCollected(object? sender, VisitorCollectedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(() => VisitorCollected?.Invoke(this, e));
+
     private void OnOverlaySystemStateChanged(object? sender, EventArgs e) =>
         DispatcherQueue.TryEnqueue(() => SystemStateChanged?.Invoke(this, EventArgs.Empty));
 

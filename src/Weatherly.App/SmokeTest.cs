@@ -19,6 +19,7 @@ namespace Weatherly.App;
 /// <item><c>--snow</c> does the same with snow: render loop check (including melting until the loop stops),
 /// then a snow-free and a snowy screenshot.</item>
 /// <item><c>--leaves</c>, <c>--fog</c>, <c>--sun</c> and <c>--grass</c> do the same with leaves, fog, sunlight and grass.</item>
+/// <item><c>--visitors</c> invites a visitor onto the app window, collects it by keyboard and invites one for the screenshot.</item>
 /// <item><c>--settings-tour=&lt;folder&gt;</c> shows every page of the settings window and the flyout and writes
 /// each as a PNG into the folder, instead of the overlay checks.</item>
 /// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
@@ -40,6 +41,7 @@ internal sealed class SmokeTest
     private const string FogSwitch = "--fog";
     private const string SunSwitch = "--sun";
     private const string GrassSwitch = "--grass";
+    private const string VisitorsSwitch = "--visitors";
     private const string SettingsTourSwitch = "--settings-tour=";
 
     private readonly string _reportPath;
@@ -83,6 +85,9 @@ internal sealed class SmokeTest
 
     public bool Grass { get; }
 
+    /// <summary>Invites a visitor onto the app window: checks spawning, the render loop and the keyboard collect.</summary>
+    public bool Visitors { get; private init; }
+
     /// <summary>Folder for the pictures of the settings tour, or <see langword="null"/> for the overlay checks.</summary>
     public string? SettingsTour { get; private init; }
 
@@ -114,6 +119,7 @@ internal sealed class SmokeTest
             args.Contains(GrassSwitch, StringComparer.OrdinalIgnoreCase))
         {
             SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
+            Visitors = args.Contains(VisitorsSwitch, StringComparer.OrdinalIgnoreCase),
         };
     }
 

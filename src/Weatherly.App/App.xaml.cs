@@ -443,6 +443,11 @@ public partial class App : Application
                 diagnostics.AddRange(await CheckRenderLoopAsync(window, window.SetGrass, s_atmosphereIdleStopTimeout));
             }
 
+            if (smokeTest.Visitors)
+            {
+                diagnostics.AddRange(await CheckVisitorsAsync(window));
+            }
+
             OverlayStatus? before = window.Refresh();
             await Task.Delay(s_idleObservation);
             OverlayStatus? after = window.Refresh();
@@ -489,7 +494,7 @@ public partial class App : Application
                 await Task.Delay(TimeSpan.FromSeconds(2.5));
             }
 
-            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun || smokeTest.Grass)
+            if (smokeTest.Rain || smokeTest.Snow || smokeTest.Leaves || smokeTest.Fog || smokeTest.Sun || smokeTest.Grass || smokeTest.Visitors)
             {
                 // Window to the top, weather still off: the script takes a clear screenshot first.
                 RectInt32 workArea = DisplayArea.Primary.WorkArea;
@@ -542,6 +547,13 @@ public partial class App : Application
                 window.SetGrass(1f);
             }
 
+            if (smokeTest.Visitors)
+            {
+                // Then a visitor onto the app window's top edge for the second screenshot.
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                window.InviteVisitor(Core.Visitors.VisitorKind.Tuck, Win32Interop.GetWindowFromWindowId(window.AppWindow.Id));
+            }
+
             // Stays on screen so the calling script can take its screenshot of the desktop.
             await Task.Delay(smokeTest.Hold);
 
@@ -555,6 +567,45 @@ public partial class App : Application
         {
             smokeTest.Fail(exception);
         }
+    }
+
+    /// <summary>
+    /// Visitors: one comes onto the app window, the render loop runs for it, the keyboard collect takes it (and reports
+    /// it), and the loop stops again.
+    /// </summary>
+    private static async Task<List<DiagnosticResult>> CheckVisitorsAsync(MainWindow window)
+    {
+        var results = new List<DiagnosticResult>();
+        Core.Visitors.VisitorKind? collected = null;
+        void OnCollected(object? sender, VisitorCollectedEventArgs e) => collected = e.Kind;
+        window.VisitorCollected += OnCollected;
+        try
+        {
+            nint handle = Win32Interop.GetWindowFromWindowId(window.AppWindow.Id);
+            bool invited = window.InviteVisitor(Core.Visitors.VisitorKind.Pip, handle);
+            await Task.Delay(TimeSpan.FromSeconds(1.5));
+            OverlayStatus? visiting = window.Refresh();
+            Core.Visitors.VisitorInfo? visitor = visiting?.Visitors.FirstOrDefault();
+            results.Add(new DiagnosticResult(
+                "Visitor arrives on the app window",
+                invited && visitor is { Kind: Core.Visitors.VisitorKind.Pip } && visitor.Value.Surface?.OwnerId == handle && visiting!.IsAnimating,
+                visitor is { } v ? string.Create(CultureInfo.InvariantCulture, $"{v.Kind} {v.State} at {v.Feet.X:0}, {v.Feet.Y:0} on {v.Surface}") : "no visitor"));
+
+            Core.Visitors.VisitorKind? taken = window.CollectVisitor();
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            OverlayStatus? after = window.Refresh();
+            results.Add(new DiagnosticResult(
+                "Keyboard collect takes the visitor",
+                taken == Core.Visitors.VisitorKind.Pip && collected == Core.Visitors.VisitorKind.Pip && after?.Visitors.Count == 0,
+                string.Create(CultureInfo.InvariantCulture, $"collected {taken?.ToString() ?? "nothing"}, event {collected?.ToString() ?? "none"}, {after?.Visitors.Count ?? -1} left")));
+            results.Add(new DiagnosticResult("Render loop stops after the visit", after is { IsAnimating: false }, after?.IsAnimating == true ? "still animating" : "idle"));
+        }
+        finally
+        {
+            window.VisitorCollected -= OnCollected;
+        }
+
+        return results;
     }
 
     /// <summary>

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Weatherly.Core\Weatherly.Core.csproj" />
+    <InternalsVisibleTo Include="Weatherly.Render.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,11 @@
     <PackageReference Include="Vortice.Direct3D11" />
     <PackageReference Include="Vortice.DirectComposition" />
     <PackageReference Include="Vortice.DXGI" />
+  </ItemGroup>
+
+  <!-- The visitors and their props (PLAN.md, section 6), own drawings listed in ASSETS.md. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Visitors\*.svg" LogicalName="Weatherly.Render.Visitors.%(Filename).svg" />
   </ItemGroup>
 
   <Import Project="Shaders\Shaders.targets" />
