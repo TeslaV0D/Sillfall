@@ -173,7 +173,8 @@ XAudio2 mastering + category submixes. Procedural rain. Default: muted.
 - `windows` (windows-latest): full solution, WARP render tests, smoke test, preview artifact
 - `soak`: short soak each push; longer via workflow_dispatch
 - `package`: MSIX (x64 and ARM64) via `tools/ci/package.ps1`, unsigned for the Store plus a development-signed copy (ADR-0017)
-- `release` (tags `v*`): draft GitHub release, Azure Artifact Signing when the secrets are set
+- `installer`: setup .exe (x64 and ARM64) via `tools/ci/installer.ps1` and Inno Setup (ADR-0018)
+- `release` (tags `v*`): public GitHub release with the setup .exe and the MSIX files, Azure Artifact Signing when the secrets are set
 
 ---
 

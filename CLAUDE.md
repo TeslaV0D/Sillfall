@@ -60,9 +60,13 @@ Weather sync (ADR-0013): `MetNorwayProvider`, `WeatherSync`, `WeatherMapper`, `W
 Visitors (ADR-0014): `VisitorSystem`, SVG art under `src/Sillfall.Render/Visitors/`, hit windows in `OverlayHost`.
 
 Release (ADR-0017): `tools/ci/package.ps1` builds the MSIX (x64/ARM64), unsigned for the Store and signed with a
-development certificate for sideloading. The `package` job runs on pull requests and tags `v*`. A tag drafts a
+development certificate for sideloading. The `package` job runs on pull requests and tags `v*`. A tag publishes a
 release; Azure Artifact Signing signs only when the reserved identity and the secrets are set. Privacy policy:
 `docs/privacy.md` (German: `docs/privacy.de.md`). Store text: `docs/store/listing.md`. winget: `winget/`.
+
+Installer (ADR-0018): `tools/ci/installer.ps1` publishes the app unpackaged and self-contained and wraps it with
+Inno Setup (`tools/installer/Sillfall.iss`) into `Sillfall-Setup-<version>-<arch>.exe`. Per-user install, Start menu
+entry, uninstall removes the `sillfall://` key and the Run entry. Keep the `AppId` in the script unchanged.
 
 Hardening (ADR-0016): `SystemState` / `RuntimePolicy`, `CrashLog`, soak via `tools/ci/soak-test.ps1`.
 
@@ -96,7 +100,8 @@ Use `dotnet test --project <path>` (Microsoft.Testing.Platform via `global.json`
 | `windows` | windows-latest, x64 + ARM64 | Full solution build; x64 also format, Core + Render tests, smoke test |
 | `soak` | windows-latest, x64 | 5-minute app soak (`tools/ci/soak-test.ps1`) |
 | `package` | windows-latest, x64 and ARM64 | MSIX (`tools/ci/package.ps1`), artifacts `msix-x64` and `msix-ARM64`. Pull requests, “Run workflow”, and tags `v*` |
-| `release` | windows-latest | Tags `v*` only: draft GitHub release, Artifact Signing when the secrets are set |
+| `installer` | windows-latest, x64 and ARM64 | Setup .exe (`tools/ci/installer.ps1`, Inno Setup), artifacts `installer-x64` and `installer-ARM64`. Same triggers as `package` |
+| `release` | windows-latest | Tags `v*` only: public GitHub release with the setup .exe and the MSIX files, Artifact Signing when the secrets are set |
 
 `package` signs with a development certificate. Public signing happens on a tag once the Artifact Signing secrets
 are set (ADR-0017). Store submission and winget are in checklist M14.

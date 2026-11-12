@@ -115,6 +115,22 @@ public class ReleasePackageTests
             .Should().Contain($"PrivacyUrl: {AppInfo.PrivacyPolicyUrlGerman}");
     }
 
+    [Fact]
+    public void Installer_MatchesTheAppIdentity()
+    {
+        string script = Repo.ReadText("tools/installer/Sillfall.iss");
+
+        script.Should().Contain($"#define AppName \"{AppInfo.Name}\"");
+        script.Should().Contain($"#define UriScheme \"{AppInfo.UriScheme}\"");
+        script.Should().Contain($"#define AppUrl \"{AppInfo.RepositoryUrl}\"");
+        script.Should().Contain("AppId={{62E2C09E-EACC-4D42-87E2-6B1CFF3237F2}", "the id ties updates and uninstall to earlier installs");
+        script.Should().Contain(@"AppMutex=Local\Sillfall.SingleInstance", "setup closes a running app through the single-instance mutex");
+        script.Should().Contain("PrivilegesRequired=lowest");
+        script.Should().Contain("MinVersion=10.0.19041");
+        script.Should().Contain("Sillfall.App.exe");
+        Repo.ReadText("tools/ci/installer.ps1").Should().Contain("Sillfall.App.exe").And.Contain("WindowsPackageType=None");
+    }
+
     private static string ProductVersion()
     {
         XElement version = Repo.LoadXml("Directory.Build.props").Descendants("Version").Single();
