@@ -1,26 +1,44 @@
+using System.Numerics;
 using Weatherly.Core.Overlay;
+using Weatherly.Core.Weather;
 
 namespace Weatherly.Core.Settings;
 
 /// <summary>
 /// The overlay options the app runs with: the stored settings, the effects' current intensities (fixed or
-/// random) and the runtime decision (pause, frame rate, battery factor) together.
+/// random), the weather sync and the runtime decision (pause, frame rate, battery factor) together.
 /// </summary>
 public static class RuntimeOptions
 {
     private static readonly DisplayConfig[] s_noDisplays = [];
     private static readonly string[] s_noProcesses = [];
 
-    /// <summary>Options for <paramref name="settings"/>; everything the settings do not cover comes from <paramref name="current"/>.</summary>
-    public static OverlayOptions Build(AppSettings settings, OverlayOptions current, ReadOnlySpan<float> intensities, RuntimeDecision decision)
+    /// <summary>
+    /// Options for <paramref name="settings"/>; everything the settings do not cover comes from <paramref name="current"/>.
+    /// <paramref name="weather"/> is what the weather sync asks for (<see langword="null"/>: sync off or no forecast yet).
+    /// </summary>
+    public static OverlayOptions Build(
+        AppSettings settings, OverlayOptions current, ReadOnlySpan<float> intensities, RuntimeDecision decision, WeatherTargets? weather = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(current);
         Span<float> scaled = stackalloc float[6];
         for (int i = 0; i < scaled.Length; i++)
         {
-            scaled[i] = (i < intensities.Length ? intensities[i] : 0f) * decision.IntensityScale;
+            scaled[i] = i < intensities.Length ? intensities[i] : 0f;
         }
+
+        float windSpeed = settings.Wind.Speed;
+        float gustiness = settings.Wind.Gustiness;
+        WeatherSyncConfig sync = settings.WeatherSync;
+        WeatherBlend.Apply(sync, weather, scaled, ref windSpeed, ref gustiness);
+        for (int i = 0; i < scaled.Length; i++)
+        {
+            scaled[i] *= decision.IntensityScale;
+        }
+
+        bool snowStays = sync.Enabled && weather is { SnowStays: true }
+            && !sync.IsPaused(SyncElement.Snow) && sync.Weight(SyncElement.Snow) > 0f;
 
         List<string> hidden = [];
         foreach (AppRule rule in settings.AppRules)
@@ -37,6 +55,9 @@ public static class RuntimeOptions
             FrameRateCap = decision.FrameRateCap,
             Displays = [.. settings.Displays],
             HideOverProcesses = hidden,
+            Wind = new Vector2(windSpeed, 0f),
+            Gustiness = gustiness,
+            SnowStays = snowStays,
         };
     }
 

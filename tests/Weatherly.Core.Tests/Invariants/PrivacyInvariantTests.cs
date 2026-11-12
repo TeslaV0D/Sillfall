@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 using Weatherly.Core.Tests.Support;
+using Weatherly.Core.Weather;
+using Weatherly.Core.Weather.Providers;
 
 namespace Weatherly.Core.Tests.Invariants;
 
@@ -66,6 +68,18 @@ public class PrivacyInvariantTests
 
         FindUsages(filesOutsideProviders, s_networkApis)
             .Should().BeEmpty($"network access is only allowed in {WeatherProviderDirectory}");
+    }
+
+    [Theory]
+    [InlineData(52.520008, 13.404954, "lat=52.5&lon=13.4")]
+    [InlineData(-33.868820, 151.209290, "lat=-33.9&lon=151.2")]
+    [InlineData(40.712776, -74.005974, "lat=40.7&lon=-74.0")]
+    public void WeatherRequests_CarryTheLocationRoundedToOneDecimal(double latitude, double longitude, string query)
+    {
+        // About 11 km: enough for the weather, too rough to find a street (PLAN.md, section 5).
+        Uri uri = MetNorwayProvider.RequestUri(new GeoPoint(latitude, longitude));
+
+        uri.Query.Should().Be("?" + query);
     }
 
     [Fact]

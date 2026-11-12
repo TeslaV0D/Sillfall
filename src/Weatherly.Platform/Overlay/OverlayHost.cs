@@ -748,6 +748,7 @@ public sealed class OverlayHost : IDisposable
         _rain.Depth = Math.Clamp(_options.RainDepth, 0f, 1f);
         _snow.Settings = _options.Snow;
         _snow.RainIntensity = _options.Rain.ClampedIntensity;
+        _snow.Frozen = _options.SnowStays;
         _leaves.Settings = _options.Leaves;
         _fog.Settings = _options.Fog;
         _sun.Settings = _options.Sun;

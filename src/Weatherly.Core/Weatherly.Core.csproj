@@ -11,4 +11,9 @@
     <InternalsVisibleTo Include="Weatherly.Core.Tests" />
   </ItemGroup>
 
+  <!-- Offline city search of the weather sync, built by tools/cities/build_cities.py (GeoNames, CC BY 4.0, see ASSETS.md). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Weather/Cities/cities15000.tsv.gz" LogicalName="Weatherly.Core.Weather.Cities.cities15000.tsv.gz" />
+  </ItemGroup>
+
 </Project>

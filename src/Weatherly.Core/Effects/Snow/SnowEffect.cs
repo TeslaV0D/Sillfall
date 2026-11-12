@@ -110,6 +110,12 @@ public sealed class SnowEffect : IEffectSystem
     /// <summary>Rain intensity of the rain effect, 0 to 1. Rain melts the snow (PLAN.md, section 4.7).</summary>
     public float RainIntensity { get; set; }
 
+    /// <summary>
+    /// Frost (weather sync, at most 2 °C): lying snow stays when it stops snowing. Rain still melts it. Without frost
+    /// the snow melts as soon as the intensity is zero.
+    /// </summary>
+    public bool Frozen { get; set; }
+
     public bool IsActive => Settings.ClampedIntensity > 0f || _flakes > 0 || _clumps > 0 || HasSnow();
 
     public int FlakeCount => _flakes;
@@ -414,7 +420,7 @@ public sealed class SnowEffect : IEffectSystem
     private void SimulateFields(float dt, float intensity, SimulationContext context)
     {
         float rain = Math.Clamp(RainIntensity, 0f, 1f);
-        bool melting = intensity <= 0f || rain > 0f;
+        bool melting = (intensity <= 0f && !Frozen) || rain > 0f;
         float rate = MeltRate + (RainMeltRate * rain);
 
         _staleFields.Clear();

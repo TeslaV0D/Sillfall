@@ -208,6 +208,22 @@ public class SnowEffectTests
     }
 
     [Fact]
+    public void Frost_KeepsTheSnowAfterIntensityZero_UntilItRains()
+    {
+        (SimulationEngine engine, SnowEffect snow) = Create(intensity: 0f);
+        snow.Fill(engine.Context, 20f);
+        float volume = snow.PileOf(s_window.Id)!.Volume;
+        snow.Frozen = true;
+
+        Run(engine, seconds: 20);
+        snow.PileOf(s_window.Id)!.Volume.Should().BeApproximately(volume, volume * 0.05f, "frost keeps the snow");
+
+        snow.RainIntensity = 1f;
+        Run(engine, seconds: 4);
+        snow.PileOf(s_window.Id)!.Volume.Should().BeLessThan(volume * 0.5f, "rain melts it all the same");
+    }
+
+    [Fact]
     public void Rain_MeltsTheSnowFaster()
     {
         (SimulationEngine dry, SnowEffect drySnow) = Create(intensity: 0f);

@@ -166,6 +166,8 @@ public sealed record AppSettings
 
     public AdvancedConfig Advanced { get; set; } = new();
 
+    public WeatherSyncConfig WeatherSync { get; set; } = new();
+
     /// <summary>The user's own templates (presets are built in and not stored).</summary>
     public List<Scenes.Scene> Templates { get; set; } = [];
 
@@ -236,6 +238,7 @@ public sealed record AppSettings
         {
             ReducedMotion = Enum.IsDefined(Advanced.ReducedMotion) ? Advanced.ReducedMotion : ReducedMotion.FollowSystem,
         },
+        WeatherSync = (WeatherSync ?? new()).Sanitized(),
         Templates = [.. (Templates ?? []).Where(scene => scene is not null).Select(scene => scene.Sanitized())],
     };
 

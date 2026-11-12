@@ -44,3 +44,9 @@ dem CI-Artefakt `previews` (`render/golden-actual-*.png`) übernommen.
 | Datei | Quelle | Lizenz | Autor |
 |---|---|---|---|
 | `tests/Weatherly.Render.Tests/Goldens/` | `GoldenImageTests` (eigener Renderer, WARP) | MIT (Projektlizenz) | Weatherly-Projekt |
+
+## Daten
+
+| Datei | Quelle | Lizenz | Autor |
+|---|---|---|---|
+| `src/Weatherly.Core/Weather/Cities/cities15000.tsv.gz` | GeoNames `cities15000`, verdichtet mit `tools/cities/build_cities.py` | CC BY 4.0 (Attribution in der App) | GeoNames (geonames.org) |
