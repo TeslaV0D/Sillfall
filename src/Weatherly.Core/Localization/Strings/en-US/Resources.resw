@@ -32,14 +32,17 @@
   <data name="Advanced.HighContrast" xml:space="preserve"><value>Pause the weather while high contrast is on</value></data>
   <data name="Advanced.Language" xml:space="preserve"><value>Language</value></data>
   <data name="Advanced.Language.System" xml:space="preserve"><value>Same as Windows</value></data>
+  <data name="Advanced.Logs" xml:space="preserve"><value>Open the error reports (they stay on this PC)</value></data>
   <data name="Advanced.ReducedMotion" xml:space="preserve"><value>Reduced motion</value></data>
   <data name="Advanced.ReducedMotion.Always" xml:space="preserve"><value>Always pause</value></data>
   <data name="Advanced.ReducedMotion.Follow" xml:space="preserve"><value>Follow Windows (pause when animations are off)</value></data>
   <data name="Advanced.ReducedMotion.Never" xml:space="preserve"><value>Never pause</value></data>
+  <data name="Advanced.Remote" xml:space="preserve"><value>Pause the weather in a Remote Desktop session</value></data>
   <data name="Advanced.Reset" xml:space="preserve"><value>Reset all settings…</value></data>
   <data name="Advanced.ResetConfirm" xml:space="preserve"><value>Reset</value></data>
   <data name="Advanced.ResetText" xml:space="preserve"><value>Every effect, rule and option goes back to its default. Your own templates stay.</value></data>
   <data name="Advanced.ResetTitle" xml:space="preserve"><value>Reset all settings?</value></data>
+  <data name="Advanced.Shell" xml:space="preserve"><value>Hide the weather while Start, search or notifications are open</value></data>
   <data name="Advanced.Troubleshooting" xml:space="preserve"><value>Troubleshooting</value></data>
   <data name="Affinity.Any" xml:space="preserve"><value>any weather</value></data>
   <data name="Affinity.Fog" xml:space="preserve"><value>loves fog</value></data>
@@ -117,9 +120,14 @@
   <data name="Pause.Animations" xml:space="preserve"><value>Paused: Windows has animations switched off</value></data>
   <data name="Pause.App" xml:space="preserve"><value>Paused while {0} is in the foreground</value></data>
   <data name="Pause.Battery" xml:space="preserve"><value>Paused while on battery</value></data>
+  <data name="Pause.FullScreen" xml:space="preserve"><value>Paused while an app runs full screen</value></data>
   <data name="Pause.HighContrast" xml:space="preserve"><value>Paused: high contrast is on</value></data>
+  <data name="Pause.Locked" xml:space="preserve"><value>Paused while the PC is locked or asleep</value></data>
   <data name="Pause.Off" xml:space="preserve"><value>Paused</value></data>
+  <data name="Pause.Presentation" xml:space="preserve"><value>Paused during a presentation</value></data>
   <data name="Pause.ReducedMotion" xml:space="preserve"><value>Paused: reduced motion is on</value></data>
+  <data name="Pause.Remote" xml:space="preserve"><value>Paused in a Remote Desktop session</value></data>
+  <data name="Pause.Shell" xml:space="preserve"><value>Hidden while Start, search or notifications are open</value></data>
   <data name="Performance.Auto" xml:space="preserve"><value>Auto: 60 fps, 30 on battery</value></data>
   <data name="Performance.Balanced" xml:space="preserve"><value>Balanced: 60 fps</value></data>
   <data name="Performance.Battery" xml:space="preserve"><value>On battery</value></data>

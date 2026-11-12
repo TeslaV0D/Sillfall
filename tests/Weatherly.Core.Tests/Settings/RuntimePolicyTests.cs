@@ -85,4 +85,67 @@ public class RuntimePolicyTests
         RuntimePolicy.Decide(new AppSettings(), state).Reason.Should().Be("Paused: high contrast is on");
         RuntimePolicy.Decide(new AppSettings { Advanced = new AdvancedConfig { PauseInHighContrast = false } }, state).Paused.Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("Locked", "Paused while the PC is locked or asleep")]
+    [InlineData("FullScreen", "Paused while an app runs full screen")]
+    [InlineData("Presentation", "Paused during a presentation")]
+    [InlineData("RemoteSession", "Paused in a Remote Desktop session")]
+    public void Decide_SystemStates_Pause(string what, string reason)
+    {
+        SystemState state = what switch
+        {
+            "Locked" => SystemState.Default with { Locked = true },
+            "FullScreen" => SystemState.Default with { FullScreen = true },
+            "Presentation" => SystemState.Default with { Presentation = true },
+            _ => SystemState.Default with { RemoteSession = true },
+        };
+
+        RuntimeDecision decision = RuntimePolicy.Decide(new AppSettings(), state);
+
+        decision.Paused.Should().BeTrue();
+        decision.Reason.Should().Be(reason);
+    }
+
+    [Fact]
+    public void Decide_LockedOrFullScreen_PauseEvenWithReducedMotionNever()
+    {
+        var settings = new AppSettings { Advanced = new AdvancedConfig { ReducedMotion = ReducedMotion.Never } };
+
+        RuntimePolicy.Decide(settings, SystemState.Default with { FullScreen = true }).Paused.Should().BeTrue();
+        RuntimePolicy.Decide(settings, SystemState.Default with { Locked = true }).Paused.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Decide_RemoteSession_RunsWhenAllowed()
+    {
+        var settings = new AppSettings { Advanced = new AdvancedConfig { PauseInRemoteSession = false } };
+
+        RuntimePolicy.Decide(settings, SystemState.Default with { RemoteSession = true }).Paused.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("StartMenuExperienceHost.exe", true)]
+    [InlineData("searchhost.EXE", true)]
+    [InlineData("ShellExperienceHost.exe", true)]
+    [InlineData("explorer.exe", false)]
+    [InlineData("notepad.exe", false)]
+    public void Decide_StartOrSearchInFront_StepsAside(string process, bool paused)
+    {
+        RuntimeDecision decision = RuntimePolicy.Decide(new AppSettings(), SystemState.Default with { ForegroundProcess = process });
+
+        decision.Paused.Should().Be(paused);
+        if (paused)
+        {
+            decision.Reason.Should().Be("Hidden while Start, search or notifications are open");
+        }
+    }
+
+    [Fact]
+    public void Decide_StartInFront_StaysWhenSwitchedOff()
+    {
+        var settings = new AppSettings { Advanced = new AdvancedConfig { HideOverShell = false } };
+
+        RuntimePolicy.Decide(settings, SystemState.Default with { ForegroundProcess = "SearchHost.exe" }).Paused.Should().BeFalse();
+    }
 }

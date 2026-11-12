@@ -42,6 +42,7 @@ internal sealed class SmokeTest
     private const string SunSwitch = "--sun";
     private const string GrassSwitch = "--grass";
     private const string VisitorsSwitch = "--visitors";
+    private const string SoakSwitch = "--soak=";
     private const string SettingsTourSwitch = "--settings-tour=";
 
     private readonly string _reportPath;
@@ -85,6 +86,12 @@ internal sealed class SmokeTest
 
     public bool Grass { get; }
 
+    /// <summary>Minutes of the soak test (M13) instead of the usual checks; 0 runs the smoke test.</summary>
+    public double SoakMinutes { get; private init; }
+
+    /// <summary>Where the report goes (the soak test puts its samples next to it).</summary>
+    public string ReportPath => _reportPath;
+
     /// <summary>Invites a visitor onto the app window: checks spawning, the render loop and the keyboard collect.</summary>
     public bool Visitors { get; private init; }
 
@@ -120,6 +127,7 @@ internal sealed class SmokeTest
         {
             SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
             Visitors = args.Contains(VisitorsSwitch, StringComparer.OrdinalIgnoreCase),
+            SoakMinutes = double.TryParse(ValueOf(args, SoakSwitch), NumberStyles.Float, CultureInfo.InvariantCulture, out double soak) ? Math.Max(soak, 0) : 0,
         };
     }
 

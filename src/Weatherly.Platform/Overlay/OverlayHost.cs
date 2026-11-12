@@ -46,6 +46,23 @@ public sealed partial class OverlayHost : IDisposable
     private const nuint RefreshTimerId = 1;
     private const nuint TrackingTimerId = 2;
     private const nuint PollTimerId = 3;
+    private const nuint StateTimerId = 4;
+
+    /// <summary>How often the shell is asked about full-screen apps; it sends no message when that changes.</summary>
+    private const uint StateIntervalMilliseconds = 2000;
+
+    // Session and power messages (wtsapi32, winuser), as numbers: CsWin32 offers them only as loose constants.
+    private const uint WtsSessionChangeMessage = 0x02B1;
+    private const uint NotifyForThisSession = 0;
+    private const uint WtsConsoleConnect = 0x1;
+    private const uint WtsConsoleDisconnect = 0x2;
+    private const uint WtsRemoteConnect = 0x3;
+    private const uint WtsRemoteDisconnect = 0x4;
+    private const uint WtsSessionLock = 0x7;
+    private const uint WtsSessionUnlock = 0x8;
+    private const uint PowerSuspend = 0x4;
+    private const uint PowerResumeSuspend = 0x7;
+    private const uint PowerResumeAutomatic = 0x12;
 
     /// <summary>Window events are coalesced: at most one snapshot per frame (60 Hz).</summary>
     private const uint TrackingDelayMilliseconds = 16;
@@ -247,6 +264,12 @@ public sealed partial class OverlayHost : IDisposable
     /// <summary>Collects the visitor that came first (keyboard and Narrator alternative). Returns who, or null.</summary>
     public Core.Visitors.VisitorKind? CollectVisitor() => Invoke(CollectFirstVisitor);
 
+    /// <summary>
+    /// An error the overlay thread caught and survived (it shows in <see cref="OverlayStatus"/> too), for the local error
+    /// log. Raised on the overlay thread.
+    /// </summary>
+    public event EventHandler<Exception>? ErrorCaught;
+
     /// <summary>A visitor was collected (dropped into the box or by keyboard). Raised on the overlay thread.</summary>
     public event EventHandler<VisitorCollectedEventArgs>? VisitorCollected;
 
@@ -338,7 +361,10 @@ public sealed partial class OverlayHost : IDisposable
             RegisterWindowClass();
             _controlWindow = CreateControlWindow();
             RegisterCollectShortcut();
+            PInvoke.WTSRegisterSessionNotification((HWND)_controlWindow, NotifyForThisSession);
+            PInvoke.SetTimer((HWND)_controlWindow, StateTimerId, StateIntervalMilliseconds, null);
             UpdateSystemState(power: true, animations: true, foreground: PInvoke.GetForegroundWindow());
+            SetSessionState(asleep: false);
             HookWindowEvents();
             RefreshOverlays();
         }
@@ -491,6 +517,7 @@ public sealed partial class OverlayHost : IDisposable
             if (_controlWindow != 0)
             {
                 UnregisterCollectShortcut();
+                PInvoke.WTSUnRegisterSessionNotification((HWND)_controlWindow);
                 PInvoke.DestroyWindow((HWND)_controlWindow);
                 _controlWindow = 0;
             }
@@ -502,6 +529,7 @@ public sealed partial class OverlayHost : IDisposable
 #pragma warning restore CA1031
         {
             _lastError = exception.Message;
+            ErrorCaught?.Invoke(this, exception);
         }
         finally
         {
@@ -551,13 +579,36 @@ public sealed partial class OverlayHost : IDisposable
                     ScheduleRefresh();
                     break;
 
-                case PInvoke.WM_SETTINGCHANGE when isControlWindow && (uint)wParam.Value == (uint)SYSTEM_PARAMETERS_INFO_ACTION.SPI_SETCLIENTAREAANIMATION:
+                case PInvoke.WM_SETTINGCHANGE when isControlWindow
+                    && ((uint)wParam.Value == (uint)SYSTEM_PARAMETERS_INFO_ACTION.SPI_SETCLIENTAREAANIMATION
+                        || (uint)wParam.Value == (uint)SYSTEM_PARAMETERS_INFO_ACTION.SPI_SETHIGHCONTRAST):
                     UpdateSystemState(power: false, animations: true, foreground: HWND.Null);
                     break;
 
                 case PInvoke.WM_POWERBROADCAST when isControlWindow && (uint)wParam.Value == PInvoke.PBT_APMPOWERSTATUSCHANGE:
                     UpdateSystemState(power: true, animations: false, foreground: HWND.Null);
                     return new LRESULT(1);
+
+                // Sleep: pause before the screen goes dark. After waking the time that passed is not simulated, and the
+                // monitors and the graphics device are checked again (they may have changed or been lost).
+                case PInvoke.WM_POWERBROADCAST when isControlWindow && (uint)wParam.Value == PowerSuspend:
+                    SetSessionState(asleep: true);
+                    return new LRESULT(1);
+
+                case PInvoke.WM_POWERBROADCAST when isControlWindow && (uint)wParam.Value is PowerResumeSuspend or PowerResumeAutomatic:
+                    SetSessionState(asleep: false);
+                    _engine.ResumeAfterIdle();
+                    ScheduleRefresh();
+                    return new LRESULT(1);
+
+                // Lock, unlock, Remote Desktop connecting or leaving (PLAN.md, section 3.4).
+                case WtsSessionChangeMessage when isControlWindow:
+                    OnSessionChange((uint)wParam.Value);
+                    return new LRESULT(0);
+
+                case PInvoke.WM_TIMER when isControlWindow && wParam.Value == StateTimerId:
+                    UpdateScreenUse();
+                    return new LRESULT(0);
 
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == RefreshTimerId:
                     PInvoke.KillTimer(window, RefreshTimerId);
@@ -594,6 +645,7 @@ public sealed partial class OverlayHost : IDisposable
 #pragma warning restore CA1031
         {
             _lastError = exception.Message;
+            ErrorCaught?.Invoke(this, exception);
         }
 
         return PInvoke.DefWindowProc(window, message, wParam, lParam);
@@ -649,6 +701,57 @@ public sealed partial class OverlayHost : IDisposable
     /// Updates the parts of the system state that may have changed and raises <see cref="SystemStateChanged"/> when
     /// something did. The foreground app's name is looked up only when its process changed.
     /// </summary>
+    private bool _locked;
+    private bool _asleep;
+    private bool _disconnected;
+
+    private void OnSessionChange(uint change)
+    {
+        switch (change)
+        {
+            case WtsSessionLock:
+                _locked = true;
+                break;
+            case WtsSessionUnlock:
+                _locked = false;
+                break;
+            case WtsConsoleDisconnect or WtsRemoteDisconnect:
+                _disconnected = true;
+                break;
+            case WtsConsoleConnect or WtsRemoteConnect:
+                _disconnected = false;
+                break;
+        }
+
+        SetSessionState(_asleep);
+        if (change is WtsSessionUnlock or WtsConsoleConnect or WtsRemoteConnect)
+        {
+            // A new session may bring other monitors (Remote Desktop) or a lost device.
+            _engine.ResumeAfterIdle();
+            ScheduleRefresh();
+        }
+    }
+
+    private void SetSessionState(bool asleep)
+    {
+        _asleep = asleep;
+        Core.Settings.SystemState state = SystemState;
+        Core.Settings.SystemState updated = state with
+        {
+            Locked = _locked || _asleep || _disconnected,
+            RemoteSession = Shell.SystemInfo.IsRemoteSession(),
+        };
+        PublishSystemState(state, updated);
+    }
+
+    /// <summary>The shell has no message for full-screen apps: it is asked every two seconds and on every focus change.</summary>
+    private void UpdateScreenUse()
+    {
+        (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+        Core.Settings.SystemState state = SystemState;
+        PublishSystemState(state, state with { FullScreen = fullScreen, Presentation = presentation });
+    }
+
     private void UpdateSystemState(bool power, bool animations, HWND foreground)
     {
         Core.Settings.SystemState state = SystemState;
@@ -671,8 +774,17 @@ public sealed partial class OverlayHost : IDisposable
                 _foregroundProcessId = processId;
                 updated = updated with { ForegroundProcess = Shell.SystemInfo.ProcessName(processId) };
             }
+
+            // A game going full screen usually takes the focus first: no need to wait for the timer.
+            (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+            updated = updated with { FullScreen = fullScreen, Presentation = presentation };
         }
 
+        PublishSystemState(state, updated);
+    }
+
+    private void PublishSystemState(Core.Settings.SystemState state, Core.Settings.SystemState updated)
+    {
         if (updated == state)
         {
             return;
@@ -726,6 +838,7 @@ public sealed partial class OverlayHost : IDisposable
 #pragma warning restore CA1031
         {
             _lastError = exception.Message;
+            ErrorCaught?.Invoke(this, exception);
         }
     }
 
@@ -988,6 +1101,7 @@ public sealed partial class OverlayHost : IDisposable
 #pragma warning restore CA1031
         {
             _lastError = exception.Message;
+            ErrorCaught?.Invoke(this, exception);
         }
     }
 

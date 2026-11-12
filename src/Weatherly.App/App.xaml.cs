@@ -60,6 +60,9 @@ public partial class App : Application
     private static readonly TimeSpan s_leavesIdleStopTimeout = TimeSpan.FromSeconds(60);
 
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
+
+    /// <summary>Local error reports (M13); the smoke test keeps its own report and writes none.</summary>
+    private readonly CrashLog? _crashLog;
     private MainWindow? _window;
     private AppController? _controller;
     private SettingsWindow? _settingsWindow;
@@ -69,6 +72,24 @@ public partial class App : Application
     {
         InitializeComponent();
         UnhandledException += OnUnhandledException;
+
+        // Errors that end the app or that nobody waited for go into a local report, never anywhere else (PLAN.md, M13).
+        if (_smokeTest is null)
+        {
+            _crashLog = new CrashLog(CrashLog.DefaultDirectory);
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            {
+                if (e.ExceptionObject is Exception exception)
+                {
+                    _crashLog.Write(exception, fatal: e.IsTerminating, "process");
+                }
+            };
+            TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                _crashLog.Write(e.Exception, fatal: false, "background task");
+                e.SetObserved();
+            };
+        }
 
         // The app lives in the notification area: closing (hiding) its windows does not end it, only Quit does.
         if (_smokeTest is null)
@@ -124,6 +145,11 @@ public partial class App : Application
 
         // The window owns the overlay from here on and disposes it when it closes.
         var overlay = new OverlayHost(new CompositionOverlayRenderer(), options);
+        if (_crashLog is { } log)
+        {
+            overlay.ErrorCaught += (_, exception) => log.Write(exception, fatal: false, "overlay thread");
+        }
+
         string? startError = null;
         try
         {
@@ -196,7 +222,11 @@ public partial class App : Application
             ApplySceneLink(sceneLink);
         }
 
-        if (_smokeTest is { SettingsTour: { } tourDirectory })
+        if (_smokeTest is { SoakMinutes: > 0 } soak)
+        {
+            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = SoakRun.RunAsync(soak, _window, soak.SoakMinutes));
+        }
+        else if (_smokeTest is { SettingsTour: { } tourDirectory })
         {
             _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSettingsTourAsync(_smokeTest, tourDirectory, _controller, _settingsWindow, _flyout, _window));
         }
@@ -508,7 +538,7 @@ public partial class App : Application
             SystemState system = window.SystemState;
             monitorNotes.Add(string.Create(
                 CultureInfo.InvariantCulture,
-                $"System: {(system.OnBattery ? "on battery" : "on mains power")}, animations {(system.AnimationsEnabled ? "on" : "off")}, foreground app {system.ForegroundProcess ?? "unknown"}"));
+                $"System: {(system.OnBattery ? "on battery" : "on mains power")}, animations {(system.AnimationsEnabled ? "on" : "off")}, foreground app {system.ForegroundProcess ?? "unknown"}, full screen {(system.FullScreen ? "yes" : "no")}, locked {(system.Locked ? "yes" : "no")}, remote {(system.RemoteSession ? "yes" : "no")}, high contrast {(system.HighContrast ? "on" : "off")}"));
 
             // The script measures the window itself (DWM) and needs the handle: the process owns overlay windows too.
             string handleLine = string.Create(CultureInfo.InvariantCulture, $"App window handle {Win32Interop.GetWindowFromWindowId(window.AppWindow.Id)}");
@@ -757,5 +787,6 @@ public partial class App : Application
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         _smokeTest?.Fail(e.Exception);
+        _crashLog?.Write(e.Exception, fatal: true, "user interface");
     }
 }

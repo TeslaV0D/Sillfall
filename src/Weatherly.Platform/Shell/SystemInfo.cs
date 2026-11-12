@@ -3,6 +3,7 @@ using Windows.Win32.Foundation;
 using Windows.Win32.System.Power;
 using Windows.Win32.System.Threading;
 using Windows.Win32.UI.Accessibility;
+using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Weatherly.Platform.Shell;
@@ -23,6 +24,38 @@ public static class SystemInfo
         BOOL enabled = true;
         return !PInvoke.SystemParametersInfo(SYSTEM_PARAMETERS_INFO_ACTION.SPI_GETCLIENTAREAANIMATION, 0, &enabled, 0) || enabled;
     }
+
+    /// <summary>
+    /// What the shell says about the screen (PLAN.md, section 3.4): a full-screen app (a game, a video, Direct3D exclusive
+    /// mode) or presentation mode. A full-screen window of this process (never the overlay, which is not foreground)
+    /// does not count, so the app cannot pause itself.
+    /// </summary>
+    public static unsafe (bool FullScreen, bool Presentation) ScreenUse()
+    {
+        QUERY_USER_NOTIFICATION_STATE state;
+        if (PInvoke.SHQueryUserNotificationState(&state).Failed)
+        {
+            return (false, false);
+        }
+
+        bool fullScreen = state is QUERY_USER_NOTIFICATION_STATE.QUNS_BUSY or QUERY_USER_NOTIFICATION_STATE.QUNS_RUNNING_D3D_FULL_SCREEN;
+        if (fullScreen && ProcessIdOf(PInvoke.GetForegroundWindow()) == PInvoke.GetCurrentProcessId())
+        {
+            fullScreen = false;
+        }
+
+        return (fullScreen, state == QUERY_USER_NOTIFICATION_STATE.QUNS_PRESENTATION_MODE);
+    }
+
+    /// <summary>GDI and USER objects of this process, for the soak test's leak check.</summary>
+    public static (int Gdi, int User) GuiResources()
+    {
+        HANDLE process = PInvoke.GetCurrentProcess();
+        return ((int)PInvoke.GetGuiResources(process, GET_GUI_RESOURCES_FLAGS.GR_GDIOBJECTS), (int)PInvoke.GetGuiResources(process, GET_GUI_RESOURCES_FLAGS.GR_USEROBJECTS));
+    }
+
+    /// <summary>Whether this session is shown through Remote Desktop.</summary>
+    public static bool IsRemoteSession() => PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_REMOTESESSION) != 0;
 
     /// <summary>Whether Windows' high contrast mode is on.</summary>
     public static unsafe bool HighContrastOn()

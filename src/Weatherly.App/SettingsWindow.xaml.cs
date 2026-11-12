@@ -716,6 +716,14 @@ public sealed partial class SettingsWindow : Window
         Windows.ApplicationModel.DataTransfer.DataTransferManagerInterop.ShowShareUIForWindow(window);
     }
 
+    /// <summary>Opens the folder with the local error reports in Explorer (created if it is not there yet).</summary>
+    private static void OpenLogsFolder()
+    {
+        string folder = Core.Diagnostics.CrashLog.DefaultDirectory;
+        Directory.CreateDirectory(folder);
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = folder, UseShellExecute = true });
+    }
+
     private static string Favourite(WeatherAffinity affinity) => affinity switch
     {
         WeatherAffinity.Any => Texts.Get("Affinity.Any"),
@@ -933,6 +941,10 @@ public sealed partial class SettingsWindow : Window
                 [Texts.Get("Advanced.ReducedMotion.Follow"), Texts.Get("Advanced.ReducedMotion.Always"), Texts.Get("Advanced.ReducedMotion.Never")],
                 (int)advanced.ReducedMotion,
                 index => _controller.Update(s => s with { Advanced = s.Advanced with { ReducedMotion = (ReducedMotion)index } })),
+            Ui.Toggle(Texts.Get("Advanced.Remote"), advanced.PauseInRemoteSession,
+                on => _controller.Update(s => s with { Advanced = s.Advanced with { PauseInRemoteSession = on } })),
+            Ui.Toggle(Texts.Get("Advanced.Shell"), advanced.HideOverShell,
+                on => _controller.Update(s => s with { Advanced = s.Advanced with { HideOverShell = on } })),
             Ui.Toggle(Texts.Get("Advanced.HighContrast"), advanced.PauseInHighContrast,
                 on => _controller.Update(s => s with { Advanced = s.Advanced with { PauseInHighContrast = on } })),
             Ui.Choice(
@@ -955,6 +967,7 @@ public sealed partial class SettingsWindow : Window
         Add(Ui.Heading(Texts.Get("Advanced.Troubleshooting")));
         Add(Ui.Row(
             Ui.ActionButton(Texts.Get("Advanced.Diagnostics"), _controller.Window.ShowAndActivate),
+            Ui.ActionButton(Texts.Get("Advanced.Logs"), OpenLogsFolder),
             Ui.ActionButton(Texts.Get("Advanced.Reset"), () => _ = ConfirmResetAsync())));
     }
 

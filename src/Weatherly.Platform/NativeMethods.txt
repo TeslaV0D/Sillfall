@@ -34,9 +34,12 @@ EVENT_SYSTEM_MOVESIZESTART
 FindWindow
 GetClassName
 GetCurrentPackageFullName
+GetCurrentProcess
+GetCurrentProcessId
 GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
+GetGuiResources
 GetMessage
 GetModuleHandle
 GetMonitorInfo
@@ -87,6 +90,7 @@ SetWindowDisplayAffinity
 SetWindowPos
 SetWinEventHook
 ShowWindow
+SHQueryUserNotificationState
 SYSTEM_PARAMETERS_INFO_ACTION
 SystemParametersInfo
 TRACK_POPUP_MENU_FLAGS
@@ -118,3 +122,5 @@ WM_SETCURSOR
 WM_SETTINGCHANGE
 WM_TIMER
 WM_USER
+WTSRegisterSessionNotification
+WTSUnRegisterSessionNotification

@@ -3,9 +3,9 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M12 (Sprachen und Barrierefreiheit): Deutsch und Englisch, Narrator-Namen für jedes
-Bedienelement, Pause bei hohem Kontrast und Reduced Motion. Davor: Besucher, Wetter-Sync, Einstellungen mit zehn
-Seiten und alle sechs Wettereffekte.
+**Status:** Meilenstein M13 (Härtung): Pause bei Vollbild-Spielen, Präsentation, Sperre, Standby, Remotedesktop und
+offenem Startmenü, lokale Fehlerberichte ohne Telemetrie, Langzeittest auf Speicher- und Handle-Lecks. Davor:
+Sprachen und Barrierefreiheit, Besucher, Wetter-Sync, Einstellungen und alle sechs Wettereffekte.
 
 ```bash
 dotnet run --project tools/Weatherly.Sandbox

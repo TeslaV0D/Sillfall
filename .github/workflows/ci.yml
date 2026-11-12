@@ -7,6 +7,10 @@ on:
       - "claude/**"
   pull_request:
   workflow_dispatch:
+    inputs:
+      soak_minutes:
+        description: "Minutes of the soak test (at most about 330: GitHub stops jobs after 6 hours; the full 8 hours run on a real PC)"
+        default: "5"
 
 # The suffix starts a fresh group: run #36 (2026-11-11) got stuck in GitHub's dispatch, cannot be cancelled,
 # and kept every later run of the old group waiting behind it. Bump it again if that ever repeats.
@@ -114,4 +118,32 @@ jobs:
         with:
           name: previews
           path: ${{ runner.temp }}/previews/
+          if-no-files-found: ignore
+
+  # Soak test (M13): the app runs with everything on while memory, handles and GDI/USER objects are sampled.
+  # 5 minutes on every push catch fast leaks; longer runs via "Run workflow", the full 8 hours on a real PC.
+  soak:
+    name: Soak (x64)
+    runs-on: windows-latest
+    timeout-minutes: ${{ fromJSON(inputs.soak_minutes || '5') + 30 }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Soak test the app
+        shell: pwsh
+        run: >-
+          ./tools/ci/soak-test.ps1 -Platform x64
+          -Minutes ${{ inputs.soak_minutes || '5' }}
+          -ReportDirectory "$env:RUNNER_TEMP/soak"
+
+      - name: Upload soak report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: soak
+          path: ${{ runner.temp }}/soak/
           if-no-files-found: ignore

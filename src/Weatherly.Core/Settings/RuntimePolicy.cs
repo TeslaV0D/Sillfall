@@ -7,8 +7,30 @@ namespace Weatherly.Core.Settings;
 /// <param name="AnimationsEnabled">Windows' "show animations" setting (SPI_GETCLIENTAREAANIMATION).</param>
 /// <param name="ForegroundProcess">Executable name of the foreground window's process ("game.exe"), if known.</param>
 /// <param name="HighContrast">Windows' high contrast mode is on (SPI_GETHIGHCONTRAST).</param>
-public readonly record struct SystemState(bool OnBattery, bool AnimationsEnabled, string? ForegroundProcess, bool HighContrast = false)
+/// <param name="Locked">The session is locked, disconnected or the PC is going to sleep: nobody sees the desktop.</param>
+/// <param name="FullScreen">Another app runs full screen (a game, a video, Direct3D exclusive mode).</param>
+/// <param name="Presentation">Windows' presentation mode is on.</param>
+/// <param name="RemoteSession">The desktop is shown through Remote Desktop.</param>
+public readonly record struct SystemState(
+    bool OnBattery,
+    bool AnimationsEnabled,
+    string? ForegroundProcess,
+    bool HighContrast = false,
+    bool Locked = false,
+    bool FullScreen = false,
+    bool Presentation = false,
+    bool RemoteSession = false)
 {
+    /// <summary>
+    /// Processes of the Windows shell that open over everything: Start, search, notifications, quick settings. The
+    /// overlay would lie on top of them (PLAN.md, section 11), so the weather steps aside while one is in front.
+    /// </summary>
+    public static IReadOnlyList<string> ShellProcesses { get; } =
+        ["StartMenuExperienceHost.exe", "SearchHost.exe", "SearchApp.exe", "ShellExperienceHost.exe", "ShellHost.exe"];
+
+    /// <summary>Whether Start, search or a shell panel is in front.</summary>
+    public bool ShellOpen => ForegroundProcess is { Length: > 0 } process && ShellProcesses.Contains(process, StringComparer.OrdinalIgnoreCase);
+
     public static SystemState Default => new(OnBattery: false, AnimationsEnabled: true, ForegroundProcess: null);
 }
 
@@ -59,6 +81,27 @@ public static class RuntimePolicy
             return Texts.Get("Pause.Off");
         }
 
+        // Nobody looks, or something else needs the screen (PLAN.md, section 3.4): no exceptions, no settings.
+        if (state.Locked)
+        {
+            return Texts.Get("Pause.Locked");
+        }
+
+        if (state.FullScreen)
+        {
+            return Texts.Get("Pause.FullScreen");
+        }
+
+        if (state.Presentation)
+        {
+            return Texts.Get("Pause.Presentation");
+        }
+
+        if (state.RemoteSession && settings.Advanced.PauseInRemoteSession)
+        {
+            return Texts.Get("Pause.Remote");
+        }
+
         switch (settings.Advanced.ReducedMotion)
         {
             case ReducedMotion.Always:
@@ -76,6 +119,11 @@ public static class RuntimePolicy
         if (state.OnBattery && settings.Performance.Battery == BatteryBehavior.Pause)
         {
             return Texts.Get("Pause.Battery");
+        }
+
+        if (state.ShellOpen && settings.Advanced.HideOverShell)
+        {
+            return Texts.Get("Pause.Shell");
         }
 
         if (state.ForegroundProcess is { Length: > 0 } foreground)

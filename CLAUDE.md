@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M12 (Sprachen und Barrierefreiheit)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M13 (Härtung)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -84,6 +84,11 @@ Visitors (ADR-0014): `VisitorSystem` (Core, ein `IEffectSystem`) mit Katalog, `V
 über den SVG-Renderer von Direct2D. Interaktion im `OverlayHost` (`OverlayHost.Visitors.cs`): Hit-Fenster pro Figur,
 Korb, Strg+Alt+V. Sounds: `VisitorSynth` (Core) und `VisitorSoundPlayer` (Audio). Smoke-Test `--visitors`.
 
+Härtung (ADR-0016): `SystemState` kennt Sperre, Vollbild, Präsentation, Remotedesktop und Start/Suche, `RuntimePolicy`
+pausiert dafür (der `OverlayHost` erkennt sie über Shell, WTS und Power-Nachrichten). Fehlerberichte: `CrashLog` (Core,
+lokal, geschwärzt), verdrahtet in `App`. Langzeittest: `LongRunTests` (Core), `--soak=<Minuten>` (`SoakRun`,
+`SoakAnalysis`), 8 Stunden mit `pwsh tools/ci/soak-test.ps1 -Minutes 480`.
+
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.
 
@@ -140,6 +145,7 @@ Hinweise:
 |---|---|---|
 | `core` | ubuntu-latest | Format, Build der Cross-Platform-Projekte, Core-Tests (inkl. Architektur-, Privacy- und Asset-Invarianten) |
 | `windows` | windows-latest, x64 und ARM64 | Build der ganzen Solution. Nur x64: Format, Core-Tests, Render-Tests (WARP), Smoke-Test der App |
+| `soak` | windows-latest, x64 | 5 Minuten Soak der App (`tools/ci/soak-test.ps1`, Artefakt `soak`), länger per „Run workflow“ |
 
 Jeder Render-Test speichert sein Bild als PNG, das Smoke-Skript seine Desktop-Screenshots. Beides
 lädt der Job als Artefakt `previews` hoch. So lässt sich die Optik ohne Windows-Desktop prüfen

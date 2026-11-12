@@ -134,6 +134,12 @@ public sealed record AdvancedConfig
 
     public ReducedMotion ReducedMotion { get; set; } = ReducedMotion.FollowSystem;
 
+    /// <summary>All weather pauses in a Remote Desktop session (every frame would go over the network).</summary>
+    public bool PauseInRemoteSession { get; set; } = true;
+
+    /// <summary>The weather steps aside while Start, search or a shell panel is open (it would lie on top of them).</summary>
+    public bool HideOverShell { get; set; } = true;
+
     /// <summary>All weather pauses while Windows' high contrast mode is on (it would lower the contrast).</summary>
     public bool PauseInHighContrast { get; set; } = true;
 
