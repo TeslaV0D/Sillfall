@@ -4,8 +4,9 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M13 (Härtung)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
-`docs/manual-tests/`.
+Stand: **M14 (Release)**. MSIX für x64 und ARM64, Datenschutzerklärung, Store-Text und winget-Manifest sind da
+(ADR-0017). Die Store-Zertifizierung und die Namensreservierung stehen in der Checkliste M14. Den Fortschritt pro
+Meilenstein dokumentieren die Checklisten in `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
 
@@ -84,6 +85,12 @@ Visitors (ADR-0014): `VisitorSystem` (Core, ein `IEffectSystem`) mit Katalog, `V
 über den SVG-Renderer von Direct2D. Interaktion im `OverlayHost` (`OverlayHost.Visitors.cs`): Hit-Fenster pro Figur,
 Korb, Strg+Alt+V. Sounds: `VisitorSynth` (Core) und `VisitorSoundPlayer` (Audio). Smoke-Test `--visitors`.
 
+Release (ADR-0017): `tools/ci/package.ps1` baut das MSIX (x64/ARM64), unsigniert für den Store und mit einem
+Entwicklungszertifikat zum Querladen. Der Job `package` läuft bei Pull Requests und bei Tags `v*`. Ein Tag legt einen
+Release-Entwurf an; Azure Artifact Signing signiert nur, wenn die reservierte Identität und die Secrets gesetzt sind.
+Die Datenschutzerklärung liegt in `docs/privacy.md` (deutsch: `docs/privacy.de.md`). „Weatherly“ bleibt der
+Arbeitstitel, bis der Name in Partner Center reserviert ist.
+
 Härtung (ADR-0016): `SystemState` kennt Sperre, Vollbild, Präsentation, Remotedesktop und Start/Suche, `RuntimePolicy`
 pausiert dafür (der `OverlayHost` erkennt sie über Shell, WTS und Power-Nachrichten). Fehlerberichte: `CrashLog` (Core,
 lokal, geschwärzt), verdrahtet in `App`. Langzeittest: `LongRunTests` (Core), `--soak=<Minuten>` (`SoakRun`,
@@ -146,6 +153,8 @@ Hinweise:
 | `core` | ubuntu-latest | Format, Build der Cross-Platform-Projekte, Core-Tests (inkl. Architektur-, Privacy- und Asset-Invarianten) |
 | `windows` | windows-latest, x64 und ARM64 | Build der ganzen Solution. Nur x64: Format, Core-Tests, Render-Tests (WARP), Smoke-Test der App |
 | `soak` | windows-latest, x64 | 5 Minuten Soak der App (`tools/ci/soak-test.ps1`, Artefakt `soak`), länger per „Run workflow“ |
+| `package` | windows-latest, x64 und ARM64 | MSIX (`tools/ci/package.ps1`), Artefakte `msix-x64` und `msix-ARM64`. Pull Requests, „Run workflow“ und Tags `v*` |
+| `release` | windows-latest | Nur Tags `v*`: Entwurf eines GitHub-Release, Artifact Signing wenn die Secrets gesetzt sind |
 
 Jeder Render-Test speichert sein Bild als PNG, das Smoke-Skript seine Desktop-Screenshots. Beides
 lädt der Job als Artefakt `previews` hoch. So lässt sich die Optik ohne Windows-Desktop prüfen
@@ -154,7 +163,8 @@ lädt der Job als Artefakt `previews` hoch. So lässt sich die Optik ohne Window
 Dazu rendert der Job alle FrameDump-Szenen in die Previews. Statt eines Branches
 `ci-previews/<branch>` (PLAN.md) gibt es nur das Artefakt, siehe ADR-0005.
 
-Noch nicht eingerichtet: Job `package` für MSIX-Build und Signierung bei Tags (M14).
+Der Job `package` signiert mit einem Entwicklungszertifikat. Öffentlich signiert wird auf einem Tag, sobald die
+Artifact-Signing-Secrets gesetzt sind (ADR-0017).
 
 ## Code-Konventionen
 

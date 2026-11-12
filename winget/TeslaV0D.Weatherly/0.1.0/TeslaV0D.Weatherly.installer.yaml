@@ -1,0 +1,19 @@
+# Installer hashes are 64 zeros on purpose. Replace them from the signed release with wingetcreate
+# before opening the pull request against microsoft/winget-pkgs. Do not submit this file as it is.
+PackageIdentifier: TeslaV0D.Weatherly
+PackageVersion: 0.1.0
+Platform:
+- Windows.Desktop
+MinimumOSVersion: 10.0.19041.0
+InstallerType: msix
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/TeslaV0D/weatherly_windows/releases/download/v0.1.0/Weatherly_0.1.0.0_x64.msix
+  InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+  SignatureSha256: 0000000000000000000000000000000000000000000000000000000000000000
+- Architecture: arm64
+  InstallerUrl: https://github.com/TeslaV0D/weatherly_windows/releases/download/v0.1.0/Weatherly_0.1.0.0_arm64.msix
+  InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+  SignatureSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.9.0

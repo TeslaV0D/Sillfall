@@ -1,0 +1,6 @@
+# winget version manifest. Hashes in the installer manifest are placeholders until a signed release exists (ADR-0017).
+PackageIdentifier: TeslaV0D.Weatherly
+PackageVersion: 0.1.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.9.0
