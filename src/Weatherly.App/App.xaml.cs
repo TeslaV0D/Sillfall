@@ -585,7 +585,7 @@ public partial class App : Application
             bool invited = window.InviteVisitor(Core.Visitors.VisitorKind.Pip, handle);
             await Task.Delay(TimeSpan.FromSeconds(1.5));
             OverlayStatus? visiting = window.Refresh();
-            Core.Visitors.VisitorInfo? visitor = visiting?.Visitors.FirstOrDefault();
+            Core.Visitors.VisitorInfo? visitor = visiting is { Visitors.Count: > 0 } ? visiting.Visitors[0] : null;
             results.Add(new DiagnosticResult(
                 "Visitor arrives on the app window",
                 invited && visitor is { Kind: Core.Visitors.VisitorKind.Pip } && visitor.Value.Surface?.OwnerId == handle && visiting!.IsAnimating,
