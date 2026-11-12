@@ -1,4 +1,5 @@
 using System.Globalization;
+using Weatherly.Core.Localization;
 using Weatherly.Core.Overlay;
 
 namespace Weatherly.Core.Tray;
@@ -53,20 +54,20 @@ public static class TrayMenu
         bool paused = !options.Enabled;
         return
         [
-            new TrayMenuItem { Text = $"Open {AppInfo.Name}", Invoke = commands.Open, IsDefault = true },
+            new TrayMenuItem { Text = Texts.Format("Tray.Open", AppInfo.Name), Invoke = commands.Open, IsDefault = true },
             TrayMenuItem.Separator,
-            EffectMenu("Rain", options.Rain.ClampedIntensity, commands.SetRain, paused),
-            EffectMenu("Snow", options.Snow.ClampedIntensity, commands.SetSnow, paused),
-            EffectMenu("Leaves", options.Leaves.ClampedIntensity, commands.SetLeaves, paused),
-            EffectMenu("Fog", options.Fog.ClampedIntensity, commands.SetFog, paused),
-            EffectMenu("Sun", options.Sun.ClampedIntensity, commands.SetSun, paused),
-            EffectMenu("Grass", options.Grass.ClampedIntensity, commands.SetGrass, paused),
-            new TrayMenuItem { Text = "Sound", IsChecked = soundOn, Invoke = () => commands.SetSound(!soundOn) },
+            EffectMenu(Texts.Get("Tray.Rain"), options.Rain.ClampedIntensity, commands.SetRain, paused),
+            EffectMenu(Texts.Get("Tray.Snow"), options.Snow.ClampedIntensity, commands.SetSnow, paused),
+            EffectMenu(Texts.Get("Tray.Leaves"), options.Leaves.ClampedIntensity, commands.SetLeaves, paused),
+            EffectMenu(Texts.Get("Tray.Fog"), options.Fog.ClampedIntensity, commands.SetFog, paused),
+            EffectMenu(Texts.Get("Tray.Sun"), options.Sun.ClampedIntensity, commands.SetSun, paused),
+            EffectMenu(Texts.Get("Tray.Grass"), options.Grass.ClampedIntensity, commands.SetGrass, paused),
+            new TrayMenuItem { Text = Texts.Get("Tray.Sound"), IsChecked = soundOn, Invoke = () => commands.SetSound(!soundOn) },
             .. VisitorItems(commands),
             TrayMenuItem.Separator,
-            new TrayMenuItem { Text = "Pause all effects", IsChecked = paused, Invoke = () => commands.SetPaused(!paused) },
+            new TrayMenuItem { Text = Texts.Get("Tray.Pause"), IsChecked = paused, Invoke = () => commands.SetPaused(!paused) },
             TrayMenuItem.Separator,
-            new TrayMenuItem { Text = "Quit", Invoke = commands.Quit },
+            new TrayMenuItem { Text = Texts.Get("Tray.Quit"), Invoke = commands.Quit },
         ];
     }
 
@@ -78,7 +79,7 @@ public static class TrayMenu
             yield return TrayMenuItem.Separator;
             yield return new TrayMenuItem
             {
-                Text = commands.VisitorsOnScreen == 1 ? "Collect the visitor (Ctrl+Alt+V)" : $"Collect a visitor ({commands.VisitorsOnScreen} here, Ctrl+Alt+V)",
+                Text = commands.VisitorsOnScreen == 1 ? Texts.Get("Tray.CollectOne") : Texts.Format("Tray.CollectMany", commands.VisitorsOnScreen),
                 Invoke = collect,
             };
         }
@@ -90,41 +91,41 @@ public static class TrayMenu
         ArgumentNullException.ThrowIfNull(options);
         if (!options.Enabled)
         {
-            return $"{AppInfo.Name}: paused";
+            return Texts.Format("Tray.TooltipPaused", AppInfo.Name);
         }
 
         var parts = new List<string>();
         if (options.Rain.ClampedIntensity > 0f)
         {
-            parts.Add($"rain {Percent(options.Rain.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipRain", Percent(options.Rain.ClampedIntensity)));
         }
 
         if (options.Snow.ClampedIntensity > 0f)
         {
-            parts.Add($"snow {Percent(options.Snow.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipSnow", Percent(options.Snow.ClampedIntensity)));
         }
 
         if (options.Leaves.ClampedIntensity > 0f)
         {
-            parts.Add($"leaves {Percent(options.Leaves.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipLeaves", Percent(options.Leaves.ClampedIntensity)));
         }
 
         if (options.Fog.ClampedIntensity > 0f)
         {
-            parts.Add($"fog {Percent(options.Fog.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipFog", Percent(options.Fog.ClampedIntensity)));
         }
 
         if (options.Sun.ClampedIntensity > 0f)
         {
-            parts.Add($"sun {Percent(options.Sun.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipSun", Percent(options.Sun.ClampedIntensity)));
         }
 
         if (options.Grass.ClampedIntensity > 0f)
         {
-            parts.Add($"grass {Percent(options.Grass.ClampedIntensity)}");
+            parts.Add(Texts.Format("Tray.TooltipGrass", Percent(options.Grass.ClampedIntensity)));
         }
 
-        return parts.Count == 0 ? $"{AppInfo.Name}: clear sky" : $"{AppInfo.Name}: {string.Join(", ", parts)}";
+        return parts.Count == 0 ? Texts.Format("Tray.TooltipClear", AppInfo.Name) : Texts.Format("Tray.TooltipReason", AppInfo.Name, string.Join(", ", parts));
     }
 
     private static TrayMenuItem EffectMenu(string name, float intensity, Action<float> set, bool paused)
@@ -135,7 +136,7 @@ public static class TrayMenu
             float value = stepIntensity;
             children.Add(new TrayMenuItem
             {
-                Text = stepName,
+                Text = Texts.Get($"Tray.Step.{stepName}"),
                 IsRadio = true,
                 IsChecked = MathF.Abs(intensity - value) < 0.025f,
                 Invoke = () => set(value),

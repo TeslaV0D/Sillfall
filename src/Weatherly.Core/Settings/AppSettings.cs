@@ -133,6 +133,9 @@ public sealed record AdvancedConfig
     public bool Autostart { get; set; }
 
     public ReducedMotion ReducedMotion { get; set; } = ReducedMotion.FollowSystem;
+
+    /// <summary>Language of the app: empty follows Windows, otherwise a code of <c>Texts.Languages</c> ("en", "de").</summary>
+    public string Language { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -251,6 +254,9 @@ public sealed record AppSettings
         Advanced = Advanced is null ? new() : Advanced with
         {
             ReducedMotion = Enum.IsDefined(Advanced.ReducedMotion) ? Advanced.ReducedMotion : ReducedMotion.FollowSystem,
+            Language = Localization.Texts.Languages.Contains(Advanced.Language?.Trim().ToLowerInvariant() ?? string.Empty)
+                ? Advanced.Language!.Trim().ToLowerInvariant()
+                : string.Empty,
         },
         WeatherSync = (WeatherSync ?? new()).Sanitized(),
         Visitors = Visitors is null ? new() : Visitors with

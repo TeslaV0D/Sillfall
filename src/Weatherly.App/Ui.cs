@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Weatherly.Core.Imaging;
+using Weatherly.Core.Localization;
 using Weatherly.Core.Settings;
 using Weatherly.Core.Visitors;
 
@@ -18,12 +19,12 @@ internal static class Ui
 {
     public static string Name(EffectKind kind) => kind switch
     {
-        EffectKind.Rain => "Rain",
-        EffectKind.Snow => "Snow",
-        EffectKind.Leaves => "Leaves",
-        EffectKind.Fog => "Fog",
-        EffectKind.Sun => "Sunlight",
-        EffectKind.Grass => "Grass",
+        EffectKind.Rain => Texts.Get("Effect.Rain"),
+        EffectKind.Snow => Texts.Get("Effect.Snow"),
+        EffectKind.Leaves => Texts.Get("Effect.Leaves"),
+        EffectKind.Fog => Texts.Get("Effect.Fog"),
+        EffectKind.Sun => Texts.Get("Effect.Sun"),
+        EffectKind.Grass => Texts.Get("Effect.Grass"),
         _ => kind.ToString(),
     };
 
@@ -59,7 +60,7 @@ internal static class Ui
     };
 
     public static string Name(SyncElement element) =>
-        WeatherBlend.EffectOf(element) is { } kind ? Name(kind) : "Wind";
+        WeatherBlend.EffectOf(element) is { } kind ? Name(kind) : Texts.Get("Effects.Wind");
 
     /// <summary>
     /// The banner for a weather sync that the user paused for some elements by moving their sliders, with "Resume sync".
@@ -79,10 +80,10 @@ internal static class Ui
             IsOpen = true,
             IsClosable = false,
             Severity = InfoBarSeverity.Warning,
-            Title = "Weather sync paused",
-            Message = $"{string.Join(", ", sync.Paused.Select(Name))} keep{(sync.Paused.Count == 1 ? "s" : string.Empty)} the value you set by hand.",
+            Title = Texts.Get("Sync.PausedTitle"),
+            Message = Texts.Format(sync.Paused.Count == 1 ? "Sync.PausedOne" : "Sync.PausedMany", string.Join(", ", sync.Paused.Select(Name))),
         };
-        bar.ActionButton = ActionButton("Resume sync", () =>
+        bar.ActionButton = ActionButton(Texts.Get("Sync.Resume"), () =>
         {
             controller.ResumeSync();
             resumed();

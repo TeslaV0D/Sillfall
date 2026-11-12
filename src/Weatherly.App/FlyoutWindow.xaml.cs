@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Weatherly.Core;
+using Weatherly.Core.Localization;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
 using Weatherly.Platform.Displays;
@@ -124,7 +125,7 @@ public sealed partial class FlyoutWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.Children.Add(new TextBlock { Text = AppInfo.Name, Style = Ui.Resource<Style>("SubtitleTextBlockStyle"), VerticalAlignment = VerticalAlignment.Center });
-        var master = new ToggleSwitch { IsOn = settings.Enabled, OnContent = "On", OffContent = "Off", MinWidth = 0 };
+        var master = new ToggleSwitch { IsOn = settings.Enabled, OnContent = Texts.Get("Common.On"), OffContent = Texts.Get("Common.Off"), MinWidth = 0 };
         master.Toggled += (_, _) => _controller.Update(s => s with { Enabled = master.IsOn });
         Grid.SetColumn(master, 1);
         header.Children.Add(master);
@@ -154,10 +155,10 @@ public sealed partial class FlyoutWindow : Window
 
         Host.Children.Add(tiles);
 
-        Host.Children.Add(Ui.SliderRow("Wind", -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value }), width: 330));
+        Host.Children.Add(Ui.SliderRow(Texts.Get("Effects.Wind"), -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value }), width: 330));
 
         IReadOnlyList<Scene> templates = _controller.AllTemplates;
-        var picker = new ComboBox { Header = "Template", PlaceholderText = "Apply a template", MinWidth = 330 };
+        var picker = new ComboBox { Header = Texts.Get("Flyout.Template"), PlaceholderText = Texts.Get("Flyout.ApplyTemplate"), MinWidth = 330 };
         foreach (Scene scene in templates)
         {
             picker.Items.Add($"{scene.Emoji}  {scene.Name}");
@@ -173,14 +174,14 @@ public sealed partial class FlyoutWindow : Window
         };
         Host.Children.Add(picker);
 
-        Host.Children.Add(Ui.Toggle("Real weather", settings.WeatherSync.Enabled, on =>
+        Host.Children.Add(Ui.Toggle(Texts.Get("Flyout.RealWeather"), settings.WeatherSync.Enabled, on =>
             _controller.Update(s => s with { WeatherSync = s.WeatherSync with { Enabled = on } })));
         if (Ui.SyncPausedBar(_controller, Build) is { } paused)
         {
             Host.Children.Add(paused);
         }
 
-        Host.Children.Add(Ui.ActionButton("More settings…", () =>
+        Host.Children.Add(Ui.ActionButton(Texts.Get("Flyout.MoreSettings"), () =>
         {
             AppWindow.Hide();
             _openSettings();

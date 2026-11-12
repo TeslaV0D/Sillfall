@@ -1,15 +1,16 @@
+using Weatherly.Core.Localization;
 using Weatherly.Core.Settings;
 
 namespace Weatherly.Core.Scenes;
 
-/// <summary>Built-in templates (PLAN.md, section 7: own presets). Names are translated with the UI in M12.</summary>
+/// <summary>Built-in templates (PLAN.md, section 7: own presets), named in the current language on every read.</summary>
 public static class ScenePresets
 {
-    public static IReadOnlyList<Scene> All { get; } =
+    public static IReadOnlyList<Scene> All =>
     [
         new Scene
         {
-            Name = "Thunderstorm",
+            Name = Texts.Get("Preset.Thunderstorm"),
             Emoji = "⛈️",
             Rain = new EffectConfig { Intensity = 1f },
             Fog = new EffectConfig { Intensity = 0.35f, Color = "#9AA3B0" },
@@ -18,7 +19,7 @@ public static class ScenePresets
         },
         new Scene
         {
-            Name = "Winter evening",
+            Name = Texts.Get("Preset.WinterEvening"),
             Emoji = "❄️",
             Snow = new EffectConfig { Intensity = 0.6f },
             Fog = new EffectConfig { Intensity = 0.25f, Color = "#C8D2E6" },
@@ -26,7 +27,7 @@ public static class ScenePresets
         },
         new Scene
         {
-            Name = "Autumn wind",
+            Name = Texts.Get("Preset.AutumnWind"),
             Emoji = "🍂",
             Leaves = new EffectConfig { Intensity = 0.8f },
             Sun = new EffectConfig { Intensity = 0.4f },
@@ -34,7 +35,7 @@ public static class ScenePresets
         },
         new Scene
         {
-            Name = "Neon",
+            Name = Texts.Get("Preset.Neon"),
             Emoji = "🌃",
             Rain = new EffectConfig { Intensity = 0.7f, Color = "#FF4FD8", Brightness = 1.4f },
             Fog = new EffectConfig { Intensity = 0.3f, Color = "#4FD8FF" },
@@ -42,7 +43,7 @@ public static class ScenePresets
         },
         new Scene
         {
-            Name = "Spring morning",
+            Name = Texts.Get("Preset.SpringMorning"),
             Emoji = "🌱",
             Grass = new EffectConfig { Intensity = 1f },
             Sun = new EffectConfig { Intensity = 0.7f },
@@ -51,7 +52,7 @@ public static class ScenePresets
         },
         new Scene
         {
-            Name = "Clear sky",
+            Name = Texts.Get("Preset.ClearSky"),
             Emoji = "☀️",
         },
     ];

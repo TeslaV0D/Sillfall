@@ -1,3 +1,4 @@
+using Weatherly.Core.Localization;
 namespace Weatherly.Core.Settings;
 
 /// <summary>What the system reports right now: power source, animation setting and the foreground app.</summary>
@@ -53,20 +54,20 @@ public static class RuntimePolicy
     {
         if (!settings.Enabled)
         {
-            return "Paused";
+            return Texts.Get("Pause.Off");
         }
 
         switch (settings.Advanced.ReducedMotion)
         {
             case ReducedMotion.Always:
-                return "Paused: reduced motion is on";
+                return Texts.Get("Pause.ReducedMotion");
             case ReducedMotion.FollowSystem when !state.AnimationsEnabled:
-                return "Paused: Windows has animations switched off";
+                return Texts.Get("Pause.Animations");
         }
 
         if (state.OnBattery && settings.Performance.Battery == BatteryBehavior.Pause)
         {
-            return "Paused while on battery";
+            return Texts.Get("Pause.Battery");
         }
 
         if (state.ForegroundProcess is { Length: > 0 } foreground)
@@ -75,7 +76,7 @@ public static class RuntimePolicy
             {
                 if (rule.Action == AppRuleAction.PauseWhenForeground && string.Equals(rule.ProcessName, foreground, StringComparison.OrdinalIgnoreCase))
                 {
-                    return $"Paused while {rule.ProcessName} is in the foreground";
+                    return Texts.Format("Pause.App", rule.ProcessName);
                 }
             }
         }

@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Weatherly.Core;
 using Weatherly.Core.Displays;
 using Weatherly.Core.Effects.Sun;
+using Weatherly.Core.Localization;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
@@ -26,16 +27,16 @@ public sealed partial class SettingsWindow : Window
     /// <summary>The pages in navigation order: key, title and Segoe Fluent Icons glyph.</summary>
     internal static readonly IReadOnlyList<(string Key, string Title, string Glyph)> Pages =
     [
-        ("effects", "Effects", ""),
-        ("templates", "Templates", ""),
-        ("sync", "Weather sync", ""),
-        ("visitors", "Visitors", ""),
-        ("sound", "Sound", ""),
-        ("displays", "Displays", ""),
-        ("apps", "Apps", ""),
-        ("performance", "Performance", ""),
-        ("advanced", "Advanced", ""),
-        ("about", "About", ""),
+        ("effects", "Page.Effects", ""),
+        ("templates", "Page.Templates", ""),
+        ("sync", "Page.Sync", ""),
+        ("visitors", "Page.Visitors", ""),
+        ("sound", "Page.Sound", ""),
+        ("displays", "Page.Displays", ""),
+        ("apps", "Page.Apps", ""),
+        ("performance", "Page.Performance", ""),
+        ("advanced", "Page.Advanced", ""),
+        ("about", "Page.About", ""),
     ];
 
     /// <summary>The city list, read in the background on the first search (about 34,000 cities).</summary>
@@ -56,7 +57,7 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
         _controller.Changed += (_, _) => UpdateSyncStatus();
 
-        Title = $"{AppInfo.Name} settings";
+        Title = Texts.Format("Settings.WindowTitle", AppInfo.Name);
         SettingsTitleBar.Title = Title;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(SettingsTitleBar);
@@ -65,7 +66,7 @@ public sealed partial class SettingsWindow : Window
 
         foreach ((string key, string title, string glyph) in Pages)
         {
-            Navigation.MenuItems.Add(new NavigationViewItem { Content = title, Tag = key, Icon = new FontIcon { Glyph = glyph } });
+            Navigation.MenuItems.Add(new NavigationViewItem { Content = Texts.Get(title), Tag = key, Icon = new FontIcon { Glyph = glyph } });
         }
 
         _liveTimer = DispatcherQueue.CreateTimer();
@@ -146,7 +147,18 @@ public sealed partial class SettingsWindow : Window
         _liveText = null;
         _syncStatus = null;
         PageHost.Children.Clear();
-        string title = Pages.FirstOrDefault(page => page.Key == _page).Title ?? string.Empty;
+        // Titles follow the language, which may have changed since the last page.
+        Title = Texts.Format("Settings.WindowTitle", AppInfo.Name);
+        SettingsTitleBar.Title = Title;
+        for (int i = 0; i < Navigation.MenuItems.Count && i < Pages.Count; i++)
+        {
+            if (Navigation.MenuItems[i] is NavigationViewItem item)
+            {
+                item.Content = Texts.Get(Pages[i].Title);
+            }
+        }
+
+        string title = Texts.Get(Pages.FirstOrDefault(page => page.Key == _page).Title ?? string.Empty);
         PageHost.Children.Add(Ui.Title(title));
         if (_controller.Decision.Reason is { } reason)
         {
@@ -195,28 +207,28 @@ public sealed partial class SettingsWindow : Window
 
     private void BuildEffects()
     {
-        Add(Ui.Note("Every effect has its own intensity, colour and brightness. In random mode the intensity wanders slowly between a minimum and a maximum."));
+        Add(Ui.Note(Texts.Get("Effects.Intro")));
         AddSyncPausedBar();
         AppSettings settings = _controller.Settings;
         foreach (EffectKind kind in Enum.GetValues<EffectKind>())
         {
             EffectConfig config = settings.Effect(kind);
             var panel = new StackPanel { Spacing = 8 };
-            panel.Children.Add(Ui.SliderRow("Intensity (%)", 0, 100, config.Intensity * 100, 5, value => _controller.SetIntensity(kind, (float)(value / 100))));
+            panel.Children.Add(Ui.SliderRow(Texts.Get("Effects.Intensity"), 0, 100, config.Intensity * 100, 5, value => _controller.SetIntensity(kind, (float)(value / 100))));
 
             StackPanel random = Ui.Stack(
-                Ui.SliderRow("Lowest intensity (%)", 0, 100, config.RandomMin * 100, 5, value => UpdateEffect(kind, c => c with { RandomMin = (float)(value / 100) })),
-                Ui.SliderRow("Highest intensity (%)", 0, 100, config.RandomMax * 100, 5, value => UpdateEffect(kind, c => c with { RandomMax = (float)(value / 100) })),
-                Ui.SliderRow("Minutes between changes", EffectConfig.MinRandomMinutes, EffectConfig.MaxRandomMinutes, config.RandomMinutes, 1, value => UpdateEffect(kind, c => c with { RandomMinutes = (float)value })));
+                Ui.SliderRow(Texts.Get("Effects.RandomMin"), 0, 100, config.RandomMin * 100, 5, value => UpdateEffect(kind, c => c with { RandomMin = (float)(value / 100) })),
+                Ui.SliderRow(Texts.Get("Effects.RandomMax"), 0, 100, config.RandomMax * 100, 5, value => UpdateEffect(kind, c => c with { RandomMax = (float)(value / 100) })),
+                Ui.SliderRow(Texts.Get("Effects.RandomMinutes"), EffectConfig.MinRandomMinutes, EffectConfig.MaxRandomMinutes, config.RandomMinutes, 1, value => UpdateEffect(kind, c => c with { RandomMinutes = (float)value })));
             random.Visibility = config.Mode == IntensityMode.Random ? Visibility.Visible : Visibility.Collapsed;
-            panel.Children.Add(Ui.Choice("Mode", ["Fixed", "Random"], (int)config.Mode, index =>
+            panel.Children.Add(Ui.Choice(Texts.Get("Effects.Mode"), [Texts.Get("Effects.Mode.Fixed"), Texts.Get("Effects.Mode.Random")], (int)config.Mode, index =>
             {
                 UpdateEffect(kind, c => c with { Mode = (IntensityMode)index });
                 random.Visibility = index == (int)IntensityMode.Random ? Visibility.Visible : Visibility.Collapsed;
             }));
             panel.Children.Add(random);
 
-            panel.Children.Add(Ui.SliderRow("Brightness (%)", 25, 200, config.Brightness * 100, 5, value => UpdateEffect(kind, c => c with { Brightness = (float)(value / 100) })));
+            panel.Children.Add(Ui.SliderRow(Texts.Get("Effects.Brightness"), 25, 200, config.Brightness * 100, 5, value => UpdateEffect(kind, c => c with { Brightness = (float)(value / 100) })));
 
             System.Numerics.Vector3 color = EffectConfig.ParseColor(config.Color) ?? new System.Numerics.Vector3(1f, 1f, 1f);
             var picker = new ColorPicker
@@ -232,7 +244,7 @@ public sealed partial class SettingsWindow : Window
             {
                 Color = EffectConfig.FormatColor(new System.Numerics.Vector3(e.NewColor.R, e.NewColor.G, e.NewColor.B) / 255f),
             });
-            panel.Children.Add(Ui.Toggle("Own colour", config.Color is not null, on =>
+            panel.Children.Add(Ui.Toggle(Texts.Get("Effects.OwnColour"), config.Color is not null, on =>
             {
                 picker.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
                 UpdateEffect(kind, c => c with
@@ -244,11 +256,11 @@ public sealed partial class SettingsWindow : Window
 
             if (kind == EffectKind.Rain)
             {
-                panel.Children.Add(Ui.SliderRow("Depth: share of drops that hit windows (%)", 0, 100, settings.RainDepth * 100, 5, value => _controller.Update(s => s with { RainDepth = (float)(value / 100) })));
+                panel.Children.Add(Ui.SliderRow(Texts.Get("Effects.RainDepth"), 0, 100, settings.RainDepth * 100, 5, value => _controller.Update(s => s with { RainDepth = (float)(value / 100) })));
             }
             else if (kind == EffectKind.Sun)
             {
-                panel.Children.Add(Ui.Choice("The sun stands above the", ["Top right corner", "Top left corner"], settings.SunSide == SunSide.Left ? 1 : 0, index =>
+                panel.Children.Add(Ui.Choice(Texts.Get("Effects.SunSide"), [Texts.Get("Effects.SunSide.Right"), Texts.Get("Effects.SunSide.Left")], settings.SunSide == SunSide.Left ? 1 : 0, index =>
                     _controller.Update(s => s with { SunSide = index == 1 ? SunSide.Left : SunSide.Right })));
             }
 
@@ -262,10 +274,10 @@ public sealed partial class SettingsWindow : Window
             });
         }
 
-        Add(Ui.Heading("Wind"));
+        Add(Ui.Heading(Texts.Get("Effects.Wind")));
         Add(Ui.Card(Ui.Stack(
-            Ui.SliderRow("Wind (px/s, negative blows to the left)", -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value })),
-            Ui.SliderRow("Gusts (%)", 0, 100, settings.Wind.Gustiness * 100, 5, value => _controller.SetWind(w => w with { Gustiness = (float)(value / 100) })))));
+            Ui.SliderRow(Texts.Get("Effects.WindSpeed"), -400, 400, settings.Wind.Speed, 10, value => _controller.SetWind(w => w with { Speed = (float)value })),
+            Ui.SliderRow(Texts.Get("Effects.Gusts"), 0, 100, settings.Wind.Gustiness * 100, 5, value => _controller.SetWind(w => w with { Gustiness = (float)(value / 100) })))));
     }
 
     private void BuildTemplates()
@@ -273,7 +285,7 @@ public sealed partial class SettingsWindow : Window
         AppSettings settings = _controller.Settings;
         var status = new InfoBar { IsOpen = false, IsClosable = true };
 
-        Add(Ui.Heading("Apply"));
+        Add(Ui.Heading(Texts.Get("Templates.Apply")));
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 200, ItemHeight = 44 };
         foreach (Scene scene in _controller.AllTemplates)
         {
@@ -285,44 +297,44 @@ public sealed partial class SettingsWindow : Window
 
         Add(grid);
 
-        Add(Ui.Heading("Your templates"));
+        Add(Ui.Heading(Texts.Get("Templates.Yours")));
         if (settings.Templates.Count == 0)
         {
-            Add(Ui.Note("None yet. Save the current weather below, or open a link someone shared."));
+            Add(Ui.Note(Texts.Get("Templates.None")));
         }
 
         foreach (Scene scene in settings.Templates)
         {
             Add(Ui.Card(Ui.Row(
                 new TextBlock { Text = $"{scene.Emoji}  {scene.Name}", VerticalAlignment = VerticalAlignment.Center, MinWidth = 220 },
-                Ui.ActionButton("Copy link", () =>
+                Ui.ActionButton(Texts.Get("Templates.CopyLink"), () =>
                 {
                     var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                     package.SetText(SceneCodec.ToLink(scene));
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                    ShowStatus(status, InfoBarSeverity.Success, "Link copied. Anyone with the app can open it.");
+                    ShowStatus(status, InfoBarSeverity.Success, Texts.Get("Templates.LinkCopied"));
                 }),
-                Ui.ActionButton("Export…", () => _ = ExportAsync(scene, status)),
-                Ui.ActionButton("Delete", () =>
+                Ui.ActionButton(Texts.Get("Templates.Export"), () => _ = ExportAsync(scene, status)),
+                Ui.ActionButton(Texts.Get("Templates.Delete"), () =>
                 {
                     _controller.Update(s => s with { Templates = [.. s.Templates.Where(t => t.Name != scene.Name)] });
                     BuildPage();
                 }))));
         }
 
-        Add(Ui.Heading("Save the current weather"));
-        var name = new TextBox { Header = "Name", PlaceholderText = "Rainy afternoon", MaxLength = Scene.MaxNameLength, Width = 260 };
-        var emoji = new TextBox { Header = "Emoji", Text = "🌦️", MaxLength = 8, Width = 80 };
-        Add(Ui.Row(name, emoji, Ui.ActionButton("Save", () =>
+        Add(Ui.Heading(Texts.Get("Templates.SaveCurrent")));
+        var name = new TextBox { Header = Texts.Get("Templates.Name"), PlaceholderText = Texts.Get("Templates.NameExample"), MaxLength = Scene.MaxNameLength, Width = 260 };
+        var emoji = new TextBox { Header = Texts.Get("Templates.Emoji"), Text = "🌦️", MaxLength = 8, Width = 80 };
+        Add(Ui.Row(name, emoji, Ui.ActionButton(Texts.Get("Templates.Save"), () =>
         {
-            string title = string.IsNullOrWhiteSpace(name.Text) ? "My weather" : name.Text.Trim();
+            string title = string.IsNullOrWhiteSpace(name.Text) ? Texts.Get("Templates.DefaultName") : name.Text.Trim();
             _controller.Update(s => s with { Templates = [.. s.Templates.Where(t => t.Name != title), Scene.From(s, title, emoji.Text)] });
             BuildPage();
         })));
 
-        Add(Ui.Heading("Open a shared template"));
-        var link = new TextBox { Header = "Link", PlaceholderText = SceneCodec.LinkPrefix + "…", Width = 420 };
-        Add(Ui.Row(link, Ui.ActionButton("Apply", () =>
+        Add(Ui.Heading(Texts.Get("Templates.OpenShared")));
+        var link = new TextBox { Header = Texts.Get("Templates.Link"), PlaceholderText = SceneCodec.LinkPrefix + "…", Width = 420 };
+        Add(Ui.Row(link, Ui.ActionButton(Texts.Get("Templates.ApplyLink"), () =>
         {
             if (SceneCodec.TryFromLink(link.Text.Trim(), out Scene scene, out string? error))
             {
@@ -331,10 +343,10 @@ public sealed partial class SettingsWindow : Window
             }
             else
             {
-                ShowStatus(status, InfoBarSeverity.Error, error ?? "This link cannot be opened.");
+                ShowStatus(status, InfoBarSeverity.Error, error ?? Texts.Get("Templates.BadLink"));
             }
         })));
-        Add(Ui.ActionButton("Import a .wscene file…", () => _ = ImportAsync(status)));
+        Add(Ui.ActionButton(Texts.Get("Templates.Import"), () => _ = ImportAsync(status)));
         Add(status);
     }
 
@@ -348,13 +360,13 @@ public sealed partial class SettingsWindow : Window
     private async Task ExportAsync(Scene scene, InfoBar status)
     {
         var picker = new Windows.Storage.Pickers.FileSavePicker { SuggestedFileName = scene.Name };
-        picker.FileTypeChoices.Add($"{AppInfo.Name} scene", [SceneCodec.FileExtension]);
+        picker.FileTypeChoices.Add(Texts.Format("Templates.FileType", AppInfo.Name), [SceneCodec.FileExtension]);
         WinRT.Interop.InitializeWithWindow.Initialize(picker, Win32Interop.GetWindowFromWindowId(AppWindow.Id));
         Windows.Storage.StorageFile? file = await picker.PickSaveFileAsync();
         if (file is not null)
         {
             await Windows.Storage.FileIO.WriteTextAsync(file, SceneCodec.ToJson(scene));
-            ShowStatus(status, InfoBarSeverity.Success, $"Saved as {file.Name}.");
+            ShowStatus(status, InfoBarSeverity.Success, Texts.Format("Common.SavedAs", file.Name));
         }
     }
 
@@ -377,7 +389,7 @@ public sealed partial class SettingsWindow : Window
         }
         else
         {
-            ShowStatus(status, InfoBarSeverity.Error, error ?? "This file cannot be read.");
+            ShowStatus(status, InfoBarSeverity.Error, error ?? Texts.Get("Templates.BadFile"));
         }
     }
 
@@ -392,33 +404,33 @@ public sealed partial class SettingsWindow : Window
     private void BuildSync()
     {
         WeatherSyncConfig sync = _controller.Settings.WeatherSync;
-        Add(Ui.Note("The effects follow the real weather at your location or a city you choose. Moving a slider by hand pauses the sync for that effect."));
+        Add(Ui.Note(Texts.Get("Sync.Intro")));
         AddSyncPausedBar();
 
         var details = new StackPanel { Spacing = 16, Visibility = sync.Enabled ? Visibility.Visible : Visibility.Collapsed };
         Add(Ui.Card(Ui.Stack(
-            Ui.Toggle("Follow the real weather", sync.Enabled, on =>
+            Ui.Toggle(Texts.Get("Sync.Enable"), sync.Enabled, on =>
             {
                 details.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
                 UpdateSync(s => s with { Enabled = on });
             }),
-            Ui.Note("Only a rounded location (about 11 km) is sent to the weather service, every 15 to 60 minutes. Nothing else."))));
+            Ui.Note(Texts.Get("Sync.Privacy")))));
         Add(details);
 
         _syncStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
         details.Children.Add(Ui.Card(Ui.Stack(
-            new TextBlock { Text = "Now", Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
+            new TextBlock { Text = Texts.Get("Sync.Now"), Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
             _syncStatus,
-            Ui.ActionButton("Update now", _controller.RefreshWeatherNow))));
+            Ui.ActionButton(Texts.Get("Sync.UpdateNow"), _controller.RefreshWeatherNow))));
         UpdateSyncStatus();
 
         // Location: a city from the bundled list (searched on this PC) or the Windows location service.
         var cityPanel = new StackPanel { Spacing = 8, Visibility = sync.Source == LocationSource.City ? Visibility.Visible : Visibility.Collapsed };
-        var chosen = new TextBlock { Text = sync.City is { } city ? $"Weather for {city.Name} ({city.Country})" : "No city chosen yet." };
+        var chosen = new TextBlock { Text = sync.City is { } city ? Texts.Format("Sync.WeatherFor", $"{city.Name} ({city.Country})") : Texts.Get("Sync.NoCity") };
         cityPanel.Children.Add(chosen);
         cityPanel.Children.Add(CitySearch(chosen));
         details.Children.Add(Ui.Card(Ui.Stack(
-            Ui.Choice("Location", ["A city I choose", "This PC's location (Windows location service)"], (int)sync.Source, index =>
+            Ui.Choice(Texts.Get("Sync.Location"), [Texts.Get("Sync.Location.City"), Texts.Get("Sync.Location.Device")], (int)sync.Source, index =>
             {
                 cityPanel.Visibility = index == (int)LocationSource.City ? Visibility.Visible : Visibility.Collapsed;
                 UpdateSync(s => s with { Source = (LocationSource)index });
@@ -427,16 +439,16 @@ public sealed partial class SettingsWindow : Window
 
         // Custom sync: a weight per element, and the inverted world.
         var weights = Ui.Stack(
-            Ui.Toggle("Invert: a clear sky rains, bad weather brings sunshine, heat brings snow", sync.Invert, on => UpdateSync(s => s with { Invert = on })),
-            Ui.Note("How much each element follows the weather. 0 % keeps your own value, 100 % is the weather."));
+            Ui.Toggle(Texts.Get("Sync.Invert"), sync.Invert, on => UpdateSync(s => s with { Invert = on })),
+            Ui.Note(Texts.Get("Sync.Weights")));
         foreach (SyncElement element in Enum.GetValues<SyncElement>())
         {
-            weights.Children.Add(Ui.SliderRow($"{Ui.Name(element)} (%)", 0, 100, sync.Weight(element) * 100, 5,
+            weights.Children.Add(Ui.SliderRow(Texts.Format("Common.Percent", Ui.Name(element)), 0, 100, sync.Weight(element) * 100, 5,
                 value => UpdateSync(s => s.WithWeight(element, (float)(value / 100)))));
         }
 
         details.Children.Add(Ui.Card(weights));
-        details.Children.Add(Ui.Note($"{_controller.Weather?.Attribution ?? "Weather data: MET Norway (CC BY 4.0)"}. {CityIndex.Attribution}."));
+        details.Children.Add(Ui.Note($"{Texts.Get("Credits.Weather")} {Texts.Get("Credits.Cities")}"));
     }
 
     private void UpdateSync(Func<WeatherSyncConfig, WeatherSyncConfig> change) =>
@@ -447,8 +459,8 @@ public sealed partial class SettingsWindow : Window
     {
         var box = new AutoSuggestBox
         {
-            Header = "City",
-            PlaceholderText = "Search for a city, for example Hamburg or Paris, FR",
+            Header = Texts.Get("Sync.City"),
+            PlaceholderText = Texts.Get("Sync.CitySearch"),
             QueryIcon = new SymbolIcon(Symbol.Find),
             Width = 420,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -457,7 +469,7 @@ public sealed partial class SettingsWindow : Window
 
         void Choose(City city)
         {
-            chosen.Text = $"Weather for {city.DisplayName}";
+            chosen.Text = Texts.Format("Sync.WeatherFor", city.DisplayName);
             box.Text = string.Empty;
             UpdateSync(s => s with
             {
@@ -515,11 +527,11 @@ public sealed partial class SettingsWindow : Window
         var lines = new List<string>();
         if (sync is null)
         {
-            lines.Add("The weather sync is not available in this run.");
+            lines.Add(Texts.Get("Sync.Unavailable"));
         }
         else if (!config.Enabled)
         {
-            lines.Add("Off. Nothing is sent.");
+            lines.Add(Texts.Get("Sync.Off"));
         }
         else
         {
@@ -531,7 +543,7 @@ public sealed partial class SettingsWindow : Window
             {
                 lines.Add(config.Source == LocationSource.City && config.City is { } city
                     ? $"{city.Name} ({city.Country})"
-                    : string.Create(CultureInfo.CurrentCulture, $"This PC's location, about {place.Latitude:0.0}°, {place.Longitude:0.0}°"));
+                    : Texts.Format("Sync.DeviceAt", place.Latitude.ToString("0.0", CultureInfo.CurrentCulture), place.Longitude.ToString("0.0", CultureInfo.CurrentCulture)));
             }
 
             if (sync.Current(now) is { } weather)
@@ -541,9 +553,9 @@ public sealed partial class SettingsWindow : Window
 
             lines.Add(sync.State switch
             {
-                WeatherSyncState.Live => string.Create(CultureInfo.CurrentCulture, $"Updated at {sync.LastSuccess!.Value.ToLocalTime():t}, next check at {sync.NextAttempt.ToLocalTime():t}."),
-                WeatherSyncState.Offline => string.Create(CultureInfo.CurrentCulture, $"Offline: {sync.LastError} Showing the last forecast, next try at {sync.NextAttempt.ToLocalTime():t}."),
-                _ => sync.LastError is { } error ? $"No weather yet: {error}" : "Asking the weather service…",
+                WeatherSyncState.Live => Texts.Format("Sync.Live", sync.LastSuccess!.Value.ToLocalTime().ToString("t", CultureInfo.CurrentCulture), sync.NextAttempt.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)),
+                WeatherSyncState.Offline => Texts.Format("Sync.Offline", sync.LastError, sync.NextAttempt.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)),
+                _ => sync.LastError is { } error ? Texts.Format("Sync.NoWeather", error) : Texts.Get("Sync.Asking"),
             });
         }
 
@@ -554,49 +566,50 @@ public sealed partial class SettingsWindow : Window
     private static string Describe(WeatherSnapshot weather)
     {
         string symbol = weather.Symbol.Split('_')[0];
-        string text = symbol switch
+        bool thunder = symbol.EndsWith("andthunder", StringComparison.Ordinal);
+        string plain = thunder ? symbol[..^"andthunder".Length] : symbol;
+        string text = plain.Length == 0 ? Texts.Get("Weather.None")
+            : Texts.Get($"Weather.{plain}") is { } known && known != $"Weather.{plain}" ? known
+            : plain;
+        if (thunder)
         {
-            "" => "No symbol",
-            "clearsky" => "Clear sky",
-            "partlycloudy" => "Partly cloudy",
-            _ => symbol.Replace("light", "light ", StringComparison.Ordinal).Replace("heavy", "heavy ", StringComparison.Ordinal)
-                .Replace("showers", " showers", StringComparison.Ordinal).Replace("andthunder", " and thunder", StringComparison.Ordinal),
-        };
-        text = char.ToUpperInvariant(text[0]) + text[1..].Replace("  ", " ", StringComparison.Ordinal);
-        string[] directions = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
-        string from = directions[(int)Math.Round(((weather.WindFromDirection % 360) + 360) % 360 / 45.0) % 8];
-        return string.Create(CultureInfo.CurrentCulture, $"{text}, {weather.AirTemperature:0} °C, wind {weather.WindSpeed:0} m/s from the {from}.");
+            text += Texts.Get("Weather.Thunder");
+        }
+
+        string[] directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        string from = Texts.Get($"Direction.{directions[(int)Math.Round(((weather.WindFromDirection % 360) + 360) % 360 / 45.0) % 8]}");
+        return Texts.Format("Sync.Describe", text, weather.AirTemperature.ToString("0", CultureInfo.CurrentCulture), weather.WindSpeed.ToString("0", CultureInfo.CurrentCulture), from);
     }
 
     private void BuildVisitors()
     {
         VisitorConfig config = _controller.Settings.Visitors;
-        Add(Ui.Note("Small characters of our own drop by on your windows: they walk along the top edges, jump from window to window and react to the weather."));
+        Add(Ui.Note(Texts.Get("Visitors.Intro")));
         var status = new InfoBar { IsOpen = false, IsClosable = true };
         Add(status);
         string shortcut = _controller.Window.CollectShortcutRegistered
-            ? $"Press {Platform.Overlay.OverlayHost.CollectShortcut} or use the tray menu to collect a visitor without the mouse."
-            : $"{Platform.Overlay.OverlayHost.CollectShortcut} is taken by another program; the tray menu collects visitors without the mouse.";
+            ? Texts.Format("Visitors.Shortcut", Platform.Overlay.OverlayHost.CollectShortcut)
+            : Texts.Format("Visitors.ShortcutTaken", Platform.Overlay.OverlayHost.CollectShortcut);
         Add(Ui.Card(Ui.Stack(
-            Ui.Choice("How often visitors come", ["Never", "Rarely (about every 30 minutes)", "Sometimes (about every 10 minutes)", "Often (about every 3 minutes)"], (int)config.Frequency,
+            Ui.Choice(Texts.Get("Visitors.Frequency"), [Texts.Get("Visitors.Frequency.Never"), Texts.Get("Visitors.Frequency.Rarely"), Texts.Get("Visitors.Frequency.Sometimes"), Texts.Get("Visitors.Frequency.Often")], (int)config.Frequency,
                 index => _controller.Update(s => s with { Visitors = s.Visitors with { Frequency = (VisitorFrequency)index } })),
-            Ui.Toggle("Pick up visitors and drop them into the box", config.Interactive,
+            Ui.Toggle(Texts.Get("Visitors.Interactive"), config.Interactive,
                 on => _controller.Update(s => s with { Visitors = s.Visitors with { Interactive = on } })),
-            Ui.Toggle("Announce every visitor with a notification", config.Announce,
+            Ui.Toggle(Texts.Get("Visitors.Announce"), config.Announce,
                 on => _controller.Update(s => s with { Visitors = s.Visitors with { Announce = on } })),
             Ui.Note(shortcut),
-            Ui.ActionButton("Invite a visitor now", () =>
+            Ui.ActionButton(Texts.Get("Visitors.Invite"), () =>
             {
                 if (!_controller.InviteVisitor())
                 {
-                    ShowStatus(status, InfoBarSeverity.Informational, "No room right now: there are visitors already, the weather is switched off, or no window edge is free.");
+                    ShowStatus(status, InfoBarSeverity.Informational, Texts.Get("Visitors.NoRoom"));
                 }
             }))));
 
         VisitorAlbum album = _controller.Album;
-        Add(Ui.Heading("Collection"));
+        Add(Ui.Heading(Texts.Get("Visitors.Collection")));
         Add(Ui.Note(string.Create(CultureInfo.CurrentCulture,
-            $"{album.TotalCollected} collected, {album.Points} points, best combo {album.BestCombo}. Rarer visitors are worth more, and twice as much in their favourite weather.")));
+            Texts.Format("Visitors.Summary", album.TotalCollected, album.Points, album.BestCombo))));
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 158, ItemHeight = 214 };
         foreach (VisitorProfile profile in VisitorCatalog.All)
         {
@@ -606,16 +619,16 @@ public sealed partial class SettingsWindow : Window
             var card = Ui.Card(Ui.Stack(
                 picture,
                 new TextBlock { Text = profile.Name, Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
-                Ui.Note(count > 0 ? string.Create(CultureInfo.CurrentCulture, $"Collected {count}×") : "Not met yet"),
-                Ui.Note($"{Favourite(profile.Affinity)}, {profile.Rarity.ToString().ToLowerInvariant()}")));
+                Ui.Note(count > 0 ? Texts.Format("Visitors.CollectedCount", count) : Texts.Get("Visitors.NotMet")),
+                Ui.Note($"{Favourite(profile.Affinity)}, {Texts.Get($"Rarity.{profile.Rarity}")}")));
             card.Margin = new Thickness(0, 0, 8, 8);
-            ToolTipService.SetToolTip(card, profile.Description);
+            ToolTipService.SetToolTip(card, Texts.Get($"Visitor.{profile.Kind}"));
             grid.Children.Add(card);
         }
 
         Add(grid);
 
-        Add(Ui.Heading("Achievements"));
+        Add(Ui.Heading(Texts.Get("Visitors.Achievements")));
         var achievements = new StackPanel { Spacing = 6 };
         foreach (Achievement achievement in Enum.GetValues<Achievement>())
         {
@@ -624,16 +637,16 @@ public sealed partial class SettingsWindow : Window
             achievements.Children.Add(Ui.Row(
                 new FontIcon { Glyph = reached ? "\uE73E" : "\uE739", Foreground = reached ? Ui.Resource<Microsoft.UI.Xaml.Media.Brush>("AccentTextFillColorPrimaryBrush") : Ui.Resource<Microsoft.UI.Xaml.Media.Brush>("TextFillColorTertiaryBrush") },
                 new TextBlock { Text = title, Style = Ui.Resource<Style>("BodyStrongTextBlockStyle"), Width = 150 },
-                Ui.Note(reached ? description : $"{description} (not yet)")));
+                Ui.Note(reached ? description : Texts.Format("Visitors.NotYet", description))));
         }
 
         Add(Ui.Card(achievements));
 
-        Add(Ui.Heading("Share card"));
+        Add(Ui.Heading(Texts.Get("Visitors.ShareCard")));
         Border shareCard = ShareCard(album);
         Add(shareCard);
         Add(Ui.Row(
-            Ui.ActionButton("Copy card", async () =>
+            Ui.ActionButton(Texts.Get("Visitors.CopyCard"), async () =>
             {
                 (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
                 if (png is null)
@@ -647,9 +660,9 @@ public sealed partial class SettingsWindow : Window
                 var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
                 package.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream));
                 Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
-                ShowStatus(status, InfoBarSeverity.Success, "Card copied as a picture.");
+                ShowStatus(status, InfoBarSeverity.Success, Texts.Get("Visitors.CardCopied"));
             }),
-            Ui.ActionButton("Save card…", async () =>
+            Ui.ActionButton(Texts.Get("Visitors.SaveCard"), async () =>
             {
                 (byte[]? png, _, _) = await Ui.RenderPngAsync(shareCard);
                 if (png is null)
@@ -657,24 +670,24 @@ public sealed partial class SettingsWindow : Window
                     return;
                 }
 
-                var picker = new Windows.Storage.Pickers.FileSavePicker { SuggestedFileName = $"{AppInfo.Name} visitors" };
-                picker.FileTypeChoices.Add("PNG picture", [".png"]);
+                var picker = new Windows.Storage.Pickers.FileSavePicker { SuggestedFileName = Texts.Format("Visitors.CardFile", AppInfo.Name) };
+                picker.FileTypeChoices.Add(Texts.Get("Common.PngPicture"), [".png"]);
                 WinRT.Interop.InitializeWithWindow.Initialize(picker, Win32Interop.GetWindowFromWindowId(AppWindow.Id));
                 Windows.Storage.StorageFile? file = await picker.PickSaveFileAsync();
                 if (file is not null)
                 {
                     await Windows.Storage.FileIO.WriteBytesAsync(file, png);
-                    ShowStatus(status, InfoBarSeverity.Success, $"Saved {file.Name}.");
+                    ShowStatus(status, InfoBarSeverity.Success, Texts.Format("Common.SavedAs", file.Name));
                 }
             })));
     }
 
     private static string Favourite(WeatherAffinity affinity) => affinity switch
     {
-        WeatherAffinity.Any => "any weather",
-        WeatherAffinity.Leaves => "loves falling leaves",
-        WeatherAffinity.Sun => "loves sunshine",
-        _ => $"loves {affinity.ToString().ToLowerInvariant()}",
+        WeatherAffinity.Any => Texts.Get("Affinity.Any"),
+        WeatherAffinity.Leaves => Texts.Get("Affinity.Leaves"),
+        WeatherAffinity.Sun => Texts.Get("Affinity.Sun"),
+        _ => Texts.Get($"Affinity.{affinity}"),
     };
 
     /// <summary>A card with the collection to share as a picture: points, achievements and the visitors met so far.</summary>
@@ -689,11 +702,11 @@ public sealed partial class SettingsWindow : Window
         }
 
         var content = new StackPanel { Spacing = 10 };
-        content.Children.Add(new TextBlock { Text = $"My {AppInfo.Name} visitors", Style = Ui.Resource<Style>("SubtitleTextBlockStyle"), Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 46, 52, 64)) });
+        content.Children.Add(new TextBlock { Text = Texts.Format("Visitors.CardTitle", AppInfo.Name), Style = Ui.Resource<Style>("SubtitleTextBlockStyle"), Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 46, 52, 64)) });
         content.Children.Add(visitors);
         content.Children.Add(new TextBlock
         {
-            Text = string.Create(CultureInfo.CurrentCulture, $"{album.Points} points · {album.TotalCollected} collected · {album.Achievements.Count} of {Enum.GetValues<Achievement>().Length} achievements"),
+            Text = Texts.Format("Visitors.CardLine", album.Points, album.TotalCollected, album.Achievements.Count, Enum.GetValues<Achievement>().Length),
             Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 76, 86, 106)),
         });
 
@@ -721,26 +734,26 @@ public sealed partial class SettingsWindow : Window
     {
         SoundConfig sound = _controller.Settings.Sound;
         Add(Ui.Card(Ui.Stack(
-            Ui.Toggle("Sound", !sound.Muted, on => _controller.Update(s => s with { Sound = s.Sound with { Muted = !on } })),
-            Ui.SliderRow("Volume (%)", 0, 100, sound.Master * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Master = (float)(value / 100) } })),
-            Ui.SliderRow("Rain (%)", 0, 100, sound.Rain * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Rain = (float)(value / 100) } })),
-            Ui.SliderRow("Wind (%)", 0, 100, sound.Wind * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Wind = (float)(value / 100) } })),
-            Ui.SliderRow("Visitors (%)", 0, 100, sound.Visitors * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Visitors = (float)(value / 100) } })),
-            Ui.Note("The rain sound is made on the fly. Wind and visitor sounds follow with later milestones."))));
+            Ui.Toggle(Texts.Get("Sound.Enable"), !sound.Muted, on => _controller.Update(s => s with { Sound = s.Sound with { Muted = !on } })),
+            Ui.SliderRow(Texts.Get("Sound.Volume"), 0, 100, sound.Master * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Master = (float)(value / 100) } })),
+            Ui.SliderRow(Texts.Get("Sound.Rain"), 0, 100, sound.Rain * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Rain = (float)(value / 100) } })),
+            Ui.SliderRow(Texts.Get("Sound.Wind"), 0, 100, sound.Wind * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Wind = (float)(value / 100) } })),
+            Ui.SliderRow(Texts.Get("Sound.Visitors"), 0, 100, sound.Visitors * 100, 5, value => _controller.Update(s => s with { Sound = s.Sound with { Visitors = (float)(value / 100) } })),
+            Ui.Note(Texts.Get("Sound.Note")))));
     }
 
     private void BuildDisplays()
     {
-        Add(Ui.Note("Weather on each monitor: switch it off or make it fainter."));
+        Add(Ui.Note(Texts.Get("Displays.Intro")));
         foreach (MonitorInfo monitor in MonitorService.GetMonitors())
         {
             DisplayConfig display = _controller.Settings.Display(monitor.DeviceName);
             string name = string.Create(
                 CultureInfo.InvariantCulture,
-                $"{monitor.DeviceName.TrimStart('\\', '.')}{(monitor.IsPrimary ? " (primary)" : string.Empty)}: {monitor.Bounds.Width} x {monitor.Bounds.Height}, {Math.Round(monitor.ScaleFactor * 100)} %");
+                $"{monitor.DeviceName.TrimStart('\\', '.')}{(monitor.IsPrimary ? Texts.Get("Displays.Primary") : string.Empty)}: {monitor.Bounds.Width} x {monitor.Bounds.Height}, {Math.Round(monitor.ScaleFactor * 100)} %");
             Add(Ui.Card(Ui.Stack(
                 Ui.Toggle(name, display.Enabled, on => UpdateDisplay(monitor.DeviceName, d => d with { Enabled = on })),
-                Ui.SliderRow("Intensity (%)", 10, 100, display.Intensity * 100, 5, value => UpdateDisplay(monitor.DeviceName, d => d with { Intensity = (float)(value / 100) })))));
+                Ui.SliderRow(Texts.Get("Effects.Intensity"), 10, 100, display.Intensity * 100, 5, value => UpdateDisplay(monitor.DeviceName, d => d with { Intensity = (float)(value / 100) })))));
         }
     }
 
@@ -751,23 +764,23 @@ public sealed partial class SettingsWindow : Window
 
     private void BuildApps()
     {
-        Add(Ui.Note("Rules for single apps: pause all weather while the app is in front, or keep its windows clear of weather. Only the app's file name is used, on this PC."));
-        string[] actions = ["Pause while in the foreground", "Hide the weather over its windows"];
+        Add(Ui.Note(Texts.Get("Apps.Intro")));
+        string[] actions = [Texts.Get("Apps.Pause"), Texts.Get("Apps.Hide")];
         foreach (AppRule rule in _controller.Settings.AppRules)
         {
             AppRule current = rule;
             Add(Ui.Card(Ui.Row(
                 new TextBlock { Text = rule.ProcessName, VerticalAlignment = VerticalAlignment.Center, MinWidth = 200 },
                 new TextBlock { Text = actions[(int)rule.Action], VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 },
-                Ui.ActionButton("Remove", () =>
+                Ui.ActionButton(Texts.Get("Apps.Remove"), () =>
                 {
                     _controller.Update(s => s with { AppRules = [.. s.AppRules.Where(r => r != current)] });
                     BuildPage();
                 }))));
         }
 
-        Add(Ui.Heading("Add a rule"));
-        var app = new ComboBox { Header = "App", IsEditable = true, PlaceholderText = "obs64.exe", MinWidth = 260 };
+        Add(Ui.Heading(Texts.Get("Apps.AddRule")));
+        var app = new ComboBox { Header = Texts.Get("Apps.App"), IsEditable = true, PlaceholderText = "obs64.exe", MinWidth = 260 };
         foreach (string process in RunningApps())
         {
             app.Items.Add(process);
@@ -776,8 +789,8 @@ public sealed partial class SettingsWindow : Window
         int action = 0;
         Add(Ui.Row(
             app,
-            Ui.Choice("Rule", actions, 0, index => action = index),
-            Ui.ActionButton("Add", () =>
+            Ui.Choice(Texts.Get("Apps.Rule"), actions, 0, index => action = index),
+            Ui.ActionButton(Texts.Get("Apps.Add"), () =>
             {
                 string name = (app.SelectedItem as string ?? app.Text ?? string.Empty).Trim();
                 if (name.Length == 0)
@@ -825,17 +838,17 @@ public sealed partial class SettingsWindow : Window
         PerformanceConfig performance = _controller.Settings.Performance;
         Add(Ui.Card(Ui.Stack(
             Ui.Choice(
-                "Smoothness",
-                ["Auto: 60 fps, 30 on battery", "Least energy: 30 fps", "Balanced: 60 fps", "Smoothest: the display's rate"],
+                Texts.Get("Performance.Smoothness"),
+                [Texts.Get("Performance.Auto"), Texts.Get("Performance.LeastEnergy"), Texts.Get("Performance.Balanced"), Texts.Get("Performance.Smoothest")],
                 (int)performance.Smoothness,
                 index => _controller.Update(s => s with { Performance = s.Performance with { Smoothness = (Smoothness)index } })),
             Ui.Choice(
-                "On battery",
-                ["Keep going", "Reduce: half the intensity, 30 fps", "Pause"],
+                Texts.Get("Performance.Battery"),
+                [Texts.Get("Performance.KeepGoing"), Texts.Get("Performance.Reduce"), Texts.Get("Performance.Pause")],
                 (int)performance.Battery,
                 index => _controller.Update(s => s with { Performance = s.Performance with { Battery = (BatteryBehavior)index } })))));
 
-        Add(Ui.Heading("Right now"));
+        Add(Ui.Heading(Texts.Get("Performance.Now")));
         _liveText = new TextBlock { TextWrapping = TextWrapping.Wrap };
         Add(Ui.Card(_liveText));
         _lastFrames = -1;
@@ -856,23 +869,21 @@ public sealed partial class SettingsWindow : Window
         string text;
         if (status is null)
         {
-            text = "The overlay is not running.";
+            text = Texts.Get("Performance.NotRunning");
         }
         else if (!status.IsAnimating)
         {
-            text = "Idle: nothing moves, no frames are drawn.";
+            text = Texts.Get("Performance.Idle");
         }
         else
         {
             double fps = _lastFrames < 0 ? 0 : (status.AnimationFrames - _lastFrames) / Math.Max((now - _lastSample).TotalSeconds, 0.001);
-            text = string.Create(
-                CultureInfo.InvariantCulture,
-                $"{fps:0} fps, {status.FrameMilliseconds:0.0} ms per frame, simulation {status.SimulationMilliseconds:0.00} ms, {status.Sprites} sprites");
+            text = Texts.Format("Performance.Live", fps, status.FrameMilliseconds, status.SimulationMilliseconds, status.Sprites);
         }
 
         RuntimeDecision decision = _controller.Decision;
-        string cap = decision.FrameRateCap == 0 ? "the display's rate" : string.Create(CultureInfo.InvariantCulture, $"{decision.FrameRateCap} fps");
-        _liveText.Text = $"{text}\nFrame rate limit: {cap}. {decision.Reason ?? "Running."}";
+        string cap = decision.FrameRateCap == 0 ? Texts.Get("Performance.DisplayRate") : string.Create(CultureInfo.InvariantCulture, $"{decision.FrameRateCap} fps");
+        _liveText.Text = Texts.Format("Performance.Status", text, cap, decision.Reason ?? Texts.Get("Performance.Running"));
         _lastFrames = status?.AnimationFrames ?? -1;
         _lastSample = now;
     }
@@ -881,33 +892,44 @@ public sealed partial class SettingsWindow : Window
     {
         AdvancedConfig advanced = _controller.Settings.Advanced;
         var stack = Ui.Stack(
-            Ui.Toggle("Hide the weather from screenshots and screen sharing", advanced.ExcludeFromCapture, on => _controller.Update(s => s with { Advanced = s.Advanced with { ExcludeFromCapture = on } })),
-            Ui.Toggle("Start with Windows", advanced.Autostart, on => _controller.Update(s => s with { Advanced = s.Advanced with { Autostart = on } })),
+            Ui.Toggle(Texts.Get("Advanced.Capture"), advanced.ExcludeFromCapture, on => _controller.Update(s => s with { Advanced = s.Advanced with { ExcludeFromCapture = on } })),
+            Ui.Toggle(Texts.Get("Advanced.Autostart"), advanced.Autostart, on => _controller.Update(s => s with { Advanced = s.Advanced with { Autostart = on } })),
             Ui.Choice(
-                "Reduced motion",
-                ["Follow Windows (pause when animations are off)", "Always pause", "Never pause"],
+                Texts.Get("Advanced.ReducedMotion"),
+                [Texts.Get("Advanced.ReducedMotion.Follow"), Texts.Get("Advanced.ReducedMotion.Always"), Texts.Get("Advanced.ReducedMotion.Never")],
                 (int)advanced.ReducedMotion,
-                index => _controller.Update(s => s with { Advanced = s.Advanced with { ReducedMotion = (ReducedMotion)index } })));
+                index => _controller.Update(s => s with { Advanced = s.Advanced with { ReducedMotion = (ReducedMotion)index } })),
+            Ui.Choice(
+                Texts.Get("Advanced.Language"),
+                [Texts.Get("Advanced.Language.System"), "English", "Deutsch"],
+                advanced.Language switch { "en" => 1, "de" => 2, _ => 0 },
+                index =>
+                {
+                    _controller.Update(s => s with { Advanced = s.Advanced with { Language = index switch { 1 => "en", 2 => "de", _ => string.Empty } } });
+
+                    // The page is built again in the new language; menus and the flyout follow when they open next.
+                    DispatcherQueue.TryEnqueue(BuildPage);
+                }));
         if (Autostart.LastError is { } error)
         {
             stack.Children.Add(Ui.Note(error));
         }
 
         Add(Ui.Card(stack));
-        Add(Ui.Heading("Troubleshooting"));
+        Add(Ui.Heading(Texts.Get("Advanced.Troubleshooting")));
         Add(Ui.Row(
-            Ui.ActionButton("Open the diagnostics window", _controller.Window.ShowAndActivate),
-            Ui.ActionButton("Reset all settings…", () => _ = ConfirmResetAsync())));
+            Ui.ActionButton(Texts.Get("Advanced.Diagnostics"), _controller.Window.ShowAndActivate),
+            Ui.ActionButton(Texts.Get("Advanced.Reset"), () => _ = ConfirmResetAsync())));
     }
 
     private async Task ConfirmResetAsync()
     {
         var dialog = new ContentDialog
         {
-            Title = "Reset all settings?",
-            Content = "Every effect, rule and option goes back to its default. Your own templates stay.",
-            PrimaryButtonText = "Reset",
-            CloseButtonText = "Cancel",
+            Title = Texts.Get("Advanced.ResetTitle"),
+            Content = Texts.Get("Advanced.ResetText"),
+            PrimaryButtonText = Texts.Get("Advanced.ResetConfirm"),
+            CloseButtonText = Texts.Get("Common.Cancel"),
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot,
         };
@@ -922,15 +944,14 @@ public sealed partial class SettingsWindow : Window
     {
         Add(Ui.Card(Ui.Stack(
             new TextBlock { Text = $"{AppInfo.Name} {AppInfo.DisplayVersion}", Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
-            Ui.Note("Animated weather on top of your open windows."))));
-        Add(Ui.Heading("Privacy"));
+            Ui.Note(Texts.Get("About.Tagline")))));
+        Add(Ui.Heading(Texts.Get("About.Privacy")));
         Add(Ui.Card(Ui.Note(
-            "The app reads only where windows are and how big they are, never their titles or contents. It does not record the screen. " +
-            "App rules use the app's file name, on this PC only. Nothing is collected. Only when you switch the weather sync on, a location rounded to about 11 km is sent to the weather service, and nothing else.")));
-        Add(Ui.Heading("Credits"));
+            Texts.Get("About.PrivacyText"))));
+        Add(Ui.Heading(Texts.Get("About.Credits")));
         Add(Ui.Card(Ui.Stack(
-            Ui.Note("All graphics and sounds are made by the app itself or for it; see ASSETS.md."),
-            Ui.Note("Weather data: MET Norway (api.met.no), CC BY 4.0."),
-            Ui.Note($"{CityIndex.Attribution}, geonames.org."))));
+            Ui.Note(Texts.Get("About.Assets")),
+            Ui.Note(Texts.Get("Credits.Weather")),
+            Ui.Note(Texts.Get("Credits.Cities")))));
     }
 }

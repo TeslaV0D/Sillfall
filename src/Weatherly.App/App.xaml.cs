@@ -44,6 +44,9 @@ public partial class App : Application
     /// <summary>Snow needs longer still: the slowest flakes take half a minute to fall, then the piles melt.</summary>
     private static readonly TimeSpan s_snowIdleStopTimeout = TimeSpan.FromSeconds(75);
 
+    /// <summary>Settings pages the tour also shows in German, where the texts are longest.</summary>
+    private static readonly string[] s_germanTourPages = ["effects", "visitors", "advanced"];
+
     private const float SmokeRainIntensity = 0.8f;
 
     private const float SmokeSnowIntensity = 1f;
@@ -365,7 +368,7 @@ public partial class App : Application
                 settings.ShowPage(key);
                 await Task.Delay(TimeSpan.FromMilliseconds(700));
                 (int width, int height) = await settings.SavePageAsync(Path.Combine(directory, string.Create(CultureInfo.InvariantCulture, $"settings-{index:00}-{key}.png")));
-                diagnostics.Add(new DiagnosticResult($"Settings page {title}", width > 0 && height > 0, string.Create(CultureInfo.InvariantCulture, $"{width} x {height}")));
+                diagnostics.Add(new DiagnosticResult($"Settings page {Core.Localization.Texts.Get(title)}", width > 0 && height > 0, string.Create(CultureInfo.InvariantCulture, $"{width} x {height}")));
             }
 
             // The sync page once more with the sync switched on (in memory only: this run has no weather service, so
@@ -384,6 +387,18 @@ public partial class App : Application
             await Task.Delay(TimeSpan.FromMilliseconds(700));
             (int syncWidth, int syncHeight) = await settings.SavePageAsync(Path.Combine(directory, "settings-02-sync-on.png"));
             diagnostics.Add(new DiagnosticResult("Settings page Weather sync (on)", syncWidth > 0 && syncHeight > 0, string.Create(CultureInfo.InvariantCulture, $"{syncWidth} x {syncHeight}")));
+            controller.Update(_ => before);
+
+            // A few pages once more in German: its longer words must fit too.
+            controller.Update(s => s with { Advanced = s.Advanced with { Language = "de" } });
+            foreach (string key in s_germanTourPages)
+            {
+                settings.ShowPage(key);
+                await Task.Delay(TimeSpan.FromMilliseconds(700));
+                (int germanWidth, int germanHeight) = await settings.SavePageAsync(Path.Combine(directory, $"settings-de-{key}.png"));
+                diagnostics.Add(new DiagnosticResult($"Settings page {key} (German)", germanWidth > 0 && germanHeight > 0, string.Create(CultureInfo.InvariantCulture, $"{germanWidth} x {germanHeight}")));
+            }
+
             controller.Update(_ => before);
 
             flyout.StayOpen = true;

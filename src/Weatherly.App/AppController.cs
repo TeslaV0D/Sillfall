@@ -1,6 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Weatherly.Audio;
 using Weatherly.Core.Audio;
+using Weatherly.Core.Localization;
 using Weatherly.Core.Overlay;
 using Weatherly.Core.Scenes;
 using Weatherly.Core.Settings;
@@ -64,6 +65,7 @@ internal sealed class AppController
         _store = store;
         _followSystem = followSystem;
         Settings = settings.Sanitized();
+        Texts.Use(Settings.Advanced.Language);
 
         DispatcherQueue queue = window.DispatcherQueue;
         _saveTimer = CreateTimer(queue, s_saveDelay, repeating: false, SaveNow);
@@ -162,6 +164,11 @@ internal sealed class AppController
             _ = Autostart.SetAsync(Settings.Advanced.Autostart);
         }
 
+        if (previous.Advanced.Language != Settings.Advanced.Language)
+        {
+            Texts.Use(Settings.Advanced.Language);
+        }
+
         WeatherSyncConfig before = previous.WeatherSync;
         WeatherSyncConfig after = Settings.WeatherSync;
         if (before.Enabled != after.Enabled || before.Source != after.Source || before.City != after.City)
@@ -240,7 +247,7 @@ internal sealed class AppController
         }
 
         _window.Tray?.SetTooltip(Decision.Reason is { } reason
-            ? $"{Core.AppInfo.Name}: {reason.ToLowerInvariant()}"
+            ? Texts.Format("Tray.TooltipReason", Core.AppInfo.Name, reason)
             : Core.Tray.TrayMenu.Tooltip(options));
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -269,11 +276,11 @@ internal sealed class AppController
         _visitorsOnScreen++;
         PlaySound(VisitorSound.Arrive, e.Kind);
         string name = VisitorCatalog.Get(e.Kind).Name;
-        string how = Settings.Visitors.Interactive ? $"Drop it into the box or press {OverlayHost.CollectShortcut}." : $"Press {OverlayHost.CollectShortcut} to collect it.";
-        _window.Tray?.SetTooltip($"{Core.AppInfo.Name}: {name} is visiting. {how}");
+        string how = Settings.Visitors.Interactive ? Texts.Format("Visitors.HowInteractive", OverlayHost.CollectShortcut) : Texts.Format("Visitors.HowKeyboard", OverlayHost.CollectShortcut);
+        _window.Tray?.SetTooltip(Texts.Format("Visitors.VisitingTooltip", Core.AppInfo.Name, name, how));
         if (Settings.Visitors.Announce)
         {
-            _window.Tray?.ShowNotification($"{name} is visiting", how);
+            _window.Tray?.ShowNotification(Texts.Format("Visitors.Visiting", name), how);
         }
     }
 
@@ -293,23 +300,23 @@ internal sealed class AppController
 
         PlaySound(VisitorSound.Collect, e.Kind);
         string name = VisitorCatalog.Get(e.Kind).Name;
-        var details = new List<string> { $"+{reward.Points} points" };
+        var details = new List<string> { Texts.Format("Visitors.Points", reward.Points) };
         if (reward.FavouriteWeather)
         {
-            details.Add("its favourite weather");
+            details.Add(Texts.Get("Visitors.FavouriteWeather"));
         }
 
         if (reward.Combo > 1)
         {
-            details.Add($"{reward.Combo} in a row");
+            details.Add(Texts.Format("Visitors.Combo", reward.Combo));
         }
 
         foreach (Achievement achievement in reward.NewAchievements)
         {
-            details.Add($"achievement: {Achievements.Describe(achievement).Title}");
+            details.Add(Texts.Format("Visitors.NewAchievement", Achievements.Describe(achievement).Title));
         }
 
-        _window.Tray?.ShowNotification($"{name} collected", string.Join(", ", details) + ".");
+        _window.Tray?.ShowNotification(Texts.Format("Visitors.Collected", name), string.Join(", ", details) + ".");
         Apply();
         VisitorRewarded?.Invoke(this, reward);
     }
@@ -356,7 +363,7 @@ internal sealed class AppController
             else
             {
                 LocationProblem = Settings.WeatherSync.Source == LocationSource.City && Settings.WeatherSync.City is null
-                    ? "Choose a city to get its weather."
+                    ? Texts.Get("Sync.ChooseCity")
                     : null;
             }
 

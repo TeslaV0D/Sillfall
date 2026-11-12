@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Weatherly.Core.Localization;
 
 namespace Weatherly.Core.Visitors;
 
@@ -36,14 +37,14 @@ public static class Achievements
 {
     public static (string Title, string Description) Describe(Achievement achievement) => achievement switch
     {
-        Achievement.FirstGuest => ("First guest", "Collect your first visitor."),
-        Achievement.Regular => ("Regulars", "Collect ten visitors."),
-        Achievement.FullHouse => ("Full house", "Collect all eight visitors."),
-        Achievement.RareFind => ("Rare find", "Collect Lumen, the rarest visitor."),
-        Achievement.InTheirElement => ("In their element", "Collect a visitor in its favourite weather."),
-        Achievement.EveryWeather => ("Every weather", "Collect visitors in rain, snow, falling leaves, fog and sunshine."),
-        Achievement.ThreeInARow => ("Three in a row", "Collect three visitors, each within a minute of the one before."),
-        Achievement.Hundred => ("A hundred points", "Reach 100 points."),
+        Achievement.FirstGuest => (Texts.Get("Achievement.FirstGuest"), Texts.Get("Achievement.FirstGuest.Text")),
+        Achievement.Regular => (Texts.Get("Achievement.Regular"), Texts.Get("Achievement.Regular.Text")),
+        Achievement.FullHouse => (Texts.Get("Achievement.FullHouse"), Texts.Get("Achievement.FullHouse.Text")),
+        Achievement.RareFind => (Texts.Get("Achievement.RareFind"), Texts.Get("Achievement.RareFind.Text")),
+        Achievement.InTheirElement => (Texts.Get("Achievement.InTheirElement"), Texts.Get("Achievement.InTheirElement.Text")),
+        Achievement.EveryWeather => (Texts.Get("Achievement.EveryWeather"), Texts.Get("Achievement.EveryWeather.Text")),
+        Achievement.ThreeInARow => (Texts.Get("Achievement.ThreeInARow"), Texts.Get("Achievement.ThreeInARow.Text")),
+        Achievement.Hundred => (Texts.Get("Achievement.Hundred"), Texts.Get("Achievement.Hundred.Text")),
         _ => (achievement.ToString(), string.Empty),
     };
 }
