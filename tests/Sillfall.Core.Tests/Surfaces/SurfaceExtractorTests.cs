@@ -366,13 +366,13 @@ public class SurfaceExtractorTests
             extractor.Extract(snapshot, monitors, output);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 100; i++)
+        Allocations.Measure(() =>
         {
-            extractor.Extract(snapshot, monitors, output);
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int i = 0; i < 100; i++)
+            {
+                extractor.Extract(snapshot, monitors, output);
+            }
+        }).Should().Be(0);
     }
 
     [Fact]

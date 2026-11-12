@@ -106,13 +106,13 @@ public class SurfaceIndexTests
             Round();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int round = 0; round < 50; round++)
+        Allocations.Measure(() =>
         {
-            Round();
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int round = 0; round < 50; round++)
+            {
+                Round();
+            }
+        }).Should().Be(0);
     }
 
     private static SurfaceSegment Top(long id, int row, int start, int end) =>
