@@ -18,11 +18,20 @@ namespace Weatherly.App;
 public sealed partial class FlyoutWindow : Window
 {
     private const int FlyoutWidth = 380;
+
+    /// <summary>Height before the content is measured; afterwards the flyout is as high as its content.</summary>
     private const int FlyoutHeight = 600;
+
+    /// <summary>Padding of <c>RootGrid</c> around the content, top and bottom together.</summary>
+    private const int ContentPadding = 32;
+
+    /// <summary>Gap between the flyout and the edges of the work area.</summary>
+    private const int EdgeMargin = 12;
 
     private readonly AppController _controller;
     private readonly Action _openSettings;
     private bool _quitting;
+    private float _scale = 1f;
 
     internal FlyoutWindow(AppController controller, Action openSettings)
     {
@@ -40,6 +49,15 @@ public sealed partial class FlyoutWindow : Window
             presenter.IsAlwaysOnTop = true;
             presenter.SetBorderAndTitleBar(true, false);
         }
+
+        // The content sits in a scroll viewer, so its height is the height it wants: the flyout grows and shrinks with it.
+        Host.SizeChanged += (_, e) =>
+        {
+            if (AppWindow.IsVisible)
+            {
+                Place(e.NewSize.Height + ContentPadding);
+            }
+        };
 
         Activated += (_, e) =>
         {
@@ -66,19 +84,26 @@ public sealed partial class FlyoutWindow : Window
     /// <summary>Opens the flyout in the bottom right corner of the primary monitor's work area, above the tray.</summary>
     public void ShowNearTray()
     {
-        float scale = MonitorService.GetMonitors().FirstOrDefault(monitor => monitor.IsPrimary)?.ScaleFactor ?? 1f;
-        int width = (int)Math.Round(FlyoutWidth * scale);
-        int height = (int)Math.Round(FlyoutHeight * scale);
-        int margin = (int)Math.Round(12 * scale);
-        RectInt32 workArea = DisplayArea.Primary.WorkArea;
-        AppWindow.MoveAndResize(new RectInt32(
-            workArea.X + workArea.Width - width - margin,
-            workArea.Y + workArea.Height - height - margin,
-            width,
-            height));
+        _scale = MonitorService.GetMonitors().FirstOrDefault(monitor => monitor.IsPrimary)?.ScaleFactor ?? 1f;
         Build();
+        Place(Host.ActualHeight > 0 ? Host.ActualHeight + ContentPadding : FlyoutHeight);
         AppWindow.Show();
         Activate();
+    }
+
+    /// <summary>Puts the flyout into the bottom right corner of the primary work area with the given client height (DIP).</summary>
+    private void Place(double height)
+    {
+        RectInt32 workArea = DisplayArea.Primary.WorkArea;
+        int margin = (int)Math.Round(EdgeMargin * _scale);
+        int chrome = Math.Max(AppWindow.Size.Height - AppWindow.ClientSize.Height, 0);
+        int width = (int)Math.Round(FlyoutWidth * _scale);
+        int pixels = Math.Min((int)Math.Ceiling(height * _scale) + chrome, workArea.Height - (2 * margin));
+        AppWindow.MoveAndResize(new RectInt32(
+            workArea.X + workArea.Width - width - margin,
+            workArea.Y + workArea.Height - pixels - margin,
+            width,
+            pixels));
     }
 
     /// <summary>Writes the flyout as a PNG (smoke test). Returns the rendered size.</summary>
@@ -163,7 +188,7 @@ public sealed partial class FlyoutWindow : Window
         {
             IsChecked = intensity > 0f,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Content = Ui.Row(new FontIcon { Glyph = Ui.Glyph(kind) }, new TextBlock { Text = Ui.Name(kind) }),
+            Content = Ui.Row(Ui.Icon(kind), new TextBlock { Text = Ui.Name(kind) }),
         };
         var slider = new Slider { Minimum = 0, Maximum = 100, StepFrequency = 5, Value = Math.Round(intensity * 100) };
         slider.ValueChanged += (_, e) =>

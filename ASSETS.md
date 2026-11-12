@@ -13,6 +13,12 @@ Der Test `AssetRegistryTests` (läuft im CI-Job `core`) schlägt fehl, wenn
 - Erste Spalte: Pfad relativ zum Repo-Root in Backticks. Ein Pfad mit `/` am Ende deckt den ganzen Ordner ab.
   Ordner-Einträge sind nur für einheitlich erzeugte Dateien gedacht (z. B. Golden-Images aus dem eigenen Renderer).
 
+## Effekt-Icons
+
+Die sechs Effekt-Symbole in Einstellungen und Flyout (Tropfen, Schneestern, Blatt, Nebelstreifen, Sonne, Grashalme)
+sind selbst gezeichnete Pfade im Code (`Ui.IconPath` in `src/Weatherly.App/Ui.cs`), MIT (Projektlizenz),
+Weatherly-Projekt. Keine Dateien, daher kein Tabelleneintrag.
+
 ## App-Icons
 
 Prozedural gezeichnet (Wolke mit drei Regentropfen auf einer abgerundeten Verlaufsfläche).

@@ -243,7 +243,7 @@ public sealed partial class SettingsWindow : Window
 
             Add(new Expander
             {
-                Header = Ui.Row(new FontIcon { Glyph = Ui.Glyph(kind) }, new TextBlock { Text = Ui.Name(kind) }),
+                Header = Ui.Row(Ui.Icon(kind), new TextBlock { Text = Ui.Name(kind) }),
                 Content = panel,
                 IsExpanded = kind == EffectKind.Rain,
                 HorizontalAlignment = HorizontalAlignment.Stretch,

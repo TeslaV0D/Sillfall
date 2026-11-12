@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Weatherly.Core.Imaging;
@@ -25,16 +26,35 @@ internal static class Ui
         _ => kind.ToString(),
     };
 
-    /// <summary>Segoe Fluent Icons glyph of an effect.</summary>
-    public static string Glyph(EffectKind kind) => kind switch
+    /// <summary>
+    /// The icon of an effect: our own 16 × 16 drawings (ASSETS.md), because the system icon font has no weather symbols.
+    /// A new element on every call, since an element can only have one parent.
+    /// </summary>
+    public static PathIcon Icon(EffectKind kind) => new()
     {
-        EffectKind.Rain => "",
-        EffectKind.Snow => "",
-        EffectKind.Leaves => "",
-        EffectKind.Fog => "",
-        EffectKind.Sun => "",
-        EffectKind.Grass => "",
-        _ => "",
+        Data = (Geometry)XamlBindingHelper.ConvertValue(typeof(Geometry), IconPath(kind)),
+        Width = 16,
+        Height = 16,
+    };
+
+    /// <summary>Path markup of <see cref="Icon"/>. <c>F1</c> fills overlapping parts (non-zero rule).</summary>
+    private static string IconPath(EffectKind kind) => kind switch
+    {
+        EffectKind.Rain => "F1 M8,1.2 C8,1.2 3.4,6.8 3.4,10.1 A4.6,4.6 0 0 0 12.6,10.1 C12.6,6.8 8,1.2 8,1.2 Z",
+        EffectKind.Snow => "F1 M7.25,1 L7.25,15 L8.75,15 L8.75,1 Z M1.56,5.15 L13.69,12.15 L14.44,10.85 L2.31,3.85 Z "
+            + "M13.69,3.85 L1.56,10.85 L2.31,12.15 L14.44,5.15 Z",
+        EffectKind.Leaves => "M2.5,13.5 C2.5,6 6,2.5 13.5,2.5 C13.5,10 10,13.5 2.5,13.5 Z M4.2,12.5 L11.6,5.1 L10.9,4.4 L3.5,11.8 Z",
+        EffectKind.Fog => "F1 M2.8,3.4 H13.2 A0.8,0.8 0 0 1 13.2,5 H2.8 A0.8,0.8 0 0 1 2.8,3.4 Z "
+            + "M1.8,7.2 H11.2 A0.8,0.8 0 0 1 11.2,8.8 H1.8 A0.8,0.8 0 0 1 1.8,7.2 Z "
+            + "M4.8,11 H14.2 A0.8,0.8 0 0 1 14.2,12.6 H4.8 A0.8,0.8 0 0 1 4.8,11 Z",
+        EffectKind.Sun => "F1 M4.6,8 A3.4,3.4 0 1 1 11.4,8 A3.4,3.4 0 1 1 4.6,8 Z "
+            + "M13.2,8.75 L15.4,8.75 L15.4,7.25 L13.2,7.25 Z M11.15,12.21 L12.7,13.76 L13.76,12.7 L12.21,11.15 Z "
+            + "M7.25,13.2 L7.25,15.4 L8.75,15.4 L8.75,13.2 Z M3.79,11.15 L2.24,12.7 L3.3,13.76 L4.85,12.21 Z "
+            + "M2.8,7.25 L0.6,7.25 L0.6,8.75 L2.8,8.75 Z M4.85,3.79 L3.3,2.24 L2.24,3.3 L3.79,4.85 Z "
+            + "M8.75,2.8 L8.75,0.6 L7.25,0.6 L7.25,2.8 Z M12.21,4.85 L13.76,3.3 L12.7,2.24 L11.15,3.79 Z",
+        EffectKind.Grass => "F1 M1.6,15 Q3.6,10 1.4,4.6 Q5.4,9 5,15 Z M5.6,15 Q7.4,8 7.6,1.2 Q10,8 9.8,15 Z "
+            + "M10.4,15 Q11.4,9.6 14.8,5.4 Q13,10.4 13.8,15 Z",
+        _ => "M2,2 H14 V14 H2 Z",
     };
 
     public static TextBlock Heading(string text) => new()
