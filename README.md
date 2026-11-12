@@ -13,7 +13,7 @@ Animated weather for Windows — rain, snow, fog, leaves, sunlight, and grass th
   <img src="docs/media/sun.png" alt="Warm sunlight between windows" width="32%" />
 </p>
 
-**Status:** Milestone **M14** (release): MSIX for x64 and ARM64, privacy policy, store listing, and winget manifest. Store certification and the name reservation are tracked in [checklist M14](docs/manual-tests/M14.md). See [PLAN.md](PLAN.md).
+**Status:** Milestone **M14** (release): setup .exe and MSIX for x64 and ARM64, privacy policy, store listing, and winget manifest. Store certification and the name reservation are tracked in [checklist M14](docs/manual-tests/M14.md). See [PLAN.md](PLAN.md).
 
 ## Features
 
@@ -26,7 +26,13 @@ Animated weather for Windows — rain, snow, fog, leaves, sunlight, and grass th
 - **Privacy-first** — reads window geometry only; no titles, no screen contents, no analytics
 - **English & German** UI, Narrator labels, high contrast, reduced-motion options
 
-## Quick start
+## Download
+
+Get the latest **Sillfall-Setup-…-x64.exe** (or **…-arm64.exe** for ARM PCs) from [Releases](https://github.com/TeslaV0D/Sillfall/releases/latest) and run it. It installs for the current user without administrator rights and adds a Start menu entry; uninstall from *Settings > Apps*. Requires **Windows 10 2004** or newer.
+
+The setup is not code-signed yet, so SmartScreen may show *Windows protected your PC*. Choose *More info* > *Run anyway*. Checksums are in `SHA256SUMS-setup-*.txt` next to the download.
+
+## Build from source
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). The WinUI app needs **Windows 10 2004** or newer.
 
@@ -41,6 +47,12 @@ dotnet run --project tools/Sillfall.Sandbox
 # Core on Linux (simulation & tests)
 dotnet build Sillfall.CrossPlatform.slnf
 dotnet test --project tests/Sillfall.Core.Tests
+```
+
+Build the setup yourself with [Inno Setup 6](https://jrsoftware.org/isinfo.php) installed:
+
+```bash
+pwsh tools/ci/installer.ps1 -Platform x64 -OutputDirectory artifacts/installer
 ```
 
 ## Gallery

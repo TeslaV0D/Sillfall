@@ -60,11 +60,12 @@ The publisher must match the signing certificate.
   kept. This package is not publicly trusted.
 
 The `package` job runs on pull requests, on “Run workflow”, and on tags `v*`. Only a tag named `v` plus the
-version from `Directory.Build.props` may package. A tag also creates a draft GitHub release.
+version from `Directory.Build.props` may package. A tag also publishes a GitHub release (since ADR-0018 directly,
+not as a draft, with the setup .exe as the main download).
 
 Public signing happens only on a tag, and only when the reserved identity and the Azure Artifact Signing
 secrets are set (`azure/artifact-signing-action`, the successor of Trusted Signing). A copy of the unsigned
-package is signed. Without the secrets the draft keeps the development certificate. winget only gets the
+package is signed. Without the secrets the release keeps the development certificate. winget only gets the
 publicly signed package.
 
 ### 4. Privacy policy and winget
