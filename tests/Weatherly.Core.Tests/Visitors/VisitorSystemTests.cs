@@ -268,7 +268,9 @@ public class VisitorSystemTests
             engine.Advance(FrameTime);
         }
 
-        for (int i = 0; i < 600; i++)
+        // Long enough for every path (walking, idling, jumping, landing) to have run many times: on Windows the
+        // runtime's tiered compilation allocates a little the first times a path runs, which is not the frame loop's doing.
+        for (int i = 0; i < 2400; i++)
         {
             Frame();
         }
