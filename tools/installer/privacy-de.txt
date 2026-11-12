@@ -1,0 +1,18 @@
+﻿Sillfall – Datenschutz in Kürze
+
+Sillfall zeichnet animiertes Wetter über deine offenen Fenster.
+
+Was auf diesem PC bleibt
+- Die App liest, wo Fenster sind und wie groß sie sind. Fenstertitel und Fensterinhalte liest sie nie, und sie nimmt den Bildschirm nicht auf.
+- Einstellungen, die Besuchersammlung und Fehlerberichte liegen unter %LOCALAPPDATA%\Sillfall. Fehlerberichte werden nicht hochgeladen.
+
+Was gesendet wird
+- Nichts, solange du den Wetter-Sync in den Einstellungen nicht einschaltest.
+- Mit Wetter-Sync geht alle 15 bis 60 Minuten ein auf etwa 11 km gerundeter Standort an MET Norway (api.met.no). Du kannst ihn jederzeit ausschalten.
+- Keine Telemetrie, keine Werbung, kein Konto.
+
+Änderungen an deinem System
+- Das Setup legt einen Eintrag im Startmenü an und registriert sillfall://-Links. Autostart bleibt aus, bis du ihn in den Einstellungen einschaltest.
+- Deinstallieren über Einstellungen > Apps entfernt die App, die Link-Registrierung und den Autostart-Eintrag. Deine Einstellungen bleiben unter %LOCALAPPDATA%\Sillfall, bis du den Ordner löschst.
+
+Vollständige Datenschutzerklärung: https://github.com/TeslaV0D/Sillfall/blob/main/docs/privacy.de.md

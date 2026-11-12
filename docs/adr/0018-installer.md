@@ -23,7 +23,8 @@ output:
   `tools/installer/Sillfall.iss`. Output: `Sillfall-Setup-<version>-<arch>.exe` plus `SHA256SUMS-setup-<arch>.txt`.
 - **Per-user install** by default (`PrivilegesRequired=lowest`, into `%LOCALAPPDATA%\Programs\Sillfall`): no UAC
   prompt, and it matches the app's own HKCU entries. The setup dialog still offers an install for all users.
-- Start menu entry, optional desktop icon, English and German setup texts, launch after install.
+- Start menu entry, optional desktop icon, English and German setup texts, launch after install. Before
+  installing, setup shows a privacy summary (`tools/installer/privacy-en.txt`, `privacy-de.txt`).
 - Setup registers `sillfall://` right away. Uninstall removes that key and the autostart value `Sillfall` under
   HKCU, which the app may have written. Settings and the visitor collection in `%LOCALAPPDATA%\Sillfall` stay, as
   the privacy policy says.
@@ -43,10 +44,32 @@ Alternatives:
 - **Single-file exe:** WinUI 3 with the Windows App SDK self-contained still needs loose files (`.pri`, XAML
   resources); a single file would mean an extractor in front of the app.
 
+### Signing: SignPath Foundation
+
+The setups are signed through SignPath's free program for open-source projects (SignPath.io, certificate by
+SignPath Foundation): free for open-source projects and built for GitHub Actions. Azure Artifact Signing stays
+the option for the MSIX (ADR-0017).
+
+- The release job uploads both setups as one artifact and submits one signing request
+  (`signpath/github-action-submit-signing-request@v3`). It waits up to five hours for the manual approval in
+  SignPath, then replaces the setups and their checksums with the signed files.
+- The artifact configuration (`tools/installer/signpath-artifact-configuration.xml`) only signs
+  `Sillfall-Setup-*.exe` with product name `Sillfall` and the tag's version. Inno Setup writes both into the
+  version resource.
+- The step only runs when the secret `SIGNPATH_API_TOKEN` and the variables `SIGNPATH_ORGANIZATION_ID`,
+  `SIGNPATH_PROJECT_SLUG` and `SIGNPATH_SIGNING_POLICY_SLUG` are set. Without them the release is unsigned and the
+  release notes say so.
+- SignPath's terms require a released project, a “Code signing policy” section with team roles and a privacy
+  statement (README), GitHub-hosted runners, MFA for all members, and a manual approval per release.
+- Not signed: the app's own `Sillfall.App.exe` and DLLs inside the setup, and Inno Setup's uninstaller. Signing
+  them would need a second signing request before the setup is compiled. Files installed locally carry no
+  download mark, so SmartScreen does not check them.
+
 ## Consequences
 
-- The setup is **not code-signed** yet. SmartScreen warns about an unknown publisher until the setup is signed
-  (Azure Artifact Signing, same account as for the MSIX) and has built reputation. Signing the setup is a follow-up.
+- Until SignPath has accepted the project, the setup is **not code-signed**, and SmartScreen warns about an
+  unknown publisher. Signed releases show “SignPath Foundation” as the publisher. SmartScreen reputation still
+  builds up with downloads.
 - The download is large (the .NET runtime and the Windows App SDK travel with the app), in exchange for nothing
   else to install.
 - An unpackaged install has no package identity. Autostart uses the Run key, and the Store version and the

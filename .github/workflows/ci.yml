@@ -221,9 +221,13 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      # The SignPath action reads the uploaded artifact through the workflow token.
+      actions: read
     env:
       # Steps cannot read secrets in `if:`; the job env can. "true" when the reserved identity and the signing secrets are set.
       PUBLIC_SIGNING: ${{ vars.SILLFALL_PACKAGE_PUBLISHER != '' && secrets.AZURE_TENANT_ID != '' }}
+      # "true" once the project is accepted by SignPath Foundation and the token and ids are set (ADR-0018).
+      SIGNPATH_SIGNING: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - name: Download packages
         uses: actions/download-artifact@v6
@@ -238,6 +242,50 @@ jobs:
           pattern: installer-*
           merge-multiple: true
           path: setups
+
+      - name: Read the version
+        id: version
+        shell: pwsh
+        run: '"value=$($env:GITHUB_REF_NAME.TrimStart(''v''))" >> $env:GITHUB_OUTPUT'
+
+      # Both setups go to SignPath as one ZIP, so a release needs a single manual approval there.
+      - name: Upload the setups for signing
+        id: unsigned-setups
+        if: env.SIGNPATH_SIGNING == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: setups-unsigned
+          path: setups/*.exe
+          if-no-files-found: error
+
+      - name: Sign the setups with SignPath
+        if: env.SIGNPATH_SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-setups.outputs.artifact-id }}
+          wait-for-completion: true
+          # Every release waits for a manual approval in SignPath.
+          wait-for-completion-timeout-in-seconds: 18000
+          output-artifact-directory: signed-setups
+          parameters: |
+            version: "${{ steps.version.outputs.value }}"
+
+      - name: Use the signed setups
+        if: env.SIGNPATH_SIGNING == 'true'
+        shell: pwsh
+        run: |
+          $signed = @(Get-ChildItem signed-setups -Recurse -Filter *.exe)
+          if ($signed.Count -eq 0) { throw 'SignPath returned no setup.' }
+          foreach ($file in $signed) {
+            Copy-Item $file.FullName (Join-Path setups $file.Name) -Force
+            $arch = $file.BaseName.Split('-')[-1]
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)" | Set-Content -Encoding ascii (Join-Path setups "SHA256SUMS-setup-$arch.txt")
+          }
 
       - name: Prepare the trusted copies
         if: env.PUBLIC_SIGNING == 'true'
@@ -274,9 +322,9 @@ jobs:
             ""
             "Download the **Sillfall-Setup-…-x64.exe** file (**…-arm64.exe** on an ARM PC) and run it. No administrator rights needed; it installs for the current user and adds a Start menu entry. Uninstall from Settings > Apps."
             ""
-            "The setup is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher. Choose *More info* > *Run anyway*. SHA256SUMS-setup-*.txt has the checksums."
+            $(if ($env:SIGNPATH_SIGNING -eq 'true') { "The setup is signed: free code signing provided by SignPath.io, certificate by SignPath Foundation. SHA256SUMS-setup-*.txt has the checksums." } else { "The setup is not code-signed yet, so Windows SmartScreen may warn about an unknown publisher. Choose *More info* > *Run anyway*. SHA256SUMS-setup-*.txt has the checksums." })
             ""
-            "Requires Windows 10 version 2004 (build 19041) or newer."
+            "Requires Windows 10 version 2004 (build 19041) or newer. [Code signing policy](https://github.com/TeslaV0D/Sillfall#code-signing-policy) · [Privacy policy](https://github.com/TeslaV0D/Sillfall/blob/main/docs/privacy.md)"
             ""
             "## Other files"
             ""

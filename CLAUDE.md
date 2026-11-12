@@ -67,6 +67,8 @@ release; Azure Artifact Signing signs only when the reserved identity and the se
 Installer (ADR-0018): `tools/ci/installer.ps1` publishes the app unpackaged and self-contained and wraps it with
 Inno Setup (`tools/installer/Sillfall.iss`) into `Sillfall-Setup-<version>-<arch>.exe`. Per-user install, Start menu
 entry, uninstall removes the `sillfall://` key and the Run entry. Keep the `AppId` in the script unchanged.
+Signing: SignPath Foundation (open source program) signs the setups in the `release` job once `SIGNPATH_*` is set.
+Its terms require the README section “Code signing policy” (team roles, privacy statement); keep it current.
 
 Hardening (ADR-0016): `SystemState` / `RuntimePolicy`, `CrashLog`, soak via `tools/ci/soak-test.ps1`.
 
