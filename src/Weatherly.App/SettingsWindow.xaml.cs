@@ -995,8 +995,9 @@ public sealed partial class SettingsWindow : Window
             new TextBlock { Text = $"{AppInfo.Name} {AppInfo.DisplayVersion}", Style = Ui.Resource<Style>("BodyStrongTextBlockStyle") },
             Ui.Note(Texts.Get("About.Tagline")))));
         Add(Ui.Heading(Texts.Get("About.Privacy")));
-        Add(Ui.Card(Ui.Note(
-            Texts.Get("About.PrivacyText"))));
+        Add(Ui.Card(Ui.Stack(
+            Ui.Note(Texts.Get("About.PrivacyText")),
+            Ui.Link(Texts.Get("About.PrivacyPolicy"), AppInfo.PrivacyPolicyUrl))));
         Add(Ui.Heading(Texts.Get("About.Credits")));
         Add(Ui.Card(Ui.Stack(
             Ui.Note(Texts.Get("About.Assets")),

@@ -1,0 +1,25 @@
+PackageIdentifier: TeslaV0D.Weatherly
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Weatherly Development
+PublisherUrl: https://github.com/TeslaV0D/weatherly_windows
+PublisherSupportUrl: https://github.com/TeslaV0D/weatherly_windows/issues
+PrivacyUrl: https://github.com/TeslaV0D/weatherly_windows/blob/main/docs/privacy.md
+Author: TeslaV0D
+PackageName: Weatherly
+PackageUrl: https://github.com/TeslaV0D/weatherly_windows
+License: MIT
+LicenseUrl: https://github.com/TeslaV0D/weatherly_windows/blob/main/LICENSE
+Copyright: Copyright © 2026 Anton
+ShortDescription: Animated weather on top of your open windows. Clicks pass through.
+Description: |-
+  Weatherly draws rain, snow, fog, falling leaves, sunlight and grass on top of your open windows.
+  The weather lands on window edges and gets out of the way for a full-screen game, the lock screen and the Start menu.
+  Clicks pass through. Weather sync is optional and sends only a location rounded to about 11 km.
+Tags:
+- weather
+- rain
+- snow
+ReleaseNotesUrl: https://github.com/TeslaV0D/weatherly_windows/releases/tag/v0.1.0
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

@@ -8,7 +8,11 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap uap5 uap10 rescap">
 
-  <!-- Development identity. Name and Publisher are replaced with the Store reservation in M14. -->
+  <!--
+    Development identity. A release build stamps the reserved store identity over Name, Publisher,
+    version and the display strings when the WeatherlyPackage* properties are set (ADR-0017).
+    The protocol name and the startup task id stay as they are: both are stable across a rename.
+  -->
   <Identity
     Name="Weatherly.Dev"
     Publisher="CN=Weatherly Development"

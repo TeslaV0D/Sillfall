@@ -1,0 +1,14 @@
+PackageIdentifier: TeslaV0D.Weatherly
+PackageVersion: 0.1.0
+PackageLocale: de-DE
+Publisher: Weatherly Development
+PrivacyUrl: https://github.com/TeslaV0D/weatherly_windows/blob/main/docs/privacy.de.md
+PackageName: Weatherly
+License: MIT
+ShortDescription: Animiertes Wetter über deinen offenen Fenstern. Klicks gehen hindurch.
+Description: |-
+  Weatherly zeichnet Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras über die offenen Fenster.
+  Das Wetter liegt auf den Kanten und macht Platz für ein Vollbildspiel, den Sperrbildschirm und das Startmenü.
+  Klicks gehen hindurch. Der Wetter-Sync ist optional und sendet nur einen auf etwa 11 km gerundeten Standort.
+ManifestType: locale
+ManifestVersion: 1.9.0

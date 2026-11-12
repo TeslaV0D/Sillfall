@@ -3,9 +3,9 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M13 (Härtung): Pause bei Vollbild-Spielen, Präsentation, Sperre, Standby, Remotedesktop und
-offenem Startmenü, lokale Fehlerberichte ohne Telemetrie, Langzeittest auf Speicher- und Handle-Lecks. Davor:
-Sprachen und Barrierefreiheit, Besucher, Wetter-Sync, Einstellungen und alle sechs Wettereffekte.
+**Status:** Meilenstein M14 (Release): MSIX für x64 und ARM64, Datenschutzerklärung, Store-Text und winget-Manifest.
+„Weatherly“ ist weiter der Arbeitstitel, bis der Name für den Store reserviert ist. Die Store-Zertifizierung steht
+in der Checkliste M14. Davor: Härtung, Sprachen, Besucher, Wetter-Sync, Einstellungen und alle sechs Wettereffekte.
 
 ```bash
 dotnet run --project tools/Weatherly.Sandbox

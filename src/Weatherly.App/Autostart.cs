@@ -9,7 +9,7 @@ namespace Weatherly.App;
 /// </summary>
 internal static class Autostart
 {
-    private const string TaskId = "WeatherlyStartup";
+    private const string TaskId = AppInfo.StartupTaskId;
 
     /// <summary>Why the last change failed, or <see langword="null"/>.</summary>
     public static string? LastError { get; private set; }
