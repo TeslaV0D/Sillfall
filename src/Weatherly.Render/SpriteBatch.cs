@@ -14,7 +14,12 @@ namespace Weatherly.Render;
 /// </summary>
 internal sealed class SpriteBatch : IDisposable
 {
-    private const int InitialCapacity = 1024;
+    /// <summary>
+    /// The whole particle budget of a frame (PLAN.md, section 4), on the CPU and the GPU from the first draw on. Growing
+    /// later would allocate inside the render loop: rain alone swings between 1,500 and 2,500 sprites, and a doubling at
+    /// 2,048 was caught by the smoke test's allocation check (192 KB in one frame).
+    /// </summary>
+    private const int InitialCapacity = Weatherly.Core.Rendering.RenderFrame.DefaultCapacity;
 
     private readonly ID3D11Device _device;
     private readonly ID3D11DeviceContext _context;
