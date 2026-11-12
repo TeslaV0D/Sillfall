@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Weatherly.App.FlyoutWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <!-- Quick settings next to the tray icon, built in code (FlyoutWindow.xaml.cs). -->
+    <Grid x:Name="RootGrid" Padding="16">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="Host" Spacing="10" />
+        </ScrollViewer>
+    </Grid>
+</Window>

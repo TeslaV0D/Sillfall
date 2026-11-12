@@ -54,19 +54,22 @@ public partial class App : Application
     /// <summary>Leaves: the last ones need about ten seconds to fall, then the lying ones fade.</summary>
     private static readonly TimeSpan s_leavesIdleStopTimeout = TimeSpan.FromSeconds(60);
 
-    /// <summary>Settings are written this long after the last change, so dragging a slider does not write a file per step.</summary>
-    private static readonly TimeSpan s_saveDelay = TimeSpan.FromMilliseconds(500);
-
     private readonly SmokeTest? _smokeTest = SmokeTest.FromCommandLine(Environment.GetCommandLineArgs());
     private MainWindow? _window;
-    private SettingsStore? _settings;
-    private AppSettings _savedSettings = new();
-    private DispatcherQueueTimer? _saveTimer;
+    private AppController? _controller;
+    private SettingsWindow? _settingsWindow;
+    private FlyoutWindow? _flyout;
 
     public App()
     {
         InitializeComponent();
         UnhandledException += OnUnhandledException;
+
+        // The app lives in the notification area: closing (hiding) its windows does not end it, only Quit does.
+        if (_smokeTest is null)
+        {
+            DispatcherShutdownMode = DispatcherShutdownMode.OnExplicitShutdown;
+        }
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -106,11 +109,11 @@ public partial class App : Application
         bool background = Environment.GetCommandLineArgs().Contains(Integration.BackgroundSwitch, StringComparer.OrdinalIgnoreCase);
 
         AppSettings settings = new();
+        SettingsStore? store = null;
         if (_smokeTest is null)
         {
-            _settings = new SettingsStore(SettingsStore.DefaultPath);
-            settings = _settings.Load();
-            _savedSettings = settings;
+            store = new SettingsStore(SettingsStore.DefaultPath);
+            settings = store.Load();
             options = settings.ToOverlayOptions(options);
         }
 
@@ -135,34 +138,37 @@ public partial class App : Application
             CenterOnPrimaryMonitor(_window);
         }
 
+        // The smoke test sets its own state: the controller then neither follows the system nor saves anything.
+        _controller = new AppController(_window, store, settings, followSystem: _smokeTest is null);
+        _settingsWindow = new SettingsWindow(_controller);
+        _flyout = new FlyoutWindow(_controller, () => _settingsWindow.ShowPage("effects"));
+
         bool trayShown = ShowTrayIcon(_window);
 
-        // With a tray icon, closing the window keeps the weather running; the tray's Quit ends the app.
-        _window.HideOnClose = trayShown && _smokeTest is null;
-        if (_settings is not null)
-        {
-            if (!settings.Sound.Muted)
-            {
-                _window.SetSound(true);
-            }
-
-            _saveTimer = _window.DispatcherQueue.CreateTimer();
-            _saveTimer.Interval = s_saveDelay;
-            _saveTimer.IsRepeating = false;
-            _saveTimer.Tick += (_, _) => SaveSettings();
-        }
-
-        _window.OptionsChanged += OnOptionsChanged;
+        // The diagnostics window and the settings only hide when closed; the tray's Quit ends the app.
+        // Without a tray icon, closing the settings window ends the app: otherwise nothing could reach it.
+        _window.HideOnClose = _smokeTest is null;
+        _settingsWindow.HideOnClose = trayShown;
+        _settingsWindow.Closed += (_, _) => Quit();
         if (instance is not null)
         {
             _window.Own(instance);
             instance.MessageReceived += (_, message) => OnInstanceMessage(message);
         }
 
-        // An autostart opens in the notification area; without a tray icon the window is the only way in.
-        if (!background || !trayShown)
+        if (_smokeTest is not null)
         {
             _window.Activate();
+        }
+        else
+        {
+            _controller.Apply();
+
+            // An autostart opens in the notification area; without a tray icon the settings are the only way in.
+            if (!background || !trayShown)
+            {
+                _settingsWindow.ShowPage("effects");
+            }
         }
 
         if (sceneLink is not null)
@@ -170,7 +176,11 @@ public partial class App : Application
             ApplySceneLink(sceneLink);
         }
 
-        if (_smokeTest is not null)
+        if (_smokeTest is { SettingsTour: { } tourDirectory })
+        {
+            _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSettingsTourAsync(_smokeTest, tourDirectory, _settingsWindow, _flyout, _window));
+        }
+        else if (_smokeTest is not null)
         {
             // Low priority: measure only after the window has gone through layout and its first render.
             _window.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => _ = RunSmokeTestAsync(_smokeTest, _window, trayShown));
@@ -186,18 +196,18 @@ public partial class App : Application
             tray = new TrayIcon(
                 Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
                 TrayMenu.Tooltip(window.Options),
-                () => TrayMenu.Build(window.Options, window.SoundOn, new TrayCommands(
-                    Open: window.ShowAndActivate,
-                    SetRain: window.SetRain,
-                    SetSnow: window.SetSnow,
-                    SetLeaves: window.SetLeaves,
-                    SetFog: window.SetFog,
-                    SetSun: window.SetSun,
-                    SetGrass: window.SetGrass,
-                    SetSound: window.SetSound,
-                    SetPaused: window.SetPaused,
+                () => TrayMenu.Build(Controller.Settings.ToOverlayOptions(window.Options), !Controller.Settings.Sound.Muted, new TrayCommands(
+                    Open: () => _settingsWindow?.ShowPage("effects"),
+                    SetRain: value => Controller.SetIntensity(EffectKind.Rain, value),
+                    SetSnow: value => Controller.SetIntensity(EffectKind.Snow, value),
+                    SetLeaves: value => Controller.SetIntensity(EffectKind.Leaves, value),
+                    SetFog: value => Controller.SetIntensity(EffectKind.Fog, value),
+                    SetSun: value => Controller.SetIntensity(EffectKind.Sun, value),
+                    SetGrass: value => Controller.SetIntensity(EffectKind.Grass, value),
+                    SetSound: on => Controller.Update(s => s with { Sound = s.Sound with { Muted = !on } }),
+                    SetPaused: paused => Controller.Update(s => s with { Enabled = !paused }),
                     Quit: Quit)),
-                window.ShowAndActivate);
+                ToggleFlyout);
             if (!tray.Show())
             {
                 tray.Dispose();
@@ -217,36 +227,23 @@ public partial class App : Application
         }
     }
 
-    private void OnOptionsChanged(object? sender, EventArgs e)
+    private AppController Controller => _controller ?? throw new InvalidOperationException("The app has not started yet.");
+
+    /// <summary>Left click on the tray icon: opens the flyout, or closes it when it is open.</summary>
+    private void ToggleFlyout()
     {
-        if (_window is null)
+        if (_flyout is null)
         {
             return;
         }
 
-        _window.Tray?.SetTooltip(TrayMenu.Tooltip(_window.Options));
-        if (_saveTimer is not null)
+        if (_flyout.IsShown)
         {
-            _saveTimer.Stop();
-            _saveTimer.Start();
+            _flyout.AppWindow.Hide();
         }
-    }
-
-    private void SaveSettings()
-    {
-        if (_settings is null || _window is null)
+        else
         {
-            return;
-        }
-
-        try
-        {
-            _savedSettings = _savedSettings.WithOverlay(_window.Options, _window.SoundOn);
-            _settings.Save(_savedSettings);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Not being able to remember a setting is no reason to interrupt the user. It is tried again on the next change.
+            _flyout.ShowNearTray();
         }
     }
 
@@ -290,46 +287,85 @@ public partial class App : Application
         }
     }
 
-    /// <summary>A later start handed over its command line: show the window, and apply a scene link if there is one.</summary>
+    /// <summary>A later start handed over its command line: show the settings, and apply a scene link if there is one.</summary>
     private void OnInstanceMessage(string message)
     {
-        if (_window is null)
-        {
-            return;
-        }
-
         if (message.StartsWith("weatherly:", StringComparison.OrdinalIgnoreCase))
         {
             ApplySceneLink(message);
         }
 
-        _window.ShowAndActivate();
+        _settingsWindow?.ShowPage(message.Length > 0 ? "templates" : "effects");
     }
 
     /// <summary>Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized).</summary>
     private void ApplySceneLink(string link)
     {
-        if (_window is null || !SceneCodec.TryFromLink(link, out Scene scene, out _))
+        if (_controller is null || !SceneCodec.TryFromLink(link, out Scene scene, out _))
         {
             return;
         }
 
-        _savedSettings = scene.ApplyTo(_savedSettings);
-        if (!_savedSettings.Templates.Any(template => template.Name == scene.Name))
+        _controller.Update(settings => scene.ApplyTo(settings) with
         {
-            _savedSettings = _savedSettings with { Templates = [.. _savedSettings.Templates, scene] };
-        }
-
-        _window.ApplyOptions(_savedSettings.ToOverlayOptions(_window.Options));
-        SaveSettings();
+            Templates = [.. settings.Templates.Where(template => template.Name != scene.Name), scene],
+        });
     }
+
+    private bool _quitting;
 
     private void Quit()
     {
-        _saveTimer?.Stop();
-        SaveSettings();
+        if (_quitting)
+        {
+            return;
+        }
+
+        _quitting = true;
+        _controller?.SaveNow();
+        _flyout?.Quit();
+        _settingsWindow?.Quit();
         _window?.Quit();
         Exit();
+    }
+
+    /// <summary>
+    /// Smoke test of the settings window and the flyout: every page is shown and written as a PNG, so the pages can be
+    /// looked at without a Windows desktop. Fails when a page throws or renders nothing.
+    /// </summary>
+    private static async Task RunSettingsTourAsync(SmokeTest smokeTest, string directory, SettingsWindow settings, FlyoutWindow flyout, MainWindow window)
+    {
+        try
+        {
+            await Task.Delay(s_settleTime);
+            var diagnostics = new List<DiagnosticResult>();
+            for (int index = 0; index < SettingsWindow.Pages.Count; index++)
+            {
+                (string key, string title, _) = SettingsWindow.Pages[index];
+                settings.ShowPage(key);
+                await Task.Delay(TimeSpan.FromMilliseconds(700));
+                (int width, int height) = await settings.SavePageAsync(Path.Combine(directory, string.Create(CultureInfo.InvariantCulture, $"settings-{index:00}-{key}.png")));
+                diagnostics.Add(new DiagnosticResult($"Settings page {title}", width > 0 && height > 0, string.Create(CultureInfo.InvariantCulture, $"{width} x {height}")));
+            }
+
+            flyout.StayOpen = true;
+            flyout.ShowNearTray();
+            await Task.Delay(TimeSpan.FromMilliseconds(700));
+            (int flyoutWidth, int flyoutHeight) = await flyout.SaveAsync(Path.Combine(directory, "flyout.png"));
+            diagnostics.Add(new DiagnosticResult("Flyout", flyoutWidth > 0 && flyoutHeight > 0, string.Create(CultureInfo.InvariantCulture, $"{flyoutWidth} x {flyoutHeight}")));
+
+            int exitCode = smokeTest.WriteReport(diagnostics, []);
+
+            // Closing the diagnostics window removes the overlays before the process ends.
+            window.Close();
+            Environment.Exit(exitCode);
+        }
+#pragma warning disable CA1031 // Any failure of the self-check is its result.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            smokeTest.Fail(exception);
+        }
     }
 
     private static async Task RunSmokeTestAsync(SmokeTest smokeTest, MainWindow window, bool trayShown)

@@ -3,7 +3,8 @@
 Animiertes Wetter über deinen offenen Fenstern: Regen, Schnee, Nebel, Laub, Sonnenlicht und Gras,
 die mit der Fenstergeometrie interagieren. Klicks gehen durch. „Weatherly“ ist ein Arbeitstitel.
 
-**Status:** Meilenstein M8 (Gras), mit dem MVP-Cut nach M5. Alle sechs Wettereffekte sind da. Die App läuft im Infobereich: Regen und Schnee lassen sich
+**Status:** Meilenstein M9 (Oberfläche): Tray-Flyout und Einstellungsfenster mit zehn Seiten, Vorlagen zum
+Teilen, Regeln für Monitore, Apps, Akku und Reduced Motion. Alle sechs Wettereffekte sind da. Die App läuft im Infobereich: Regen und Schnee lassen sich
 über das Tray-Menü stellen, das Fenster lässt sich schließen, ohne dass das Wetter endet, und die
 Einstellungen bleiben über Neustarts erhalten. Regen: Tropfen in verschiedenen Tiefen, Splashes, Pfützen,
 Rinnsale, Wasserfälle und prozeduraler Sound. Schnee: taumelnde Flocken, Haufen auf Fensterkanten und

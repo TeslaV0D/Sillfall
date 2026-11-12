@@ -19,6 +19,8 @@ namespace Weatherly.App;
 /// <item><c>--snow</c> does the same with snow: render loop check (including melting until the loop stops),
 /// then a snow-free and a snowy screenshot.</item>
 /// <item><c>--leaves</c>, <c>--fog</c>, <c>--sun</c> and <c>--grass</c> do the same with leaves, fog, sunlight and grass.</item>
+/// <item><c>--settings-tour=&lt;folder&gt;</c> shows every page of the settings window and the flyout and writes
+/// each as a PNG into the folder, instead of the overlay checks.</item>
 /// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
 /// zero allocations, and that it stops once the drops are switched off.</item>
 /// </list>
@@ -38,6 +40,7 @@ internal sealed class SmokeTest
     private const string FogSwitch = "--fog";
     private const string SunSwitch = "--sun";
     private const string GrassSwitch = "--grass";
+    private const string SettingsTourSwitch = "--settings-tour=";
 
     private readonly string _reportPath;
 
@@ -80,6 +83,9 @@ internal sealed class SmokeTest
 
     public bool Grass { get; }
 
+    /// <summary>Folder for the pictures of the settings tour, or <see langword="null"/> for the overlay checks.</summary>
+    public string? SettingsTour { get; private init; }
+
     /// <summary>Returns the smoke test when the switch is present, otherwise <see langword="null"/>.</summary>
     public static SmokeTest? FromCommandLine(IReadOnlyList<string> args)
     {
@@ -105,7 +111,10 @@ internal sealed class SmokeTest
             args.Contains(LeavesSwitch, StringComparer.OrdinalIgnoreCase),
             args.Contains(FogSwitch, StringComparer.OrdinalIgnoreCase),
             args.Contains(SunSwitch, StringComparer.OrdinalIgnoreCase),
-            args.Contains(GrassSwitch, StringComparer.OrdinalIgnoreCase));
+            args.Contains(GrassSwitch, StringComparer.OrdinalIgnoreCase))
+        {
+            SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
+        };
     }
 
     /// <summary>Writes the report. Returns the exit code: 0 when every check passed, otherwise 1.</summary>

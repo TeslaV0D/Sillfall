@@ -4,7 +4,7 @@ Weatherly ist ein natives Windows-Tool, das animiertes Wetter über den offenen 
 Der vollständige Plan steht in [PLAN.md](PLAN.md). Dort stehen Feature-Inventar, Technik-Vorgaben,
 Effekt-Spezifikationen und die Meilensteine M0–M14 (Reihenfolge verbindlich).
 
-Stand: **M8 (Gras)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
+Stand: **M9 (Oberfläche)**, der MVP-Cut (Tray, ADR-0008) ist enthalten. Alle sechs Effekte sind da. Den Fortschritt pro Meilenstein dokumentieren die Checklisten in
 `docs/manual-tests/`.
 
 ## Arbeitsregeln (aus PLAN.md, Abschnitt 13)
@@ -66,9 +66,12 @@ glättet ihn (`SimulationContext.Cursor`, `CursorVelocity`). Größen und Geschw
 multiplizieren. Für die Sichtprüfung FrameDump-Frames über einen nachgebauten Desktop legen: Die
 PNGs enthalten nur das Overlay.
 
-MVP-Cut (ADR-0008): `TrayIcon` (Platform, `Shell_NotifyIcon` selbst deklariert) zeigt das Menümodell
-`TrayMenu` (Core). Schließen versteckt das Fenster, „Quit“ im Tray beendet die App. `SettingsStore` (Core)
-speichert `UserSettings` als JSON in `%LOCALAPPDATA%`. Der Smoke-Test fasst keine Einstellungen an.
+Oberfläche (ADR-0008, ADR-0012): `AppSettings` (Core, versioniert, migriert) ist das einzige Einstellungsmodell,
+`AppController` (App) der einzige Ort, der es ändert und mit `RuntimePolicy`, `IntensityDirector` und
+`RuntimeOptions` (Core) in `OverlayOptions` übersetzt. Fenster: `SettingsWindow` (10 Seiten, im Code gebaut aus
+`Ui`), `FlyoutWindow` (Tray-Linksklick), `MainWindow` (Diagnose, besitzt Overlay-Host, Tray-Icon und
+`SingleInstance`). Vorlagen: `Scene`, `ScenePresets`, `SceneCodec` (`.wscene`, `weatherly://`). Der Smoke-Test
+fasst keine Einstellungen an; `--settings-tour=<Ordner>` speichert jede Einstellungsseite als PNG.
 
 Erlaubte Projektreferenzen: Platform, Render und Audio kennen nur Core. App kennt alle.
 Die Tabelle dazu steht in `ArchitectureTests`. Ein neues Projekt muss dort eingetragen werden.

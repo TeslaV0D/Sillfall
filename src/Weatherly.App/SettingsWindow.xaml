@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Weatherly.App.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TitleBar x:Name="SettingsTitleBar">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="Assets/AppIcon.ico" />
+            </TitleBar.IconSource>
+        </TitleBar>
+
+        <!-- The pages are built in code (SettingsWindow.xaml.cs): one builder per page, the same controls everywhere. -->
+        <NavigationView
+            x:Name="Navigation"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            OpenPaneLength="220"
+            PaneDisplayMode="Left"
+            SelectionChanged="OnNavigationSelectionChanged">
+            <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Auto">
+                <StackPanel
+                    x:Name="PageHost"
+                    MaxWidth="860"
+                    Margin="32,16,32,32"
+                    HorizontalAlignment="Left"
+                    Spacing="12" />
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</Window>

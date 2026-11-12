@@ -12,9 +12,10 @@ using Weatherly.Platform.Shell;
 namespace Weatherly.App;
 
 /// <summary>
-/// Test bench of the milestones so far: switches and sliders for the overlay and the effects, the monitor list and
-/// the self-checks. With the tray icon (MVP), closing it only hides it. It is replaced by the tray flyout and the
-/// settings window in M9. The window owns the overlay host and disposes it when it really closes.
+/// Diagnostics window (the test bench of the milestones): switches and sliders for the overlay and the effects, the
+/// monitor list and the self-checks. The smoke test drives it; users reach it from the settings (Advanced). Closing
+/// it only hides it. The window owns the overlay host, the tray icon and the single-instance guard and disposes them
+/// when it really closes.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -61,19 +62,39 @@ public sealed partial class MainWindow : Window
         _initialized = true;
 
         _overlay.LayoutChanged += OnOverlayLayoutChanged;
+        _overlay.SystemStateChanged += OnOverlaySystemStateChanged;
         Closed += OnClosed;
         AppWindow.Closing += OnClosing;
 
         // The rain sound follows the rain: intensity from the settings, drop density from the simulation.
         _soundTimer = DispatcherQueue.CreateTimer();
         _soundTimer.Interval = TimeSpan.FromMilliseconds(100);
-        _soundTimer.Tick += (_, _) => _sound?.Update(_options.Rain.ClampedIntensity, _overlay.RainHitsPerSecond, volume: 0.6f);
+        _soundTimer.Tick += (_, _) => _sound?.Update(_options.Rain.ClampedIntensity, _overlay.RainHitsPerSecond, SoundVolume);
 
         Refresh();
     }
 
     /// <summary>Raised on the UI thread whenever a switch or slider changed the options or the sound.</summary>
     public event EventHandler? OptionsChanged;
+
+    /// <summary>Raised on the UI thread when the power source, the animation setting or the foreground app changed.</summary>
+    public event EventHandler? SystemStateChanged;
+
+    /// <summary>Volume of the rain sound, 0 to 1.</summary>
+    public float SoundVolume { get; set; } = 0.6f;
+
+    /// <summary>Measures the overlay without updating this window's lists (for the settings window's live numbers).</summary>
+    public OverlayStatus? GetStatus()
+    {
+        try
+        {
+            return _startError is null ? _overlay.GetStatus() : null;
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>The options the overlay runs with.</summary>
     public OverlayOptions Options => _options;
@@ -314,6 +335,7 @@ public sealed partial class MainWindow : Window
         _sound?.Dispose();
         _sound = null;
         _overlay.LayoutChanged -= OnOverlayLayoutChanged;
+        _overlay.SystemStateChanged -= OnOverlaySystemStateChanged;
         _overlay.Dispose();
         _tray?.Dispose();
         _tray = null;
@@ -324,6 +346,10 @@ public sealed partial class MainWindow : Window
 
         _owned.Clear();
     }
+
+    /// <summary>Called on the overlay thread when the system state changed: passed on to the UI thread.</summary>
+    private void OnOverlaySystemStateChanged(object? sender, EventArgs e) =>
+        DispatcherQueue.TryEnqueue(() => SystemStateChanged?.Invoke(this, EventArgs.Empty));
 
     /// <summary>Called on the overlay thread when monitors were added, removed or changed.</summary>
     private void OnOverlayLayoutChanged(object? sender, EventArgs e) => DispatcherQueue.TryEnqueue(() => Refresh());

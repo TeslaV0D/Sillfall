@@ -325,6 +325,36 @@ function Invoke-WeatherRun {
     Write-Host "Smoke run '$name' passed."
 }
 
+# The settings window and the flyout: the app shows every page and writes it as a PNG into the previews.
+function Invoke-SettingsTour {
+    $name = 'settings'
+    $report = Join-Path $ReportDirectory "smoke-report-$name.txt"
+    $pictures = Join-Path $PreviewDirectory 'settings'
+    Remove-Item $report -ErrorAction SilentlyContinue
+    Write-Host "=== Smoke run '$name' ==="
+    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", "--settings-tour=$pictures", '--no-test-pattern') -PassThru
+    $null = $process.Handle
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill()
+        throw "Smoke run '$name' did not finish within $TimeoutSeconds s."
+    }
+
+    if (Test-Path $report) {
+        Write-Host '--- report ---'
+        Get-Content $report | Write-Host
+        Write-Host '--------------'
+    }
+    else {
+        throw "Smoke run '$name' wrote no report (exit code $($process.ExitCode))."
+    }
+
+    if ($process.ExitCode -ne 0) {
+        throw "Smoke run '$name' failed with exit code $($process.ExitCode)."
+    }
+
+    Write-Host "Smoke run '$name' passed."
+}
+
 # The sandbox renders fake windows with snow on them into a normal window. It exits by itself and returns 0 if it rendered.
 function Invoke-SandboxRun {
     Write-Host '=== Sandbox ==='
@@ -378,6 +408,7 @@ Invoke-WeatherRun -Name 'leaves'
 Invoke-WeatherRun -Name 'fog'
 Invoke-WeatherRun -Name 'sun'
 Invoke-WeatherRun -Name 'grass'
+Invoke-SettingsTour
 Invoke-SandboxRun
 
 Write-Host 'Smoke test passed.'
