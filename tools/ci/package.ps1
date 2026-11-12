@@ -36,7 +36,8 @@ $project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
 function Read-BuildProperty([string] $Name) {
     [xml] $props = Get-Content -Raw (Join-Path $repoRoot 'Directory.Build.props')
-    $value = @($props.Project.PropertyGroup.$Name) | Where-Object { $_ }
+    # @() around the whole pipeline: a single match must stay an array, or [0] takes its first character.
+    $value = @(@($props.Project.PropertyGroup.$Name) | Where-Object { $_ })
     if (-not $value) {
         throw "Directory.Build.props has no $Name."
     }
@@ -85,13 +86,13 @@ New-Item -ItemType Directory -Force -Path $rawDir | Out-Null
 $publish = @(
     'publish', $project,
     '-c', $Configuration,
-    '-p:Platform=' + $Platform,
-    '-p:RuntimeIdentifier=win-' + $Platform.ToLowerInvariant(),
+    "-p:Platform=$Platform",
+    "-p:RuntimeIdentifier=win-$($Platform.ToLowerInvariant())",
     '-p:WindowsPackageType=MSIX',
     '-p:GenerateAppxPackageOnBuild=true',
     '-p:AppxBundle=Never',
     '-p:AppxPackageSigningEnabled=false',
-    '-p:AppxPackageDir=' + $rawDir
+    "-p:AppxPackageDir=$rawDir/"
 )
 if ($env:SILLFALL_PACKAGE_NAME) {
     $publish += '-p:SillfallPackageName=' + $env:SILLFALL_PACKAGE_NAME
