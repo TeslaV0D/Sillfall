@@ -262,13 +262,13 @@ public class RainEffectTests
             Frame();
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 300; i++)
+        Allocations.Measure(() =>
         {
-            Frame();
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int i = 0; i < 300; i++)
+            {
+                Frame();
+            }
+        }).Should().Be(0);
     }
 
     [Fact]

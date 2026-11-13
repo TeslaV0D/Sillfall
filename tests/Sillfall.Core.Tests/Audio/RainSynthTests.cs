@@ -94,14 +94,14 @@ public class RainSynthTests
         float[] buffer = new float[2400];
         synth.Render(buffer);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 100; i++)
+        Allocations.Measure(() =>
         {
-            synth.Intensity = i % 2 == 0 ? 0.8f : 0.6f;
-            synth.Render(buffer);
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int i = 0; i < 100; i++)
+            {
+                synth.Intensity = i % 2 == 0 ? 0.8f : 0.6f;
+                synth.Render(buffer);
+            }
+        }).Should().Be(0);
     }
 
     private static float[] Render(RainSynth synth, int samples)

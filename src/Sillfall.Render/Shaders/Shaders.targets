@@ -7,9 +7,11 @@
       Name.ps.hlsl  ->  pixel shader  (ps_5_0), resource "Shaders/Name.ps.cso"
 
     The entry point is always "main". Warnings are errors, so a broken shader breaks the build.
-    fxc.exe comes from the Windows SDK and only runs on Windows. On other systems the step is
-    skipped: the assembly still compiles (useful for fast feedback on Linux) but cannot render.
-    Set the property FxcPath to use a specific fxc.exe.
+
+    The compiler is d3dcompiler_47.dll, which every Windows 10 and 11 ships in System32 (it is also what fxc.exe
+    uses). The inline task below calls it directly, so building needs only the .NET SDK, not the Windows SDK.
+    Flags match "fxc /O3 /WX /Qstrip_reflect /Qstrip_debug". On other systems the step is skipped: the assembly
+    still compiles (useful for fast feedback on Linux) but cannot render.
   -->
 
   <ItemGroup>
@@ -23,31 +25,152 @@
     <CanCompileShaders Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</CanCompileShaders>
   </PropertyGroup>
 
-  <Target Name="LocateFxc" Condition="'$(CanCompileShaders)' == 'true' and '$(FxcPath)' == ''">
-    <PropertyGroup>
-      <WindowsKitsRoot>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Kits\Installed Roots', 'KitsRoot10', null, RegistryView.Registry32, RegistryView.Registry64))</WindowsKitsRoot>
-      <FxcArchitecture>x64</FxcArchitecture>
-      <FxcArchitecture Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">arm64</FxcArchitecture>
-    </PropertyGroup>
-    <ItemGroup Condition="'$(WindowsKitsRoot)' != ''">
-      <FxcCandidate Include="$(WindowsKitsRoot)bin\10.*\$(FxcArchitecture)\fxc.exe" />
-    </ItemGroup>
-    <!-- Batching assigns once per candidate, so the newest SDK version (last in sort order) wins. -->
-    <PropertyGroup>
-      <FxcPath>%(FxcCandidate.FullPath)</FxcPath>
-    </PropertyGroup>
-  </Target>
+  <UsingTask TaskName="CompileHlsl"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputDirectory ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs"><![CDATA[
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+
+public class CompileHlsl : Task
+{
+    private const uint OptimizationLevel3 = 1u << 15;
+    private const uint WarningsAreErrors = 1u << 18;
+    private const uint StripReflectionData = 1;
+    private const uint StripDebugInfo = 2;
+
+    [Required]
+    public ITaskItem[] Sources { get; set; }
+
+    [Required]
+    public string OutputDirectory { get; set; }
+
+    [DllImport("d3dcompiler_47.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
+    private static extern int D3DCompile(byte[] srcData, UIntPtr srcDataSize, string sourceName, IntPtr defines,
+        IntPtr include, string entryPoint, string target, uint flags1, uint flags2, out IntPtr code, out IntPtr errors);
+
+    [DllImport("d3dcompiler_47.dll", ExactSpelling = true)]
+    private static extern int D3DStripShader(IntPtr bytecode, UIntPtr bytecodeLength, uint stripFlags, out IntPtr stripped);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate uint ReleaseFn(IntPtr self);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate IntPtr GetBufferPointerFn(IntPtr self);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate UIntPtr GetBufferSizeFn(IntPtr self);
+
+    public override bool Execute()
+    {
+        Directory.CreateDirectory(OutputDirectory);
+        foreach (ITaskItem source in Sources)
+        {
+            if (!Compile(source.GetMetadata("FullPath"), source.GetMetadata("Profile"),
+                Path.Combine(OutputDirectory, source.GetMetadata("Filename") + ".cso")))
+            {
+                return false;
+            }
+        }
+
+        return !Log.HasLoggedErrors;
+    }
+
+    private bool Compile(string path, string profile, string output)
+    {
+        byte[] text = File.ReadAllBytes(path);
+        int offset = text.Length >= 3 && text[0] == 0xEF && text[1] == 0xBB && text[2] == 0xBF ? 3 : 0;
+        byte[] source = new byte[text.Length - offset];
+        Array.Copy(text, offset, source, 0, source.Length);
+
+        IntPtr code = IntPtr.Zero;
+        IntPtr errors = IntPtr.Zero;
+        IntPtr stripped = IntPtr.Zero;
+        try
+        {
+            // (ID3DInclude*)1 is D3D_COMPILE_STANDARD_FILE_INCLUDE: #include resolves next to the source file.
+            int result = D3DCompile(source, new UIntPtr((uint)source.Length), path, IntPtr.Zero, new IntPtr(1), "main", profile,
+                OptimizationLevel3 | WarningsAreErrors, 0, out code, out errors);
+            if (result < 0)
+            {
+                string message = errors != IntPtr.Zero ? ReadText(errors) : string.Format("HRESULT 0x{0:X8}", result);
+                Log.LogError(null, "HLSL", null, path, 0, 0, 0, 0, "Shader compilation failed: {0}", message.Trim());
+                return false;
+            }
+
+            result = D3DStripShader(BufferPointer(code), BufferSize(code), StripReflectionData | StripDebugInfo, out stripped);
+            if (result < 0)
+            {
+                Log.LogError(null, "HLSL", null, path, 0, 0, 0, 0, "Stripping the shader failed: HRESULT 0x{0:X8}", result);
+                return false;
+            }
+
+            File.WriteAllBytes(output, ReadBytes(stripped));
+            Log.LogMessage(MessageImportance.Low, "{0} -> {1}", path, output);
+            return true;
+        }
+        finally
+        {
+            Release(stripped);
+            Release(code);
+            Release(errors);
+        }
+    }
+
+    // ID3DBlob vtable: QueryInterface, AddRef, Release, GetBufferPointer, GetBufferSize.
+    private static T Method<T>(IntPtr blob, int slot) where T : class
+    {
+        IntPtr vtable = Marshal.ReadIntPtr(blob);
+        return (T)(object)Marshal.GetDelegateForFunctionPointer(Marshal.ReadIntPtr(vtable, slot * IntPtr.Size), typeof(T));
+    }
+
+    private static IntPtr BufferPointer(IntPtr blob)
+    {
+        return Method<GetBufferPointerFn>(blob, 3)(blob);
+    }
+
+    private static UIntPtr BufferSize(IntPtr blob)
+    {
+        return Method<GetBufferSizeFn>(blob, 4)(blob);
+    }
+
+    private static byte[] ReadBytes(IntPtr blob)
+    {
+        byte[] bytes = new byte[(int)BufferSize(blob).ToUInt64()];
+        Marshal.Copy(BufferPointer(blob), bytes, 0, bytes.Length);
+        return bytes;
+    }
+
+    private static string ReadText(IntPtr blob)
+    {
+        return Marshal.PtrToStringAnsi(BufferPointer(blob), (int)BufferSize(blob).ToUInt64()).TrimEnd('\0');
+    }
+
+    private static void Release(IntPtr blob)
+    {
+        if (blob != IntPtr.Zero)
+        {
+            Method<ReleaseFn>(blob, 2)(blob);
+        }
+    }
+}
+]]></Code>
+    </Task>
+  </UsingTask>
 
   <Target Name="CompileShaders"
-          DependsOnTargets="LocateFxc"
           Condition="'$(CanCompileShaders)' == 'true'"
           Inputs="@(ShaderSource);@(ShaderInclude);$(MSBuildThisFileFullPath)"
           Outputs="@(ShaderSource->'$(ShaderOutputDirectory)%(Filename).cso')">
-    <Error Condition="'$(FxcPath)' == '' or !Exists('$(FxcPath)')"
-           Text="fxc.exe was not found. Install the Windows SDK (Visual Studio Installer: 'Windows 11 SDK', or winget: Microsoft.WindowsSDK.10.0.26100), or set the property FxcPath." />
-    <MakeDir Directories="$(ShaderOutputDirectory)" />
-    <Exec Command="&quot;$(FxcPath)&quot; /nologo /T %(ShaderSource.Profile) /E main /O3 /WX /Qstrip_reflect /Qstrip_debug /Fo &quot;$(ShaderOutputDirectory)%(ShaderSource.Filename).cso&quot; &quot;%(ShaderSource.FullPath)&quot;"
-          StandardOutputImportance="low" />
+    <CompileHlsl Sources="@(ShaderSource)" OutputDirectory="$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(ShaderOutputDirectory)'))" />
   </Target>
 
   <Target Name="EmbedShaders"
@@ -66,7 +189,7 @@
   <Target Name="ReportSkippedShaders"
           BeforeTargets="PrepareResources"
           Condition="'$(CanCompileShaders)' != 'true'">
-    <Message Importance="normal" Text="Shaders are not compiled on this system (fxc.exe needs Windows). The assembly builds but cannot render." />
+    <Message Importance="normal" Text="Shaders are not compiled on this system (d3dcompiler_47.dll needs Windows). The assembly builds but cannot render." />
   </Target>
 
 </Project>

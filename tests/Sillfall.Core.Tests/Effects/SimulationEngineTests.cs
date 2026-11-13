@@ -173,13 +173,13 @@ public class SimulationEngineTests
             Frame(frame);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int frame = 0; frame < 600; frame++)
+        Allocations.Measure(() =>
         {
-            Frame(frame);
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int frame = 0; frame < 600; frame++)
+            {
+                Frame(frame);
+            }
+        }).Should().Be(0);
         engine.Frame.SpriteCount.Should().BePositive();
     }
 

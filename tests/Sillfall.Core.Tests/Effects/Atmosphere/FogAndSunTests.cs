@@ -178,14 +178,14 @@ public class FogAndSunTests
             engine.Advance(FrameTime);
         }
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 300; i++)
+        Allocations.Measure(() =>
         {
-            engine.SetWindows(windows);
-            engine.Advance(FrameTime);
-        }
-
-        (GC.GetAllocatedBytesForCurrentThread() - before).Should().Be(0);
+            for (int i = 0; i < 300; i++)
+            {
+                engine.SetWindows(windows);
+                engine.Advance(FrameTime);
+            }
+        }).Should().Be(0);
     }
 
     private static (SimulationEngine Engine, FogEffect Fog, SunEffect Sun) Create(float fog = 0f, float sun = 0f)
