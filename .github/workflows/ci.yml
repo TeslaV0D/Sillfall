@@ -330,13 +330,17 @@ jobs:
             ""
             "- *.unsigned.msix is the Microsoft Store upload. Partner Center signs it."
             "- *.msix next to a .cer is signed with a development certificate. Install the .cer into Trusted People before sideloading. When Azure Artifact Signing ran, the trusted .msix replaces it."
+            "- *_Dependencies.zip has the Windows App Runtime packages. Install them first if sideloading reports the runtime missing."
           ) | Set-Content -Encoding utf8 notes.md
           $setups = @(Get-ChildItem setups -File)
           if (Test-Path trusted) {
-            $packages = @(Get-ChildItem trusted -Filter *.msix) + @(Get-ChildItem packages -Recurse -File | Where-Object { $_.Name -like '*.unsigned.msix' -or $_.FullName -match '\\Dependencies\\' })
+            $packages = @(Get-ChildItem trusted -Filter *.msix) + @(Get-ChildItem packages -File | Where-Object { $_.Name -like '*.unsigned.msix' -or $_.Name -like '*_Dependencies.zip' })
           }
           else {
-            $packages = @(Get-ChildItem packages -Recurse -File)
+            $packages = @(Get-ChildItem packages -File)
           }
           $files = $setups + $packages
+          # Release assets are flat and need unique names; fail before the release exists, not halfway through.
+          $duplicates = @($files | Group-Object Name | Where-Object Count -gt 1 | ForEach-Object Name)
+          if ($duplicates.Count -gt 0) { throw "Duplicate release asset names: $($duplicates -join ', ')" }
           gh release create "${{ github.ref_name }}" @($files.FullName) --repo "${{ github.repository }}" --verify-tag --latest --title "Sillfall ${{ github.ref_name }}" --notes-file notes.md
