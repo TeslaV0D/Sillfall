@@ -58,6 +58,8 @@ The publisher must match the signing certificate.
 - `*.unsigned.msix` for Partner Center. The Store signs it.
 - `*.msix` signed with a certificate the run creates, plus `*.cer` for sideloading. The private key is not
   kept. This package is not publicly trusted.
+- `*_Dependencies.zip` with the Windows App Runtime packages for sideloading. Zipped per architecture: the
+  runtime `.msix` has the same file name for x64 and ARM64, and release assets must have unique names.
 
 The `package` job runs on pull requests, on “Run workflow”, and on tags `v*`. Only a tag named `v` plus the
 version from `Directory.Build.props` may package. A tag also publishes a GitHub release (since ADR-0018 directly,

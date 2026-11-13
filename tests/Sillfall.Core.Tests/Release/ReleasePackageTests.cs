@@ -145,6 +145,18 @@ public class ReleasePackageTests
         readme.Should().Contain("will not transfer any information to other networked systems");
     }
 
+    [Fact]
+    public void Release_PublishesFlatAssetsWithUniqueNames()
+    {
+        // The Windows App Runtime .msix has the same file name for x64 and ARM64. Copied loose into the
+        // release, the second upload fails, so each architecture ships it inside its own zip.
+        Repo.ReadText("tools/ci/package.ps1").Should().Contain("_Dependencies.zip").And.Contain("Compress-Archive");
+
+        string workflow = Repo.ReadText(".github/workflows/ci.yml");
+        workflow.Should().NotContain("Get-ChildItem packages -Recurse", "nested files would reach the release under clashing names");
+        workflow.Should().Contain("Duplicate release asset names");
+    }
+
     private static string ProductVersion()
     {
         XElement version = Repo.LoadXml("Directory.Build.props").Descendants("Version").Single();

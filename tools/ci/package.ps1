@@ -15,6 +15,10 @@
       <Product>_<version>_<arch>.unsigned.msix   for Partner Center, which signs it itself
       <Product>_<version>_<arch>.msix            signed with a certificate created for this run
       <Product>_<version>_<arch>.cer             that certificate, so the signed package can be sideloaded
+      <Product>_<version>_<arch>_Dependencies.zip  the Windows App Runtime packages for sideloading, when the
+                                                 build produced them. Zipped per architecture because the
+                                                 runtime .msix has the same file name for x64 and ARM64, and
+                                                 release assets need unique names.
 
     The private key is not kept. On a version tag the tag must be v<version> from Directory.Build.props.
 
@@ -124,9 +128,11 @@ $unsigned = Join-Path $OutputDirectory "$baseName.unsigned.msix"
 $signed = Join-Path $OutputDirectory "$baseName.msix"
 Copy-Item $built[0].FullName $unsigned -Force
 Copy-Item $unsigned $signed -Force
+$dependencyZip = Join-Path $OutputDirectory "${baseName}_Dependencies.zip"
+Remove-Item $dependencyZip -Force -ErrorAction SilentlyContinue
 $dependencies = Get-ChildItem -Path $rawDir -Recurse -Directory -Filter Dependencies | Select-Object -First 1
 if ($dependencies) {
-    Copy-Item $dependencies.FullName (Join-Path $OutputDirectory 'Dependencies') -Recurse -Force
+    Compress-Archive -Path (Join-Path $dependencies.FullName '*') -DestinationPath $dependencyZip
 }
 Remove-Item $rawDir -Recurse -Force
 
@@ -199,6 +205,7 @@ $sums = Join-Path $OutputDirectory "SHA256SUMS-$arch.txt"
 @(
     Get-FileHash -Algorithm SHA256 $unsigned
     Get-FileHash -Algorithm SHA256 $signed
+    if (Test-Path $dependencyZip) { Get-FileHash -Algorithm SHA256 $dependencyZip }
 ) | ForEach-Object { '{0}  {1}' -f $_.Hash.ToLowerInvariant(), (Split-Path $_.Path -Leaf) } |
     Set-Content -Encoding ascii $sums
 
