@@ -47,9 +47,13 @@ public sealed partial class OverlayHost : IDisposable
     private const nuint TrackingTimerId = 2;
     private const nuint PollTimerId = 3;
     private const nuint StateTimerId = 4;
+    private const nuint ScreenUseConfirmTimerId = 5;
 
     /// <summary>How often the shell is asked about full-screen apps; it sends no message when that changes.</summary>
     private const uint StateIntervalMilliseconds = 2000;
+
+    /// <summary>A changed full-screen answer is confirmed this much later before the overlays go or come back.</summary>
+    private const uint ScreenUseConfirmMilliseconds = 400;
 
     // Session and power messages (wtsapi32, winuser), as numbers: CsWin32 offers them only as loose constants.
     private const uint WtsSessionChangeMessage = 0x02B1;
@@ -112,6 +116,7 @@ public sealed partial class OverlayHost : IDisposable
     private readonly Lock _systemStateLock = new();
     private Core.Settings.SystemState _systemState = Core.Settings.SystemState.Default;
     private uint _foregroundProcessId;
+    private readonly Core.Settings.ScreenUseFilter _screenUse = new();
 
     /// <summary>Process id to "the app rules hide the weather over its windows", filled as processes appear.</summary>
     private readonly Dictionary<uint, bool> _weatherHiddenByProcess = [];
@@ -610,6 +615,11 @@ public sealed partial class OverlayHost : IDisposable
                     UpdateScreenUse();
                     return new LRESULT(0);
 
+                case PInvoke.WM_TIMER when isControlWindow && wParam.Value == ScreenUseConfirmTimerId:
+                    PInvoke.KillTimer(window, ScreenUseConfirmTimerId);
+                    UpdateScreenUse();
+                    return new LRESULT(0);
+
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == RefreshTimerId:
                     PInvoke.KillTimer(window, RefreshTimerId);
                     RefreshOverlays();
@@ -744,12 +754,28 @@ public sealed partial class OverlayHost : IDisposable
         PublishSystemState(state, updated);
     }
 
-    /// <summary>The shell has no message for full-screen apps: it is asked every two seconds and on every focus change.</summary>
+    /// <summary>
+    /// The shell has no message for full-screen apps: it is asked every two seconds and on every focus change. A changed
+    /// answer is confirmed by a second look shortly after (<see cref="Core.Settings.ScreenUseFilter"/>), so one odd sample
+    /// never removes and rebuilds the overlays.
+    /// </summary>
     private void UpdateScreenUse()
     {
-        (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+        (bool fullScreen, bool presentation) = SampleScreenUse();
         Core.Settings.SystemState state = SystemState;
         PublishSystemState(state, state with { FullScreen = fullScreen, Presentation = presentation });
+    }
+
+    private (bool FullScreen, bool Presentation) SampleScreenUse()
+    {
+        Core.Settings.ScreenUseSample sample = Shell.SystemInfo.ScreenUse();
+        (bool FullScreen, bool Presentation) published = _screenUse.Update(Core.Settings.ScreenUseRules.Evaluate(sample));
+        if (_screenUse.Pending && _controlWindow != 0)
+        {
+            PInvoke.SetTimer((HWND)_controlWindow, ScreenUseConfirmTimerId, ScreenUseConfirmMilliseconds, null);
+        }
+
+        return published;
     }
 
     private void UpdateSystemState(bool power, bool animations, HWND foreground)
@@ -776,7 +802,7 @@ public sealed partial class OverlayHost : IDisposable
             }
 
             // A game going full screen usually takes the focus first: no need to wait for the timer.
-            (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+            (bool fullScreen, bool presentation) = SampleScreenUse();
             updated = updated with { FullScreen = fullScreen, Presentation = presentation };
         }
 

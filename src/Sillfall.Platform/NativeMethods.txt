@@ -64,6 +64,7 @@ LoadCursor
 LoadIcon
 LoadImage
 MA_NOACTIVATE
+MonitorFromWindow
 MONITORINFOEXW
 OBJECT_IDENTIFIER
 OpenProcess
