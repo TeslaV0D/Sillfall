@@ -25,6 +25,15 @@ public interface IEffectSystem
     /// <summary>Reacts to a window that appeared, disappeared, moved, was resized or shaken.</summary>
     void OnWindowEvent(in WindowEvent windowEvent, SimulationContext context);
 
+    /// <summary>
+    /// The surfaces were recomputed (windows or monitors changed). Runs outside <see cref="Simulate"/> and
+    /// <see cref="Emit"/>: the place to create per-surface state (a water field, a snow pile), so the frame loop never
+    /// allocates when something first lands on a new edge (finding F-02).
+    /// </summary>
+    void OnSurfacesChanged(SimulationContext context)
+    {
+    }
+
     /// <summary>Adds the current state as sprites. Data only: no graphics API calls.</summary>
     void Emit(RenderFrame frame, SimulationContext context);
 }

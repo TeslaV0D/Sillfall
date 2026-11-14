@@ -140,7 +140,7 @@ public sealed class SnowEffect : IEffectSystem
         }
     }
 
-    /// <summary>Snow on the top edge of a window, or <see langword="null"/> while none fell there.</summary>
+    /// <summary>Snow on the top edge of a window (<see cref="SnowField.IsBare"/> until the first flake), or <see langword="null"/> while the edge is not exposed.</summary>
     public SnowField? PileOf(long windowId) => _fields.GetValueOrDefault(new SurfaceKey(windowId, SurfaceEdge.Top));
 
     /// <summary>Snow on the floor of a monitor (index into the monitor list).</summary>
@@ -206,6 +206,20 @@ public sealed class SnowEffect : IEffectSystem
         }
     }
 
+    /// <summary>Every surface gets its pile now, not when the first flake lands on it in the frame loop (F-02).</summary>
+    public void OnSurfacesChanged(SimulationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        _scale = context.PixelScale;
+        foreach (SurfaceSegment segment in context.Surfaces.Segments)
+        {
+            if (segment.IsHorizontal)
+            {
+                FieldFor(segment, context);
+            }
+        }
+    }
+
     public void Emit(RenderFrame frame, SimulationContext context)
     {
         float brightness = Settings.ClampedBrightness;
@@ -234,7 +248,7 @@ public sealed class SnowEffect : IEffectSystem
     {
         foreach (SnowField field in _fields.Values)
         {
-            if (!field.IsEmpty)
+            if (!field.IsBare && !field.IsEmpty)
             {
                 return true;
             }
@@ -429,6 +443,11 @@ public sealed class SnowEffect : IEffectSystem
             if (isFloor)
             {
                 field.Resize(context.Monitors[(int)key.OwnerId].WorkArea.Width);
+            }
+
+            if (field.IsBare)
+            {
+                continue;
             }
 
             field.Relax(passes: 2);

@@ -61,7 +61,7 @@ public class RainEffectTests
 
         Run(engine, seconds: 2);
 
-        rain.PuddleOf(s_window.Id).Should().BeNull();
+        rain.PuddleOf(s_window.Id)!.IsDry.Should().BeTrue("no drop is near enough to hit it");
         rain.SplashCount.Should().Be(0);
     }
 
@@ -362,6 +362,28 @@ public class RainEffectTests
                 Frame();
             }
         }).Should().Be(0);
+    }
+
+    [Fact]
+    public void FrameLoop_WindowAppearingMidRun_GetsWetWithoutAllocating()
+    {
+        // F-02 for rain: the water field of a new edge was made on its first hit, inside the frame loop.
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        Run(engine, seconds: 3);
+
+        var newcomer = new TrackedWindow(11, PixelRect.FromSize(1500, 500, 380, 300));
+        engine.SetWindows(WindowSnapshot.Of(3.1, s_window, newcomer));
+        rain.PuddleOf(newcomer.Id).Should().NotBeNull("the field exists before the first drop hits");
+        rain.PuddleOf(newcomer.Id)!.IsDry.Should().BeTrue();
+
+        Allocations.Measure(() =>
+        {
+            for (int i = 0; i < 300; i++)
+            {
+                engine.Advance(FrameTime);
+            }
+        }).Should().Be(0);
+        rain.PuddleOf(newcomer.Id)!.IsDry.Should().BeFalse("drops hit the new window during the measured frames");
     }
 
     [Fact]

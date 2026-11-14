@@ -56,6 +56,12 @@ public sealed class WaterField
 
     public int BinAt(float localX) => Math.Clamp((int)(localX / BinWidth), 0, _water.Length - 1);
 
+    /// <summary>
+    /// No water was added since the field was made or drained. A dry field needs no simulation: fields exist for every
+    /// exposed top edge (finding F-02), most of them never get wet.
+    /// </summary>
+    public bool IsDry { get; private set; } = true;
+
     /// <summary>Adds water at a position relative to the window's left edge.</summary>
     public void Add(float localX, float amount)
     {
@@ -63,6 +69,8 @@ public sealed class WaterField
         {
             return;
         }
+
+        IsDry = false;
 
         int bin = BinAt(localX);
         float filled = _water[bin] + amount;
@@ -96,7 +104,7 @@ public sealed class WaterField
     public void Step(float dt, float diffusion = 6f, float creep = 0.8f, float evaporation = 0.02f)
     {
         int n = _water.Length;
-        if (n == 0)
+        if (n == 0 || IsDry)
         {
             return;
         }
@@ -199,6 +207,7 @@ public sealed class WaterField
         Array.Clear(_water);
         LeftRunoff = 0f;
         RightRunoff = 0f;
+        IsDry = true;
         return total;
     }
 

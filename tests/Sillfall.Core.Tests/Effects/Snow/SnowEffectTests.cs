@@ -382,6 +382,29 @@ public class SnowEffectTests
     }
 
     [Fact]
+    public void FrameLoop_WindowAppearingMidRun_GetsItsFirstSnowWithoutAllocating()
+    {
+        // F-02: the pile of a new edge was made when the first flake landed on it, inside the frame loop (4048 B in the
+        // smoke test). It is made when the surfaces change now, outside Simulate and Emit.
+        (SimulationEngine engine, SnowEffect snow) = Create(intensity: 1f);
+        Run(engine, seconds: 10);
+
+        var newcomer = new TrackedWindow(11, PixelRect.FromSize(1500, 500, 380, 300));
+        engine.SetWindows(WindowSnapshot.Of(10.1, s_window, newcomer));
+        snow.PileOf(newcomer.Id).Should().NotBeNull("the pile exists before anything lands on it");
+        snow.PileOf(newcomer.Id)!.IsBare.Should().BeTrue();
+
+        Allocations.Measure(() =>
+        {
+            for (int i = 0; i < 600; i++)
+            {
+                engine.Advance(FrameTime);
+            }
+        }).Should().Be(0);
+        snow.PileOf(newcomer.Id)!.IsBare.Should().BeFalse("snow landed on the new window during the measured frames");
+    }
+
+    [Fact]
     public void SimulationStep_StaysWithinTheBudget()
     {
         (SimulationEngine engine, SnowEffect snow) = Create(intensity: 0.5f);

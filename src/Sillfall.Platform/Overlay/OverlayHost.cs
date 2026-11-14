@@ -483,11 +483,11 @@ public sealed partial class OverlayHost : IDisposable
         _pacing.FrameStarted(now, _options.FrameRateCap);
         double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
         _lastFrameTimestamp = start;
-        bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
-        long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
 
         // While a window moves, the windows are read every frame instead of waiting for the coalescing timer, which a
-        // drag's flood of events starves (finding F-07). Snap and restore animations are followed to their end.
+        // drag's flood of events starves (finding F-07). Snap and restore animations are followed to their end. This
+        // is window tracking, not simulation: a new window's surfaces (and their fields, F-02) are made here, before
+        // the allocation measurement of the frame starts.
         if (_moveSizeActive || _trackingPending || start < _followWindowsUntil)
         {
             if (_trackingPending)
@@ -498,6 +498,9 @@ public sealed partial class OverlayHost : IDisposable
 
             UpdateWindows(force: false);
         }
+
+        bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
+        long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
 
         // The cursor once per frame, for the leaves' gust: polling needs no hook (PLAN.md, section 4.3).
         if (PInvoke.GetCursorPos(out System.Drawing.Point cursor))

@@ -142,7 +142,10 @@ public sealed class RainEffect : IEffectSystem
     /// <summary>Splashes created in the last step, per second. Drives the rain sound.</summary>
     public float HitsPerSecond { get; private set; }
 
-    /// <summary>Water standing on the top edge of a window, or <see langword="null"/> while it is dry.</summary>
+    /// <summary>
+    /// The water field of a window's top edge (<see cref="WaterField.IsDry"/> until the first drop), or
+    /// <see langword="null"/> while the edge is not exposed.
+    /// </summary>
     public WaterField? PuddleOf(long windowId) => _puddles.GetValueOrDefault(windowId);
 
     public void Simulate(float dt, SimulationContext context)
@@ -189,6 +192,19 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
+    /// <summary>Every exposed top edge gets its water field now, not on its first hit in the frame loop (F-02).</summary>
+    public void OnSurfacesChanged(SimulationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        foreach (SurfaceSegment segment in context.Surfaces.Segments)
+        {
+            if (segment.Key.Edge == SurfaceEdge.Top)
+            {
+                FieldFor(segment.Key.OwnerId, context);
+            }
+        }
+    }
+
     public void Emit(RenderFrame frame, SimulationContext context)
     {
         float brightness = Settings.ClampedBrightness;
@@ -222,7 +238,7 @@ public sealed class RainEffect : IEffectSystem
     {
         foreach (WaterField field in _puddles.Values)
         {
-            if (field.Total > 0f || field.LeftRunoff > 0f || field.RightRunoff > 0f)
+            if (!field.IsDry && (field.Total > 0f || field.LeftRunoff > 0f || field.RightRunoff > 0f))
             {
                 return true;
             }
@@ -426,8 +442,13 @@ public sealed class RainEffect : IEffectSystem
                 continue;
             }
 
-            PixelRect bounds = context.Windows[index].Bounds;
             WaterField field = entry.Value;
+            if (field.IsDry)
+            {
+                continue;
+            }
+
+            PixelRect bounds = context.Windows[index].Bounds;
             field.Step(dt, evaporation: intensity > 0f ? Evaporation : EvaporationAfterRain);
 
             // After the rain, once no bin shows water any more and the runoff is too little for a drip, the edge
