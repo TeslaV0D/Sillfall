@@ -71,6 +71,12 @@ public sealed partial class OverlayHost : IDisposable
     /// <summary>Window events are coalesced: at most one snapshot per frame (60 Hz).</summary>
     private const uint TrackingDelayMilliseconds = 16;
 
+    /// <summary>
+    /// After a window moved, resized, minimized or was restored, the render loop reads the windows every frame for this
+    /// long: snap, maximize and restore animate the frame after the last event (finding F-07).
+    /// </summary>
+    private const double FollowWindowsSeconds = 0.6;
+
     /// <summary>Fallback for changes that raise no event (PLAN.md, section 3.2: 10 Hz).</summary>
     private const uint PollIntervalMilliseconds = 100;
 
@@ -87,9 +93,6 @@ public sealed partial class OverlayHost : IDisposable
 
     /// <summary>Frames after the start of the loop that are not measured for allocations (JIT, buffer growth).</summary>
     private const int AllocationWarmUpFrames = 60;
-
-    /// <summary>Upper frame rate. Normally the swap chain paces the loop; this only guards against a busy loop.</summary>
-    private const double MinimumFrameSeconds = 1.0 / 240;
 
     private const int StateCreated = 0;
     private const int StateStarted = 1;
@@ -138,6 +141,12 @@ public sealed partial class OverlayHost : IDisposable
     private readonly Core.Visitors.VisitorScheduler _visitorScheduler = new((ulong)Environment.TickCount64 + 1);
     private readonly Core.Simulation.CursorMotion _cursor = new();
     private bool _trackingPending;
+
+    /// <summary>A window is in its move/size loop (dragged or resized by the user): tracked every frame until it ends.</summary>
+    private bool _moveSizeActive;
+
+    /// <summary>Stopwatch timestamp until which the render loop reads the windows every frame.</summary>
+    private long _followWindowsUntil;
     private float _rainHitsPerSecond;
 
     // Render loop state and statistics, only touched on the overlay thread.
@@ -148,6 +157,8 @@ public sealed partial class OverlayHost : IDisposable
     private long _measuredLoopFrames;
     private long _loopAllocatedBytes;
     private readonly FrameStatistics _frameStatistics = new();
+    private readonly FramePacing _pacing = new();
+    private FrameWaiter? _frameWaiter;
 
     /// <summary>Creates the host. It takes ownership of <paramref name="renderer"/> and disposes it on the overlay thread.</summary>
     public OverlayHost(IOverlayRenderer renderer, OverlayOptions options)
@@ -440,6 +451,7 @@ public sealed partial class OverlayHost : IDisposable
             _engine.ResumeAfterIdle();
             _lastFrameTimestamp = Stopwatch.GetTimestamp();
             _loopFramesSinceStart = 0;
+            _pacing.Reset();
         }
         else if (!shouldAnimate && _animating)
         {
@@ -456,18 +468,36 @@ public sealed partial class OverlayHost : IDisposable
     private void RenderAnimationFrame()
     {
         long start = Stopwatch.GetTimestamp();
-        double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
-        // Smoothness: a frame rate cap from the options. A little early is fine, vsync timing jitters.
-        double minimum = _options.FrameRateCap > 0 ? 0.92 / _options.FrameRateCap : MinimumFrameSeconds;
-        if (elapsed < minimum)
+        double now = start / (double)Stopwatch.Frequency;
+
+        // Smoothness: a frame rate cap from the options, on a fixed schedule (FramePacing). The wait ends early when a
+        // message arrives; the loop then handles it and comes back here.
+        double wait = _pacing.WaitBeforeNextFrame(now, _options.FrameRateCap);
+        if (wait > 0)
         {
-            Thread.Sleep(1);
+            _frameWaiter ??= new FrameWaiter();
+            _frameWaiter.Wait(wait);
             return;
         }
 
+        _pacing.FrameStarted(now, _options.FrameRateCap);
+        double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
         _lastFrameTimestamp = start;
         bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
         long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
+
+        // While a window moves, the windows are read every frame instead of waiting for the coalescing timer, which a
+        // drag's flood of events starves (finding F-07). Snap and restore animations are followed to their end.
+        if (_moveSizeActive || _trackingPending || start < _followWindowsUntil)
+        {
+            if (_trackingPending)
+            {
+                PInvoke.KillTimer((HWND)_controlWindow, TrackingTimerId);
+                _trackingPending = false;
+            }
+
+            UpdateWindows(force: false);
+        }
 
         // The cursor once per frame, for the leaves' gust: polling needs no hook (PLAN.md, section 4.3).
         if (PInvoke.GetCursorPos(out System.Drawing.Point cursor))
@@ -510,6 +540,8 @@ public sealed partial class OverlayHost : IDisposable
 
             _overlays.Clear();
             _renderer.Dispose();
+            _frameWaiter?.Dispose();
+            _frameWaiter = null;
 
             foreach (HWINEVENTHOOK hook in _hooks)
             {
@@ -842,10 +874,24 @@ public sealed partial class OverlayHost : IDisposable
                     ScheduleWindowUpdate();
                     break;
 
+                // The user drags or resizes a window: its location events arrive in a flood that keeps the coalescing
+                // timer from firing (WM_TIMER only comes when the queue is empty), so the render loop reads the
+                // windows itself every frame until the move ends (finding F-07).
                 case PInvoke.EVENT_SYSTEM_MOVESIZESTART:
+                    _moveSizeActive = true;
+                    FollowWindows();
+                    ScheduleWindowUpdate();
+                    break;
+
                 case PInvoke.EVENT_SYSTEM_MOVESIZEEND:
+                    _moveSizeActive = false;
+                    FollowWindows();
+                    ScheduleWindowUpdate();
+                    break;
+
                 case PInvoke.EVENT_SYSTEM_MINIMIZESTART:
                 case PInvoke.EVENT_SYSTEM_MINIMIZEEND:
+                    FollowWindows();
                     ScheduleWindowUpdate();
                     break;
 
@@ -853,6 +899,11 @@ public sealed partial class OverlayHost : IDisposable
                 default:
                     if (objectId == (int)OBJECT_IDENTIFIER.OBJID_WINDOW && childId == (int)PInvoke.CHILDID_SELF)
                     {
+                        if (winEvent == PInvoke.EVENT_OBJECT_LOCATIONCHANGE)
+                        {
+                            FollowWindows();
+                        }
+
                         ScheduleWindowUpdate();
                     }
 
@@ -867,6 +918,10 @@ public sealed partial class OverlayHost : IDisposable
             ErrorCaught?.Invoke(this, exception);
         }
     }
+
+    /// <summary>Lets the render loop read the windows every frame for a moment (snap and restore animations).</summary>
+    private void FollowWindows() =>
+        _followWindowsUntil = Stopwatch.GetTimestamp() + (long)(FollowWindowsSeconds * Stopwatch.Frequency);
 
     /// <summary>Coalesces bursts of window events (a drag raises hundreds) into one update per frame.</summary>
     private void ScheduleWindowUpdate()

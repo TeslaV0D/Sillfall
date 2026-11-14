@@ -7,7 +7,9 @@ CheckMenuRadioItem
 CHILDID_SELF
 CloseHandle
 COPYDATASTRUCT
+CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 CreatePopupMenu
+CreateWaitableTimerEx
 CreateWindowEx
 DefWindowProc
 DestroyIcon
@@ -66,6 +68,7 @@ LoadImage
 MA_NOACTIVATE
 MonitorFromWindow
 MONITORINFOEXW
+MsgWaitForMultipleObjectsEx
 OBJECT_IDENTIFIER
 OpenProcess
 PBT_APMPOWERSTATUSCHANGE
@@ -87,6 +90,7 @@ SetLayeredWindowAttributes
 SetMenuDefaultItem
 SetThreadDpiAwarenessContext
 SetTimer
+SetWaitableTimer
 SetWindowDisplayAffinity
 SetWindowPos
 SetWinEventHook

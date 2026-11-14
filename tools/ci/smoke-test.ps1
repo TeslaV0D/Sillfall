@@ -38,7 +38,7 @@ param(
     [int] $TimeoutSeconds = 150,
 
     # Runs only these (visible, excluded-from-capture, surfaces, drops, rain, snow, leaves, fog, sun, grass, visitors,
-    # foreground, settings, sandbox). Empty: all of them.
+    # foreground, frame-cap, settings, sandbox). Empty: all of them.
     [string[]] $Only = @(),
 
     # Skips the build and uses the existing unpackaged output (for repeated local runs).
@@ -452,6 +452,36 @@ $form.Add_Shown({ [Helper.Focus]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [Hel
     Write-Host "Smoke run '$name' passed."
 }
 
+# Frame pacing with a cap (finding F-06): rain at the 60 fps cap of Smoothness "Auto". The app fails its Animation
+# check when the loop runs more than 10 % faster than the cap; below the cap it is reported for review.
+function Invoke-FrameCapRun {
+    $name = 'frame-cap'
+    $report = Join-Path $ReportDirectory "smoke-report-$name.txt"
+    Remove-Item $report -ErrorAction SilentlyContinue
+    Write-Host "=== Smoke run '$name' ==="
+    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", '--rain', '--frame-rate-cap=60', '--no-test-pattern') -PassThru
+    $null = $process.Handle
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill()
+        throw "Smoke run '$name' did not finish within $TimeoutSeconds s."
+    }
+
+    if (Test-Path $report) {
+        Write-Host '--- report ---'
+        Get-Content $report | Write-Host
+        Write-Host '--------------'
+    }
+    else {
+        throw "Smoke run '$name' wrote no report (exit code $($process.ExitCode))."
+    }
+
+    if ($process.ExitCode -ne 0) {
+        throw "Smoke run '$name' failed with exit code $($process.ExitCode)."
+    }
+
+    Write-Host "Smoke run '$name' passed."
+}
+
 # The settings window and the flyout: the app shows every page and writes it as a PNG into the previews.
 function Invoke-SettingsTour {
     $name = 'settings'
@@ -539,6 +569,7 @@ foreach ($weather in 'rain', 'snow', 'leaves', 'fog', 'sun', 'grass', 'visitors'
     if (Test-Selected $weather) { Invoke-WeatherRun -Name $weather }
 }
 if (Test-Selected 'foreground') { Invoke-ForegroundRun }
+if (Test-Selected 'frame-cap') { Invoke-FrameCapRun }
 if (Test-Selected 'settings') { Invoke-SettingsTour }
 if (Test-Selected 'sandbox') { Invoke-SandboxRun }
 

@@ -24,6 +24,7 @@ namespace Sillfall.App;
 /// each as a PNG into the folder, instead of the overlay checks.</item>
 /// <item><c>--test-drops</c> starts with the calibration drops and checks the render loop: frame rate,
 /// zero allocations, and that it stops once the drops are switched off.</item>
+/// <item><c>--frame-rate-cap=&lt;fps&gt;</c> runs the loop with that cap (as Smoothness does) and checks it is not exceeded.</item>
 /// </list>
 /// In smoke test mode the app also moves its own window once and checks that the tracking follows.
 /// </summary>
@@ -44,6 +45,7 @@ internal sealed class SmokeTest
     private const string VisitorsSwitch = "--visitors";
     private const string SoakSwitch = "--soak=";
     private const string SettingsTourSwitch = "--settings-tour=";
+    private const string FrameRateCapSwitch = "--frame-rate-cap=";
 
     private readonly string _reportPath;
 
@@ -95,6 +97,9 @@ internal sealed class SmokeTest
     /// <summary>Invites a visitor onto the app window: checks spawning, the render loop and the keyboard collect.</summary>
     public bool Visitors { get; private init; }
 
+    /// <summary>Frame rate cap of the render loop, 0 for the display's rate (the default).</summary>
+    public int FrameRateCap { get; private init; }
+
     /// <summary>Folder for the pictures of the settings tour, or <see langword="null"/> for the overlay checks.</summary>
     public string? SettingsTour { get; private init; }
 
@@ -127,6 +132,7 @@ internal sealed class SmokeTest
         {
             SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
             Visitors = args.Contains(VisitorsSwitch, StringComparer.OrdinalIgnoreCase),
+            FrameRateCap = int.TryParse(ValueOf(args, FrameRateCapSwitch), NumberStyles.None, CultureInfo.InvariantCulture, out int cap) ? cap : 0,
             SoakMinutes = double.TryParse(ValueOf(args, SoakSwitch), NumberStyles.Float, CultureInfo.InvariantCulture, out double soak) ? Math.Max(soak, 0) : 0,
         };
     }

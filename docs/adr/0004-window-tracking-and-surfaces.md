@@ -55,6 +55,19 @@ Ground is bound to monitor index. If the monitor list changes, ground starts emp
 - WARP tests render the debug layer and check every drawn pixel lies in a band of extracted surfaces and vice versa.
 - In the smoke test the app moves its own window and checks tracking adopts the new position exactly. The script checks the desktop screenshot: debug lines sit on the two rows above and two columns beside the app window. Window position is read via DWM independently of the tracker.
 
+## Amendment 2026-11: tracking during interactive moves
+
+Finding F-07: while the user drags or snaps a window, effects lagged behind or were left behind; scripted
+`SetWindowPos` moves were clean. Cause: window updates went through a 16 ms `SetTimer`, and `WM_TIMER` is only
+generated when the thread's queue is empty. A drag's flood of `EVENT_OBJECT_LOCATIONCHANGE` events kept it from firing
+(and the 10 Hz poll too), so the tracked rectangle fell behind.
+
+Decision: while a move/size loop is active (`EVENT_SYSTEM_MOVESIZESTART` … `END`), and for 0.6 s after any location,
+move/size or minimize event (snap, maximize and restore animate the frame afterwards), the render loop reads the
+windows itself every frame before simulating. The timer path stays for the idle case (debug layer without effects).
+Measured with a scripted mouse drag at about 1 900 px/s and a 60 fps cap: lag between the real and the tracked left
+edge mean 30 → 5 px, median 25 → 0 px, p95 83 → 28 px (one frame of motion).
+
 ## Amendment 2026-11: a dropped top edge is a roof
 
 A top edge without a slot (maximized window, window at the monitor top) still has no surface. Since finding F-05 the

@@ -115,6 +115,7 @@ public partial class App : Application
             Fog = new EffectSettings { Intensity = (_smokeTest?.Fog ?? false) ? 1f : 0f },
             Sun = new EffectSettings { Intensity = (_smokeTest?.Sun ?? false) ? 1f : 0f },
             Grass = new EffectSettings { Intensity = (_smokeTest?.Grass ?? false) ? 1f : 0f },
+            FrameRateCap = _smokeTest?.FrameRateCap ?? 0,
         };
 
         // One app per session: a second start hands its scene link (if any) to the first one and ends.
@@ -767,7 +768,7 @@ public partial class App : Application
             return results;
         }
 
-        results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds));
+        results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds, window.Options.FrameRateCap));
         results.Add(AnimationDiagnostics.EvaluateLoopAllocations(running));
 
         setEffect(0f);

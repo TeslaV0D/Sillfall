@@ -44,6 +44,25 @@ Effects write struct-of-arrays with fixed capacity so the frame loop allocates n
 
 PLAN.md had CI push previews to a dedicated branch. A session may write only to its assigned branch. A CI job with write access to other branches would bypass that. Instead all previews (render tests, FrameDump, desktop screenshots) go to CI artifact `previews`. The agent downloads it and inspects PNGs directly. Same purpose.
 
+## Amendment 2026-11: frame pacing with a high-resolution timer
+
+Desktop run 2026-11-14, finding F-06: the loop waited with `Thread.Sleep(1)`, which sleeps a whole system timer tick
+(15.6 ms unless another app raised the resolution). On a 180 Hz monitor "Smoothest" ran at 64 fps and the 60 fps cap
+at ~49 fps; with another app raising the resolution the same build ran at 182 fps.
+
+Decision:
+
+- `FramePacing` (Core, tested) schedules frame starts: with a cap, one period after the previous *scheduled* start
+  (up to 1 ms early, a new schedule after falling behind by more than a period), so jitter and the vsync wait do not
+  add up; without a cap only a 240 fps guard, the swap chain's frame-latency wait paces the loop.
+- `FrameWaiter` (Platform) waits with a `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` timer in
+  `MsgWaitForMultipleObjectsEx`, so a message ends the wait at once. No `timeBeginPeriod`: the system-wide timer
+  resolution stays as it is.
+- The cap stays in `RuntimePolicy`. The smoke test gets `--frame-rate-cap=<fps>` (run `frame-cap`): the Animation
+  check fails above cap + 10 %.
+
+Measured on the maintainer's PC (180 Hz): Smoothest 177 fps (was 64–65), cap 60 → 61 fps (was ~49), cap 30 → 31 fps.
+
 ## Consequences
 
 - Effects implement only `IEffectSystem` and output sprites. No render code required in effects.
