@@ -74,6 +74,9 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _dropVx = new float[MaxDrops];
     private readonly float[] _dropVy = new float[MaxDrops];
     private readonly float[] _dropZ = new float[MaxDrops];
+
+    /// <summary>Window a drop came from (sliding off, a corner stream, a released drip), or none (<see cref="WindowOcclusion"/>).</summary>
+    private readonly long[] _dropHome = new long[MaxDrops];
     private int _drops;
 
     // Splash droplets.
@@ -85,6 +88,9 @@ public sealed class RainEffect : IEffectSystem
 
     /// <summary>Row of the surface a splash came from. Falling back to it, the droplet is gone.</summary>
     private readonly float[] _splashFloor = new float[MaxSplashes];
+
+    /// <summary>Window whose top edge a splash jumped from, or none for the floor.</summary>
+    private readonly long[] _splashHome = new long[MaxSplashes];
     private int _splashes;
 
     // Ripples where drops hit.
@@ -92,6 +98,7 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _rippleY = new float[MaxRipples];
     private readonly float[] _rippleAge = new float[MaxRipples];
     private readonly float[] _rippleSize = new float[MaxRipples];
+    private readonly long[] _rippleHome = new long[MaxRipples];
     private int _ripples;
 
     // Drips running down window sides, each with a trail.
@@ -189,29 +196,15 @@ public sealed class RainEffect : IEffectSystem
         Vector3 rainColor = Settings.Color ?? s_rainColor;
         Vector3 waterColor = Settings.Color ?? s_waterColor;
 
+        ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         EmitPuddles(frame, context, waterColor, brightness);
-        EmitDrips(frame, waterColor, brightness);
-        EmitRipples(frame, waterColor, brightness);
-        EmitSplashes(frame, rainColor, brightness);
-        EmitDrops(frame, context, rainColor, brightness);
+        EmitDrips(frame, windows, waterColor, brightness);
+        EmitRipples(frame, windows, waterColor, brightness);
+        EmitSplashes(frame, windows, rainColor, brightness);
+        EmitDrops(frame, windows, rainColor, brightness);
     }
 
     private static float TerminalVelocity(float z) => 900f + (650f * z);
-
-    private static bool IsBehindAWindow(ReadOnlySpan<TrackedWindow> windows, float x, float y)
-    {
-        int px = (int)MathF.Floor(x);
-        int py = (int)MathF.Floor(y);
-        foreach (TrackedWindow window in windows)
-        {
-            if (window.Bounds.Contains(px, py))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private static float MaxBin(WaterField field)
     {
@@ -265,6 +258,7 @@ public sealed class RainEffect : IEffectSystem
             _dropY[i] = desktop.Top - (_random.NextFloat() * 60f * scale);
             _dropVy[i] = TerminalVelocity(z) * scale * _random.NextFloat(0.9f, 1f);
             _dropVx[i] = windX * (0.5f + (0.5f * z));
+            _dropHome[i] = WindowOcclusion.NoHome;
         }
 
         if (_drops == MaxDrops)
@@ -317,6 +311,7 @@ public sealed class RainEffect : IEffectSystem
 
     private void Hit(float x, int row, float z, in SurfaceSegment segment, SimulationContext context, float scale)
     {
+        long home = segment.Key.Edge == SurfaceEdge.Top ? segment.Key.OwnerId : WindowOcclusion.NoHome;
         int droplets = 3 + _random.NextInt(4);
         float speed = (120f + (180f * z)) * scale;
         for (int d = 0; d < droplets && _splashes < MaxSplashes; d++)
@@ -330,6 +325,7 @@ public sealed class RainEffect : IEffectSystem
             _splashVx[s] = MathF.Cos(angle) * v;
             _splashVy[s] = MathF.Sin(angle) * v;
             _splashLife[s] = _random.NextFloat(0.15f, 0.35f);
+            _splashHome[s] = home;
         }
 
         if (_ripples < MaxRipples)
@@ -339,6 +335,7 @@ public sealed class RainEffect : IEffectSystem
             _rippleY[r] = row - scale;
             _rippleAge[r] = 0f;
             _rippleSize[r] = (3f + (4f * z)) * scale;
+            _rippleHome[r] = home;
         }
 
         if (segment.Key.Edge == SurfaceEdge.Top)
@@ -387,6 +384,7 @@ public sealed class RainEffect : IEffectSystem
                 _splashVy[i] = _splashVy[last];
                 _splashLife[i] = _splashLife[last];
                 _splashFloor[i] = _splashFloor[last];
+                _splashHome[i] = _splashHome[last];
                 continue;
             }
 
@@ -408,6 +406,7 @@ public sealed class RainEffect : IEffectSystem
                 _rippleY[i] = _rippleY[last];
                 _rippleAge[i] = _rippleAge[last];
                 _rippleSize[i] = _rippleSize[last];
+                _rippleHome[i] = _rippleHome[last];
                 continue;
             }
 
@@ -457,8 +456,8 @@ public sealed class RainEffect : IEffectSystem
             if (intensity > 0.8f && field.Total > field.Count * 0.15f)
             {
                 float rate = (intensity - 0.8f) / 0.2f * 45f;
-                SpawnSheet(bounds.Left - 1, bounds.Top, rate * dt);
-                SpawnSheet(bounds.Right, bounds.Top, rate * dt);
+                SpawnSheet(entry.Key, bounds.Left - 1, -1, bounds.Top, rate * dt);
+                SpawnSheet(entry.Key, bounds.Right, 1, bounds.Top, rate * dt);
             }
         }
 
@@ -469,7 +468,12 @@ public sealed class RainEffect : IEffectSystem
     }
 
     /// <summary>A thin stream from a corner: small near drops that start slowly and accelerate.</summary>
-    private void SpawnSheet(float x, float y, float expected)
+    /// <param name="home">Window the stream pours from.</param>
+    /// <param name="column">Side column just outside the frame.</param>
+    /// <param name="outward">-1 for the left corner, +1 for the right one: the stream stays outside the window.</param>
+    /// <param name="y">Row the stream starts at.</param>
+    /// <param name="expected">Drops expected in this step.</param>
+    private void SpawnSheet(long home, int column, int outward, float y, float expected)
     {
         // Poisson-ish: whole drops plus a chance for the fraction.
         int count = (int)expected;
@@ -481,13 +485,15 @@ public sealed class RainEffect : IEffectSystem
         for (int n = 0; n < count && _drops < MaxDrops; n++)
         {
             int i = _drops++;
-            _dropX[i] = x + _random.NextFloat(-1.5f, 1.5f);
+            _dropX[i] = column + 0.5f + (outward * _random.NextFloat(0f, 1.5f));
             _dropY[i] = y + 1f;
             _dropVx[i] = 0f;
             _dropVy[i] = _random.NextFloat(20f, 80f) * _scale;
 
-            // Just below "near": falls past the window it pours from, still in front of everything else.
+            // Just below "near": falls past the window it pours from. Over other windows it is hidden (gutter streams end
+            // at the first window below, finding F-05).
             _dropZ[i] = 0.98f;
+            _dropHome[i] = home;
         }
     }
 
@@ -568,6 +574,7 @@ public sealed class RainEffect : IEffectSystem
             _dropVx[d] = 0f;
             _dropVy[d] = _dripVy[i];
             _dropZ[d] = 0.98f;
+            _dropHome[d] = _dripOwner[i];
         }
 
         int last = --_drips;
@@ -641,6 +648,7 @@ public sealed class RainEffect : IEffectSystem
             _dropVx[i] = _random.NextFloat(-30f, 30f) * _scale;
             _dropVy[i] = _random.NextFloat(0f, 120f) * _scale;
             _dropZ[i] = 0.98f;
+            _dropHome[i] = owner;
         }
 
         field.Drain();
@@ -654,6 +662,7 @@ public sealed class RainEffect : IEffectSystem
         _dropVx[i] = _dropVx[last];
         _dropVy[i] = _dropVy[last];
         _dropZ[i] = _dropZ[last];
+        _dropHome[i] = _dropHome[last];
     }
 
     private void EmitPuddles(RenderFrame frame, SimulationContext context, Vector3 color, float brightness)
@@ -699,10 +708,16 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
-    private void EmitDrips(RenderFrame frame, Vector3 color, float brightness)
+    private void EmitDrips(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
         for (int i = 0; i < _drips; i++)
         {
+            // A drip runs just outside its window's side: hidden where a window in front of it covers that column.
+            if (WindowOcclusion.HidesAttached(windows, _dripX[i], _dripY[i], _dripOwner[i]))
+            {
+                continue;
+            }
+
             int trail = i * TrailLength;
             int count = Math.Min(_trailCount[i], TrailLength);
             int newest = _trailCount[i] - 1;
@@ -720,7 +735,7 @@ public sealed class RainEffect : IEffectSystem
                 var point = new Vector2(_trailX[trail + slot], _trailY[trail + slot]);
                 Vector2 delta = previous - point;
                 float length = delta.Length();
-                if (length > 0.5f)
+                if (length > 0.5f && !WindowOcclusion.HidesAttached(windows, point.X, point.Y, _dripOwner[i]))
                 {
                     float alpha = 0.45f * (1f - (n / (float)TrailLength)) * brightness;
                     frame.Add(new Sprite(
@@ -738,10 +753,15 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
-    private void EmitRipples(RenderFrame frame, Vector3 color, float brightness)
+    private void EmitRipples(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
         for (int i = 0; i < _ripples; i++)
         {
+            if (WindowOcclusion.HidesAttached(windows, _rippleX[i], _rippleY[i], _rippleHome[i]))
+            {
+                continue;
+            }
+
             float t = _rippleAge[i] / 0.3f;
             float size = _rippleSize[i] * (0.4f + (0.6f * t));
             float alpha = MathF.Min(1f, 0.6f * (1f - t) * brightness);
@@ -749,26 +769,31 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
-    private void EmitSplashes(RenderFrame frame, Vector3 color, float brightness)
+    private void EmitSplashes(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
         for (int i = 0; i < _splashes; i++)
         {
+            // Splashes on the floor below a maximized window would jump into its content: hidden there.
+            if (WindowOcclusion.HidesAttached(windows, _splashX[i], _splashY[i], _splashHome[i]))
+            {
+                continue;
+            }
+
             float alpha = MathF.Min(1f, MathF.Min(1f, _splashLife[i] / 0.15f) * 0.7f * brightness);
             frame.Add(new Sprite(new Vector2(_splashX[i], _splashY[i]), new Vector2(1.1f, 1.1f) * _scale, 0f, SpriteShape.Disc, Sprite.Premultiply(color, alpha)));
         }
     }
 
-    private void EmitDrops(RenderFrame frame, SimulationContext context, Vector3 color, float brightness)
+    private void EmitDrops(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
-        float threshold = 1f - Math.Clamp(Depth, 0f, 1f);
-        ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         for (int i = 0; i < _drops; i++)
         {
             float z = _dropZ[i];
 
-            // Far drops fall behind the windows: hidden where a window covers them. This keeps the depth
-            // readable and leaves the user's content clear.
-            if (z < threshold && IsBehindAWindow(windows, _dropX[i], _dropY[i]))
+            // Far drops fall behind the windows. Near drops only hit top edges: over a window that is not their own they
+            // are hidden too, so no rain falls across a window's content (maximized, at the top of the screen, top edge
+            // covered; finding F-05). This keeps the depth readable and leaves the user's content clear.
+            if (WindowOcclusion.HidesFalling(windows, _dropX[i], _dropY[i], _dropHome[i]))
             {
                 continue;
             }

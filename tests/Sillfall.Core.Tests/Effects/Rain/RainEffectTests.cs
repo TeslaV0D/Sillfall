@@ -96,6 +96,99 @@ public class RainEffectTests
     }
 
     [Fact]
+    public void MaximizedWindow_GetsNoRainOverItsContent()
+    {
+        // F-05: a maximized window has no top edge to hit. Near drops must not fall across its content.
+        var maximized = new TrackedWindow(9, s_monitor.WorkArea, WindowTraits.Maximized);
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f, depth: 1f, windows: [maximized]);
+
+        for (int frame = 0; frame < 240; frame++)
+        {
+            engine.Advance(FrameTime);
+            RainSpritesInside(engine, maximized.Bounds).Should().BeEmpty($"frame {frame}: nothing is drawn over the maximized window");
+        }
+
+        rain.DropCount.Should().BePositive("it still rains, just not over the window");
+        rain.PuddleOf(maximized.Id).Should().BeNull("a maximized window has no top edge to hold water");
+    }
+
+    [Fact]
+    public void WindowAtTheTopOfTheScreen_GetsNoRainOverItsContent()
+    {
+        var atTop = new TrackedWindow(9, PixelRect.FromSize(300, 0, 900, 600));
+        (SimulationEngine engine, _) = Create(intensity: 1f, depth: 1f, windows: [atTop]);
+
+        for (int frame = 0; frame < 180; frame++)
+        {
+            engine.Advance(FrameTime);
+            RainSpritesInside(engine, atTop.Bounds).Should().BeEmpty($"frame {frame}");
+        }
+
+        // Beside the window it rains as before.
+        engine.Frame.Sprites.ToArray().Count(s => s.Shape == SpriteShape.Streak && Tip(s).X > 1300).Should().BePositive();
+    }
+
+    [Fact]
+    public void WindowWithCoveredTopEdge_GetsNoRainOverItsContent()
+    {
+        // F-05: Explorer at y = 0 covers the settings window's top edge; rain fell across the settings content.
+        var front = new TrackedWindow(1, PixelRect.FromSize(200, 0, 900, 500));
+        var behind = new TrackedWindow(2, PixelRect.FromSize(500, 200, 900, 700));
+        (SimulationEngine engine, _) = Create(intensity: 1f, depth: 1f, windows: [front, behind]);
+
+        for (int frame = 0; frame < 240; frame++)
+        {
+            engine.Advance(FrameTime);
+            RainSpritesInside(engine, front.Bounds).Should().BeEmpty($"frame {frame}: over the window in front");
+            RainSpritesInside(engine, behind.Bounds).Should().BeEmpty($"frame {frame}: over the window behind");
+        }
+    }
+
+    [Fact]
+    public void WindowInFrontOfAMaximizedOne_StillCatchesRain()
+    {
+        var maximized = new TrackedWindow(9, s_monitor.WorkArea, WindowTraits.Maximized);
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f, depth: 1f, windows: [s_window, maximized]);
+
+        for (int frame = 0; frame < 300; frame++)
+        {
+            engine.Advance(FrameTime);
+
+            // Falling drops over the maximized window are hidden; the only rain there is attached to the small
+            // window's top edge (splashes, ripples) or runs down its sides.
+            RainSpritesInside(engine, maximized.Bounds)
+                .Where(s => s.Shape == SpriteShape.Streak && !s_window.Bounds.Contains((int)Tip(s).X, (int)Tip(s).Y)
+                    && !NearTheSides(Tip(s)))
+                .Should().BeEmpty($"frame {frame}");
+        }
+
+        rain.PuddleOf(s_window.Id).Should().NotBeNull("drops still land on the window in front");
+        rain.PuddleOf(s_window.Id)!.Total.Should().BePositive();
+
+        static bool NearTheSides(Vector2 tip) => tip.Y <= 800 && (Math.Abs(tip.X - 399.5f) < 8 || Math.Abs(tip.X - 1400.5f) < 8);
+    }
+
+    [Fact]
+    public void GutterStreams_EndAtTheFirstWindowBelow()
+    {
+        // F-05: streams from a window's bottom corners ran as long lines across the windows below. Here the window
+        // below has no exposed top edge (it starts at the top of the screen), so nothing can stop the streams.
+        var upper = new TrackedWindow(1, PixelRect.FromSize(400, 100, 600, 200));
+        var lower = new TrackedWindow(2, PixelRect.FromSize(200, 0, 1200, 950));
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f, depth: 1f, windows: [upper, lower]);
+
+        Run(engine, seconds: 6);
+        rain.DripCount.Should().BePositive("the upper window drains down its sides");
+        int below = upper.Bounds.Bottom + 3;
+        for (int frame = 0; frame < 240; frame++)
+        {
+            engine.Advance(FrameTime);
+            RainSpritesInside(engine, PixelRect.FromSize(lower.Bounds.Left, below, lower.Bounds.Width, lower.Bounds.Bottom - below))
+                .Should().BeEmpty($"frame {frame}: nothing falls across the lower window");
+        }
+    }
+
+    [Fact]
     public void Splashes_NeverFallIntoTheWindow()
     {
         (SimulationEngine engine, _) = Create(intensity: 1f, depth: 1f);
@@ -305,15 +398,26 @@ public class RainEffectTests
         rain.PuddleOf(s_window.Id)!.BinWidth.Should().Be(2 * RainEffect.BinWidth);
     }
 
-    private static (SimulationEngine Engine, RainEffect Rain) Create(float intensity, float depth = 0.5f, MonitorInfo? monitor = null)
+    private static (SimulationEngine Engine, RainEffect Rain) Create(float intensity, float depth = 0.5f, MonitorInfo? monitor = null, TrackedWindow[]? windows = null)
     {
         var engine = new SimulationEngine(seed: 5);
         var rain = new RainEffect(seed: 5) { Settings = new EffectSettings { Intensity = intensity }, Depth = depth };
         engine.Add(rain);
         engine.SetMonitors([monitor ?? s_monitor]);
-        engine.SetWindows(WindowSnapshot.Of(0, s_window));
+        engine.SetWindows(WindowSnapshot.Of(0, windows ?? [s_window]));
         return (engine, rain);
     }
+
+    /// <summary>The tip of a streak (its leading end), or the centre of any other sprite.</summary>
+    private static Vector2 Tip(Sprite s) => s.Shape == SpriteShape.Streak
+        ? s.Center + (new Vector2(MathF.Cos(s.Rotation), MathF.Sin(s.Rotation)) * s.HalfSize.X)
+        : s.Center;
+
+    /// <summary>Falling drops (streaks) and splashes or ripples whose position lies inside <paramref name="bounds"/>.</summary>
+    private static Sprite[] RainSpritesInside(SimulationEngine engine, PixelRect bounds) =>
+        [.. engine.Frame.Sprites.ToArray().Where(s =>
+            s.Shape is SpriteShape.Streak or SpriteShape.Disc or SpriteShape.Ring
+            && bounds.Contains((int)MathF.Floor(Tip(s).X), (int)MathF.Floor(Tip(s).Y)))];
 
     private static void Run(SimulationEngine engine, double seconds)
     {

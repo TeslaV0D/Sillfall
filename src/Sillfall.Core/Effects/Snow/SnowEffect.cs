@@ -96,6 +96,9 @@ public sealed class SnowEffect : IEffectSystem
 
     /// <summary>Row a clump must pass before it can land: it never lands back on the window it fell from.</summary>
     private readonly float[] _clumpFloor = new float[MaxClumps];
+
+    /// <summary>Window a clump fell from: drawn over it, hidden over any other window (<see cref="WindowOcclusion"/>).</summary>
+    private readonly long[] _clumpHome = new long[MaxClumps];
     private int _clumps;
 
     public SnowEffect(ulong seed = 1)
@@ -209,27 +212,13 @@ public sealed class SnowEffect : IEffectSystem
         _scale = context.PixelScale;
         Vector3 color = Settings.Color ?? s_snowColor;
 
+        ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         EmitPiles(frame, context, color, brightness);
-        EmitClumps(frame, color, brightness);
-        EmitFlakes(frame, context, color, brightness);
+        EmitClumps(frame, windows, color, brightness);
+        EmitFlakes(frame, windows, color, brightness);
     }
 
     private static float FallSpeed(float z) => 38f + (70f * z);
-
-    private static bool IsBehindAWindow(ReadOnlySpan<TrackedWindow> windows, float x, float y)
-    {
-        int px = (int)MathF.Floor(x);
-        int py = (int)MathF.Floor(y);
-        foreach (TrackedWindow window in windows)
-        {
-            if (window.Bounds.Contains(px, py))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     /// <summary>A cheap, stable hash in [0, 1) for sparkles.</summary>
     private static float Hash(int a, int b, int c)
@@ -470,13 +459,13 @@ public sealed class SnowEffect : IEffectSystem
             while (field.LeftShed >= clump)
             {
                 field.LeftShed -= clump;
-                SpawnClump(bounds.Left - ClumpRadius(clump), bounds.Top - (2f * _scale), clump, new Vector2(-15f, 0f) * _scale, bounds.Top);
+                SpawnClump(bounds.Left - ClumpRadius(clump), bounds.Top - (2f * _scale), clump, new Vector2(-15f, 0f) * _scale, bounds.Top, key.OwnerId);
             }
 
             while (field.RightShed >= clump)
             {
                 field.RightShed -= clump;
-                SpawnClump(bounds.Right + ClumpRadius(clump), bounds.Top - (2f * _scale), clump, new Vector2(15f, 0f) * _scale, bounds.Top);
+                SpawnClump(bounds.Right + ClumpRadius(clump), bounds.Top - (2f * _scale), clump, new Vector2(15f, 0f) * _scale, bounds.Top, key.OwnerId);
             }
         }
 
@@ -582,7 +571,7 @@ public sealed class SnowEffect : IEffectSystem
                 v += new Vector2(_random.NextFloat(-90f, 90f), _random.NextFloat(-160f, -60f)) * _scale;
             }
 
-            if (!SpawnClump(x, y, volume, v, bounds.Top))
+            if (!SpawnClump(x, y, volume, v, bounds.Top, key.OwnerId))
             {
                 // No room in the air: the rest stays on the window.
                 field.Add(x - bounds.Left, volume);
@@ -593,7 +582,7 @@ public sealed class SnowEffect : IEffectSystem
         float rest = field.LeftShed + field.RightShed;
         field.LeftShed = 0f;
         field.RightShed = 0f;
-        if (rest > 0f && !SpawnClump(bounds.Left + (bounds.Width / 2f), bounds.Top - _scale, rest, velocity, bounds.Top))
+        if (rest > 0f && !SpawnClump(bounds.Left + (bounds.Width / 2f), bounds.Top - _scale, rest, velocity, bounds.Top, key.OwnerId))
         {
             field.RightShed = rest;
         }
@@ -601,7 +590,7 @@ public sealed class SnowEffect : IEffectSystem
 
     private float ClumpRadius(float volume) => MathF.Max(1.2f * _scale, MathF.Sqrt(volume / MathF.PI));
 
-    private bool SpawnClump(float x, float y, float volume, Vector2 velocity, float floor)
+    private bool SpawnClump(float x, float y, float volume, Vector2 velocity, float floor, long home)
     {
         if (volume <= 0f || _clumps >= MaxClumps)
         {
@@ -618,6 +607,7 @@ public sealed class SnowEffect : IEffectSystem
 
         // Below the edge it came from, plus its own size: it falls past its window first.
         _clumpFloor[i] = floor + 1f;
+        _clumpHome[i] = home;
         return true;
     }
 
@@ -644,6 +634,7 @@ public sealed class SnowEffect : IEffectSystem
         _clumpVolume[i] = _clumpVolume[last];
         _clumpRotation[i] = _clumpRotation[last];
         _clumpFloor[i] = _clumpFloor[last];
+        _clumpHome[i] = _clumpHome[last];
     }
 
     private void EmitPiles(RenderFrame frame, SimulationContext context, Vector3 color, float brightness)
@@ -718,11 +709,16 @@ public sealed class SnowEffect : IEffectSystem
         }
     }
 
-    private void EmitClumps(RenderFrame frame, Vector3 color, float brightness)
+    private void EmitClumps(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
         Vector4 snow = Sprite.Premultiply(color, MathF.Min(1f, 0.95f * brightness));
         for (int i = 0; i < _clumps; i++)
         {
+            if (WindowOcclusion.HidesFalling(windows, _clumpX[i], _clumpY[i], _clumpHome[i]))
+            {
+                continue;
+            }
+
             float radius = ClumpRadius(_clumpVolume[i]);
             var center = new Vector2(_clumpX[i], _clumpY[i]);
             frame.Add(new Sprite(center, new Vector2(radius, radius * 0.85f), _clumpRotation[i], SpriteShape.Disc, snow));
@@ -733,16 +729,15 @@ public sealed class SnowEffect : IEffectSystem
         }
     }
 
-    private void EmitFlakes(RenderFrame frame, SimulationContext context, Vector3 color, float brightness)
+    private void EmitFlakes(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
-        float threshold = 1f - NearShare;
-        ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         for (int i = 0; i < _flakes; i++)
         {
             float z = _flakeZ[i];
 
-            // Far flakes fall behind the windows.
-            if (z < threshold && IsBehindAWindow(windows, _flakeX[i], _flakeY[i]))
+            // Far flakes fall behind the windows; near ones only settle on top edges and never drift across a window's
+            // content either (finding F-05).
+            if (WindowOcclusion.HidesFalling(windows, _flakeX[i], _flakeY[i], WindowOcclusion.NoHome))
             {
                 continue;
             }

@@ -50,6 +50,12 @@ Threshold and radius are estimates. Sign-off must confirm.
 
 Shake throws all leaves on the window up and sideways. Close lets them fall. Like snow, they do not land again on the window they came from.
 
+## Amendment 2026-11: occlusion
+
+Falling leaves follow the occlusion rule of ADR-0006 (amendment 2026-11, finding F-05): near or far, they are not
+drawn over a window that is not the one they left. Lying leaves keep the rule of section 4 (hidden by windows in front
+of their surface).
+
 ## Consequences
 
 - Cursor is available to all effects (`SimulationContext.Cursor`, `CursorVelocity`). Grass (M8) can use it for pushing aside.

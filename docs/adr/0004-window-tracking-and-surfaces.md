@@ -55,6 +55,11 @@ Ground is bound to monitor index. If the monitor list changes, ground starts emp
 - WARP tests render the debug layer and check every drawn pixel lies in a band of extracted surfaces and vice versa.
 - In the smoke test the app moves its own window and checks tracking adopts the new position exactly. The script checks the desktop screenshot: debug lines sit on the two rows above and two columns beside the app window. Window position is read via DWM independently of the tracker.
 
+## Amendment 2026-11: a dropped top edge is a roof
+
+A top edge without a slot (maximized window, window at the monitor top) still has no surface. Since finding F-05 the
+window is not "open at the top" for near particles either: they are hidden over it (ADR-0006, amendment 2026-11).
+
 ## Consequences
 
 - A 10 Hz poll costs some CPU even when idle (one `EnumWindows` per 100 ms). Intentional (PLAN.md) and measured on reference hardware in M13.

@@ -193,6 +193,25 @@ public class LeafEffectTests
     }
 
     [Fact]
+    public void FallingLeaves_AreHiddenOverWindows()
+    {
+        // F-05: near leaves fell across the content of windows whose top edge they could not reach.
+        var maximized = new TrackedWindow(9, s_monitor.WorkArea, WindowTraits.Maximized);
+        (SimulationEngine engine, LeafEffect leaves) = Create(intensity: 1f);
+        engine.SetWindows(WindowSnapshot.Of(0.1, maximized));
+
+        for (int frame = 0; frame < 900; frame++)
+        {
+            engine.Advance(FrameTime);
+            engine.Frame.Sprites.ToArray()
+                .Where(s => s.Shape == SpriteShape.Leaf && maximized.Bounds.Contains((int)MathF.Floor(s.Center.X), (int)MathF.Floor(s.Center.Y)))
+                .Should().BeEmpty($"frame {frame}");
+        }
+
+        leaves.Count.Should().BePositive();
+    }
+
+    [Fact]
     public void CustomColor_ReplacesTheAutumnPalette()
     {
         (SimulationEngine engine, LeafEffect leaves) = Create(intensity: 1f);

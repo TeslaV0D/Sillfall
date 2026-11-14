@@ -85,6 +85,9 @@ public sealed class LeafEffect : IEffectSystem
     private readonly SurfaceEdge[] _edge = new SurfaceEdge[MaxLeaves];
     private readonly float[] _localX = new float[MaxLeaves];
     private readonly double[] _landed = new double[MaxLeaves];
+
+    /// <summary>Window a falling leaf left (shaken off, blown off, pushed off), or none (<see cref="WindowOcclusion"/>).</summary>
+    private readonly long[] _home = new long[MaxLeaves];
     private int _count;
 
     public LeafEffect(ulong seed = 1)
@@ -206,11 +209,12 @@ public sealed class LeafEffect : IEffectSystem
     {
         float brightness = Settings.ClampedBrightness;
         _scale = context.PixelScale;
-        float threshold = 1f - NearShare;
         ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         for (int i = 0; i < _count; i++)
         {
-            if (_resting[i] ? IsCovered(windows, i) : _z[i] < threshold && IsBehindAWindow(windows, windows.Length, _x[i], _y[i]))
+            // Falling leaves are hidden over every window but the one they left (finding F-05), lying ones by the windows
+            // in front of their surface.
+            if (_resting[i] ? IsCovered(windows, i) : WindowOcclusion.HidesFalling(windows, _x[i], _y[i], _home[i]))
             {
                 continue;
             }
@@ -300,6 +304,7 @@ public sealed class LeafEffect : IEffectSystem
         _color[i] = (byte)_random.NextInt(s_palette.Length);
         _floor[i] = float.MinValue;
         _resting[i] = false;
+        _home[i] = WindowOcclusion.NoHome;
     }
 
     private void Spawn(float dt, float intensity, SimulationContext context)
@@ -504,6 +509,7 @@ public sealed class LeafEffect : IEffectSystem
     /// <summary>Lets a lying leaf go with a push. It cannot land again before it passed <paramref name="floor"/>.</summary>
     private void Detach(int i, Vector2 push, float floor)
     {
+        _home[i] = _resting[i] && _edge[i] == SurfaceEdge.Top ? _owner[i] : WindowOcclusion.NoHome;
         _resting[i] = false;
         _vx[i] = push.X;
         _vy[i] = push.Y;
@@ -532,5 +538,6 @@ public sealed class LeafEffect : IEffectSystem
         _edge[i] = _edge[last];
         _localX[i] = _localX[last];
         _landed[i] = _landed[last];
+        _home[i] = _home[last];
     }
 }
