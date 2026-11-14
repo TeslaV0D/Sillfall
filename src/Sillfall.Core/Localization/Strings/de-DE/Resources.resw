@@ -155,6 +155,14 @@ Bildratengrenze: {1}. {2}</value></data>
   <data name="Rarity.Common" xml:space="preserve"><value>häufig</value></data>
   <data name="Rarity.Rare" xml:space="preserve"><value>selten</value></data>
   <data name="Rarity.Uncommon" xml:space="preserve"><value>gelegentlich</value></data>
+  <data name="Scene.Error.Damaged" xml:space="preserve"><value>Der Link ist beschädigt.</value></data>
+  <data name="Scene.Error.EmptyOrTooLarge" xml:space="preserve"><value>Die Datei ist leer oder zu groß für eine Szene.</value></data>
+  <data name="Scene.Error.Newer" xml:space="preserve"><value>Die Szene stammt aus einer neueren Version der App.</value></data>
+  <data name="Scene.Error.NotALink" xml:space="preserve"><value>Das ist kein Szenen-Link.</value></data>
+  <data name="Scene.Error.NotAScene" xml:space="preserve"><value>Das ist keine Szene.</value></data>
+  <data name="Scene.Error.TooMuchData" xml:space="preserve"><value>Der Link enthält zu viele Daten für eine Szene.</value></data>
+  <data name="Scene.Error.Unreadable" xml:space="preserve"><value>Die Szene lässt sich nicht lesen: {0}</value></data>
+  <data name="Scene.LinkFailed" xml:space="preserve"><value>Der Vorlagen-Link ließ sich nicht öffnen</value></data>
   <data name="Settings.WindowTitle" xml:space="preserve"><value>{0} – Einstellungen</value></data>
   <data name="Sound.Enable" xml:space="preserve"><value>Sound</value></data>
   <data name="Sound.Note" xml:space="preserve"><value>Regen- und Besucher-Sounds werden live erzeugt, ohne Aufnahmen.</value></data>

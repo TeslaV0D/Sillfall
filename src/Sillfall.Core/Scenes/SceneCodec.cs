@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Sillfall.Core.Localization;
 
 namespace Sillfall.Core.Scenes;
 
@@ -32,7 +33,7 @@ public static class SceneCodec
         scene = new Scene();
         if (string.IsNullOrWhiteSpace(json) || Encoding.UTF8.GetByteCount(json) > MaxSize)
         {
-            error = "The file is empty or too large for a scene.";
+            error = Texts.Get("Scene.Error.EmptyOrTooLarge");
             return false;
         }
 
@@ -41,13 +42,13 @@ public static class SceneCodec
             SceneFile? file = JsonSerializer.Deserialize(json, SceneJsonContext.Default.SceneFile);
             if (file?.Format != Format || file.Scene is null)
             {
-                error = "This is not a scene.";
+                error = Texts.Get("Scene.Error.NotAScene");
                 return false;
             }
 
             if (file.Version > SceneFile.CurrentVersion)
             {
-                error = "The scene was made by a newer version of the app.";
+                error = Texts.Get("Scene.Error.Newer");
                 return false;
             }
 
@@ -57,7 +58,7 @@ public static class SceneCodec
         }
         catch (JsonException exception)
         {
-            error = $"The scene cannot be read: {exception.Message}";
+            error = Texts.Format("Scene.Error.Unreadable", exception.Message);
             return false;
         }
     }
@@ -74,26 +75,25 @@ public static class SceneCodec
         return LinkPrefix + Base64Url(compressed.ToArray());
     }
 
+    /// <summary>
+    /// Reads a scene link. Accepts what Windows and browsers hand over, not only what <see cref="ToLink"/> writes
+    /// (finding F-04): <c>sillfall://scene/?d=…</c> (the shell adds a slash after the host), any letter case in scheme
+    /// and host, other query parameters before or after <c>d</c>, a fragment, and a percent-encoded value.
+    /// </summary>
     public static bool TryFromLink(string link, out Scene scene, out string? error)
     {
         scene = new Scene();
-        if (string.IsNullOrWhiteSpace(link) || !link.StartsWith(LinkPrefix, StringComparison.OrdinalIgnoreCase) || link.Length > MaxSize)
+        string? data = link is { Length: <= MaxSize } ? FindLinkData(link.Trim()) : null;
+        if (data is null)
         {
-            error = "This is not a scene link.";
+            error = Texts.Get("Scene.Error.NotALink");
             return false;
         }
 
-        string data = link[LinkPrefix.Length..];
-        int end = data.IndexOfAny(['&', '#']);
-        if (end >= 0)
-        {
-            data = data[..end];
-        }
-
         byte[]? compressed = FromBase64Url(data);
-        if (compressed is null)
+        if (compressed is null || compressed.Length == 0)
         {
-            error = "The link is damaged.";
+            error = Texts.Get("Scene.Error.Damaged");
             return false;
         }
 
@@ -108,18 +108,65 @@ public static class SceneCodec
                 output.Write(buffer, 0, read);
                 if (output.Length > MaxSize)
                 {
-                    error = "The link holds too much data for a scene.";
+                    error = Texts.Get("Scene.Error.TooMuchData");
                     return false;
                 }
+            }
+
+            if (output.Length == 0)
+            {
+                error = Texts.Get("Scene.Error.Damaged");
+                return false;
             }
 
             return TryFromJson(Encoding.UTF8.GetString(output.ToArray()), out scene, out error);
         }
         catch (InvalidDataException)
         {
-            error = "The link is damaged.";
+            error = Texts.Get("Scene.Error.Damaged");
             return false;
         }
+    }
+
+    /// <summary>The value of <c>d</c> in a <c>sillfall://scene</c> link, percent-decoded, or <see langword="null"/>.</summary>
+    private static string? FindLinkData(string link)
+    {
+        string scheme = AppInfo.UriScheme + "://";
+        if (!link.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        string rest = link[scheme.Length..];
+        int fragment = rest.IndexOf('#', StringComparison.Ordinal);
+        if (fragment >= 0)
+        {
+            rest = rest[..fragment];
+        }
+
+        int queryStart = rest.IndexOf('?', StringComparison.Ordinal);
+        if (queryStart < 0)
+        {
+            return null;
+        }
+
+        // Host and path: "scene" or "scene/", nothing else.
+        string authority = rest[..queryStart];
+        if (!authority.Equals("scene", StringComparison.OrdinalIgnoreCase) && !authority.Equals("scene/", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        foreach (string parameter in rest[(queryStart + 1)..].Split('&'))
+        {
+            if (parameter.StartsWith("d=", StringComparison.Ordinal))
+            {
+                string value = Uri.UnescapeDataString(parameter[2..]);
+                return value.Length > 0 ? value : null;
+            }
+        }
+
+        return null;
     }
 
     private static string Base64Url(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

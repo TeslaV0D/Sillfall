@@ -8,6 +8,7 @@ using Sillfall.Audio;
 using Sillfall.Core;
 using Sillfall.Core.Diagnostics;
 using Sillfall.Core.Effects;
+using Sillfall.Core.Localization;
 using Sillfall.Core.Overlay;
 using Sillfall.Core.Scenes;
 using Sillfall.Core.Settings;
@@ -350,11 +351,20 @@ public partial class App : Application
         _settingsWindow?.ShowPage(message.Length > 0 ? "templates" : "effects");
     }
 
-    /// <summary>Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized).</summary>
+    /// <summary>
+    /// Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized). A link that
+    /// cannot be read opens the Templates page with the reason instead of failing silently (finding F-04).
+    /// </summary>
     private void ApplySceneLink(string link)
     {
-        if (_controller is null || !SceneCodec.TryFromLink(link, out Scene scene, out _))
+        if (_controller is null)
         {
+            return;
+        }
+
+        if (!SceneCodec.TryFromLink(link, out Scene scene, out string? error))
+        {
+            _settingsWindow?.ShowTemplateError(Texts.Get("Scene.LinkFailed"), error ?? Texts.Get("Templates.BadLink"));
             return;
         }
 

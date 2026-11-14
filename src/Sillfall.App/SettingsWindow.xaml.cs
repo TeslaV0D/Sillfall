@@ -45,6 +45,7 @@ public sealed partial class SettingsWindow : Window
     private readonly AppController _controller;
     private readonly DispatcherQueueTimer _liveTimer;
     private string _page = "effects";
+    private (string Title, string Message)? _templateNotice;
     private bool _quitting;
     private TextBlock? _liveText;
     private TextBlock? _syncStatus;
@@ -113,6 +114,21 @@ public sealed partial class SettingsWindow : Window
         Activate();
     }
 
+    /// <summary>
+    /// Shows the Templates page with an error at the top (a scene link from outside could not be read, finding F-04).
+    /// The notice stays until it is closed or another page is opened.
+    /// </summary>
+    public void ShowTemplateError(string title, string message)
+    {
+        _templateNotice = (title, message);
+        if (_page == "templates")
+        {
+            BuildPage();
+        }
+
+        ShowPage("templates");
+    }
+
     /// <summary>Writes the current page as a PNG (smoke test). Returns the rendered size.</summary>
     public Task<(int Width, int Height)> SavePageAsync(string path) => Ui.SavePngAsync(RootGrid, path);
 
@@ -135,6 +151,11 @@ public sealed partial class SettingsWindow : Window
     {
         if (args.SelectedItem is NavigationViewItem item && item.Tag is string key)
         {
+            if (key != "templates")
+            {
+                _templateNotice = null;
+            }
+
             _page = key;
             BuildPage();
             PageScroller.ChangeView(null, 0, null, disableAnimation: true);
@@ -286,6 +307,14 @@ public sealed partial class SettingsWindow : Window
     {
         AppSettings settings = _controller.Settings;
         var status = new InfoBar { IsOpen = false, IsClosable = true };
+
+        if (_templateNotice is { } notice)
+        {
+            var bar = new InfoBar { IsOpen = true, IsClosable = true, Severity = InfoBarSeverity.Error, Title = notice.Title, Message = notice.Message };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(bar, notice.Title);
+            bar.Closed += (_, _) => _templateNotice = null;
+            Add(bar);
+        }
 
         Add(Ui.Heading(Texts.Get("Templates.Apply")));
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, ItemWidth = 200, ItemHeight = 44 };
