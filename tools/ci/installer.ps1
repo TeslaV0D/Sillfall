@@ -79,6 +79,11 @@ if (-not (Test-Path (Join-Path $publishDir $exeName))) {
     throw "$exeName is missing in $publishDir."
 }
 
+# The tray icon and the windows load this file at run time; without it the tray shows the generic Windows icon.
+if (-not (Test-Path (Join-Path $publishDir 'Assets' 'AppIcon.ico'))) {
+    throw "Assets\AppIcon.ico is missing in $publishDir."
+}
+
 $iscc = Get-InnoSetupCompiler
 if (-not $iscc) {
     if (-not $env:CI) {

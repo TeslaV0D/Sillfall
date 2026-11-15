@@ -68,6 +68,15 @@ RestartApplications=no
 Name: "english"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "privacy-en.txt"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"; InfoBeforeFile: "privacy-de.txt"
 
+#if Arch == "arm64"
+[Messages]
+; Started on an x64 or x86 PC, Setup would say "does not support the version of Windows". Say what to download instead.
+english.WindowsVersionNotSupported=This is the setup for ARM PCs (for example with a Snapdragon processor). For PCs with an Intel or AMD processor, download Sillfall-Setup-{#AppVersion}-x64.exe instead.
+german.WindowsVersionNotSupported=Das ist das Setup für ARM-PCs (zum Beispiel mit Snapdragon-Prozessor). Für PCs mit Intel- oder AMD-Prozessor bitte Sillfall-Setup-{#AppVersion}-x64.exe herunterladen.
+english.OnlyOnTheseArchitectures=This is the setup for ARM PCs (for example with a Snapdragon processor). For PCs with an Intel or AMD processor, download Sillfall-Setup-{#AppVersion}-x64.exe instead.%n%n%1
+german.OnlyOnTheseArchitectures=Das ist das Setup für ARM-PCs (zum Beispiel mit Snapdragon-Prozessor). Für PCs mit Intel- oder AMD-Prozessor bitte Sillfall-Setup-{#AppVersion}-x64.exe herunterladen.%n%n%1
+
+#endif
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 

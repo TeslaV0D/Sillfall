@@ -76,7 +76,7 @@ The policy is in English in `docs/privacy.md` and in German in `docs/privacy.de.
 English address (`AppInfo.PrivacyPolicyUrl`). The same address is in the store listing and the winget
 manifest. The repository is public, so the page is reachable without an account.
 
-winget: `winget/TeslaV0D.Sillfall/0.1.0/`. The installer hashes are 64 zeros on purpose. They are replaced
+winget: `winget/TeslaV0D.Sillfall/<version>/` (0.1.1 now). The installer hashes are 64 zeros on purpose. They are replaced
 once a signed release exists (`wingetcreate`), not before. The identifier `TeslaV0D.Sillfall` is fixed once
 winget accepts the manifest.
 
