@@ -62,8 +62,8 @@ public readonly record struct Sprite(Vector2 Center, Vector2 HalfSize, float Rot
     /// <summary>Which form a shape with variants takes (<see cref="SpriteShape.Flake"/>, <see cref="SpriteShape.Leaf"/>). Ignored by the others.</summary>
     public float Variant { get; init; }
 
-    // Pads the struct to 48 bytes, so instances are 16-byte aligned in the GPU buffer.
-    private readonly float _padding;
+    /// <summary>Second shape parameter, see the shape's docs. Ignored by shapes that do not use it.</summary>
+    public float Param { get; init; }
 
     /// <summary>Conservative bounding box: the circle around the rotated quad.</summary>
     public float BoundingRadius => HalfSize.Length();

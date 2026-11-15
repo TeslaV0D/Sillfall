@@ -8,6 +8,7 @@ struct PixelInput
     nointerpolation uint Shape : SHAPE;
     nointerpolation uint Variant : VARIANT;
     nointerpolation float Bend : BEND;
+    nointerpolation float Param : PARAM;
     float4 Color : COLOR0;
 };
 

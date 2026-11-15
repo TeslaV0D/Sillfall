@@ -9,7 +9,7 @@ struct Sprite
     uint Shape;
     float4 Color; // premultiplied
     float Variant;
-    float Padding;
+    float Param;
 };
 
 StructuredBuffer<Sprite> Sprites : register(t0);
@@ -30,6 +30,7 @@ struct VertexOutput
     nointerpolation uint Shape : SHAPE;
     nointerpolation uint Variant : VARIANT;
     nointerpolation float Bend : BEND;
+    nointerpolation float Param : PARAM;
     float4 Color : COLOR0;
 };
 
@@ -55,6 +56,7 @@ VertexOutput main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     output.Shape = sprite.Shape;
     output.Variant = (uint)max(sprite.Variant, 0.0);
     output.Bend = sprite.Variant;
+    output.Param = sprite.Param;
     output.Color = sprite.Color * Opacity;
     return output;
 }
