@@ -150,4 +150,24 @@ public class WaterFieldTests
         field.Total.Should().Be(0f);
         field.LeftRunoff.Should().Be(0f);
     }
+
+    [Fact]
+    public void Waves_DoNotChangeWaterVolume()
+    {
+        var field = new WaterField(200, 4);
+        field.Add(100, 0.8f);
+        float volume = field.Total;
+
+        for (int step = 0; step < 120; step++)
+        {
+            field.Step(1f / 120, creep: 0f, evaporation: 0f);
+            field.Total.Should().BeApproximately(volume, 1e-5f);
+        }
+
+        // The kick becomes a visible surface offset without changing stored volume.
+        Enumerable.Range(0, field.Count)
+            .Select(i => MathF.Abs(field.DisplayHeight(i) - field.Bins[i]))
+            .Max()
+            .Should().BeGreaterThan(1e-4f);
+    }
 }

@@ -987,8 +987,8 @@ public sealed class RainEffect : IEffectSystem
                     continue;
                 }
 
-                float leftWater = b > 0 ? 0.5f * (bins[b - 1] + water) : water;
-                float rightWater = b < bins.Length - 1 ? 0.5f * (water + bins[b + 1]) : water;
+                float leftWater = b > 0 ? 0.5f * (field.DisplayHeight(b - 1) + field.DisplayHeight(b)) : field.DisplayHeight(b);
+                float rightWater = b < bins.Length - 1 ? 0.5f * (field.DisplayHeight(b) + field.DisplayHeight(b + 1)) : field.DisplayHeight(b);
                 float hL = (1f + (2.5f * leftWater)) * _scale;
                 float hR = (1f + (2.5f * rightWater)) * _scale;
                 float height = MathF.Max(hL, hR) + _scale;

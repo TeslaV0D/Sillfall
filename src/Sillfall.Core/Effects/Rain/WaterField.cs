@@ -4,23 +4,38 @@ namespace Sillfall.Core.Effects.Rain;
 /// Water standing on one top edge, as a row of bins across the window width (PLAN.md, section 4.1).
 /// Stored relative to the window, so it moves with it. Hits add water, neighbouring bins even out
 /// (diffusion), and the water creeps towards both ends of the edge, where it runs off as drips.
-/// Volumes are in "bin units": 1 is a bin filled to its maximum film height.
+/// Volumes are in "bin units": 1 is a bin filled to its maximum film height. A separate wave field
+/// ripples the surface for display without changing stored volume.
 /// </summary>
 public sealed class WaterField
 {
     /// <summary>Most water a bin holds. More runs off immediately.</summary>
     public const float MaxPerBin = 1f;
 
+    /// <summary>Impulse added to wave velocity per unit of water dropped into a bin.</summary>
+    private const float WaveKick = 2.2f;
+
+    /// <summary>Wave speed squared for the discrete Laplace step, in bins²/s².</summary>
+    private const float WaveC2 = 40f;
+
+    /// <summary>Wave damping per second.</summary>
+    private const float WaveDamping = 3.5f;
+
     private float[] _water;
     private float[] _scratch;
+    private float[] _wave;
+    private float[] _waveVelocity;
 
     public WaterField(int width, int binWidth)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(binWidth);
         BinWidth = binWidth;
         Width = Math.Max(width, 1);
-        _water = new float[BinCount(Width, binWidth)];
-        _scratch = new float[_water.Length];
+        int count = BinCount(Width, binWidth);
+        _water = new float[count];
+        _scratch = new float[count];
+        _wave = new float[count];
+        _waveVelocity = new float[count];
     }
 
     /// <summary>Width of a bin in pixels.</summary>
@@ -32,6 +47,13 @@ public sealed class WaterField
     public int Count => _water.Length;
 
     public ReadOnlySpan<float> Bins => _water;
+
+    /// <summary>Standing water plus the visual wave offset (display only; <see cref="Total"/> ignores waves).</summary>
+    public float DisplayHeight(int bin)
+    {
+        bin = Math.Clamp(bin, 0, _water.Length - 1);
+        return MathF.Max(0f, _water[bin] + _wave[bin]);
+    }
 
     /// <summary>Water that reached the left end and waits to drip off, in bin units.</summary>
     public float LeftRunoff { get; set; }
@@ -90,12 +112,14 @@ public sealed class WaterField
         }
 
         _water[bin] = filled;
+        _waveVelocity[bin] -= amount * WaveKick;
     }
 
     /// <summary>
     /// One simulation step: diffusion between neighbours, a slow creep outwards (the left half to the left
     /// end, the right half to the right end), evaporation. Water leaving the ends becomes runoff.
-    /// Mass is conserved apart from the evaporated part.
+    /// Mass is conserved apart from the evaporated part. Surface waves are stepped separately and do not
+    /// change <see cref="Total"/>.
     /// </summary>
     /// <param name="dt">Step length in seconds.</param>
     /// <param name="diffusion">Diffusion rate per second, 0 to about 20.</param>
@@ -156,6 +180,22 @@ public sealed class WaterField
         {
             _water[i] *= keep;
         }
+
+        StepWaves(dt);
+    }
+
+    private void StepWaves(float dt)
+    {
+        int n = _wave.Length;
+        float damp = MathF.Max(0f, 1f - (WaveDamping * dt));
+        for (int i = 0; i < n; i++)
+        {
+            float left = i > 0 ? _wave[i - 1] : _wave[i];
+            float right = i < n - 1 ? _wave[i + 1] : _wave[i];
+            float lap = left + right - (2f * _wave[i]);
+            _waveVelocity[i] = (_waveVelocity[i] + (WaveC2 * lap * dt)) * damp;
+            _wave[i] += _waveVelocity[i] * dt;
+        }
     }
 
     /// <summary>
@@ -197,6 +237,8 @@ public sealed class WaterField
 
         _water = resized;
         _scratch = new float[count];
+        _wave = new float[count];
+        _waveVelocity = new float[count];
         Width = width;
     }
 
@@ -205,6 +247,8 @@ public sealed class WaterField
     {
         float total = Total + LeftRunoff + RightRunoff;
         Array.Clear(_water);
+        Array.Clear(_wave);
+        Array.Clear(_waveVelocity);
         LeftRunoff = 0f;
         RightRunoff = 0f;
         IsDry = true;
