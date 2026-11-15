@@ -46,6 +46,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Test-Selected([string] $Name) {
+    return $Only.Count -eq 0 -or $Only -contains $Name
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
 $project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
@@ -519,7 +524,7 @@ function Invoke-SandboxRun {
         Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" } |
         Select-Object -First 1
     if (-not $sandbox) {
-        throw 'Sillfall.Sandbox.exe was not found. Build the solution first.'
+        throw "Sillfall.Sandbox.exe ($Configuration) was not found. Run the script without -NoBuild, it builds the sandbox too."
     }
 
     $process = Start-Process -FilePath $sandbox.FullName -ArgumentList @('--exit-after=6', '--effect=snow', '--fill-snow') -PassThru
@@ -547,6 +552,15 @@ if (-not $NoBuild) {
     if ($LASTEXITCODE -ne 0) {
         throw "Building the unpackaged app failed with exit code $LASTEXITCODE."
     }
+
+    # The last run needs the sandbox in the same configuration (finding F-15: a local Debug build of the solution
+    # left no Release sandbox behind, and the script only built the app).
+    if (Test-Selected 'sandbox') {
+        dotnet build (Join-Path $repoRoot 'tools' 'Sillfall.Sandbox' 'Sillfall.Sandbox.csproj') -c $Configuration -p:Platform=$Platform
+        if ($LASTEXITCODE -ne 0) {
+            throw "Building the sandbox failed with exit code $LASTEXITCODE."
+        }
+    }
 }
 
 $rid = "win-$($Platform.ToLowerInvariant())"
@@ -555,10 +569,6 @@ $script:exe = Get-ChildItem (Join-Path $repoRoot 'src' 'Sillfall.App' 'bin') -Re
     Select-Object -First 1
 if (-not $script:exe) {
     throw "Sillfall.App.exe for $Configuration/$rid was not found."
-}
-
-function Test-Selected([string] $Name) {
-    return $Only.Count -eq 0 -or $Only -contains $Name
 }
 
 if (Test-Selected 'visible') { Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true } }

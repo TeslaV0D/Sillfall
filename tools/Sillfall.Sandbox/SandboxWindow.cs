@@ -127,9 +127,19 @@ internal sealed class SandboxWindow : IDisposable
 
             _scene.Clear();
             _desktop.Draw(_scene, _size);
+            _scene.BackdropSprites = _scene.SpriteCount;
             foreach (Sprite sprite in _engine.Frame.Sprites)
             {
                 _scene.Add(sprite);
+            }
+
+            // Fog and sunlight are layers, not sprites, and need the windows as occluders (finding F-14), like the
+            // overlay and FrameDump get them with the engine's frame.
+            _scene.Fog = _engine.Frame.Fog;
+            _scene.Sun = _engine.Frame.Sun;
+            foreach (PixelRect occluder in _engine.Frame.Occluders)
+            {
+                _scene.AddOccluder(occluder);
             }
 
             var frame = new OverlayFrame(

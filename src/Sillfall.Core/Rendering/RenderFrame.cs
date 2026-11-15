@@ -46,6 +46,12 @@ public sealed class RenderFrame
     /// <summary>Simulated time of this frame in seconds.</summary>
     public double Time { get; set; }
 
+    /// <summary>
+    /// The first this many sprites are a backdrop, drawn before fog and sunlight (the sandbox's fake desktop, finding
+    /// F-14). On the real desktop there is none: 0.
+    /// </summary>
+    public int BackdropSprites { get; set; }
+
     /// <summary>Fog behind all sprites. Default: none.</summary>
     public FogLayer Fog { get; set; }
 
@@ -77,6 +83,7 @@ public sealed class RenderFrame
         _cutoutCount = 0;
         _visitorCount = 0;
         Box = default;
+        BackdropSprites = 0;
         Surfaces = null;
         Fog = default;
         Sun = default;
