@@ -77,13 +77,20 @@ public sealed class OverlayPainter : IDisposable
 
         if (frame.Scene is { } scene)
         {
-            // Sun and fog lie behind everything else (PLAN.md, section 4.7).
+            // Sun and fog lie behind everything else (PLAN.md, section 4.7), except a backdrop (the sandbox's desktop).
+            ReadOnlySpan<Core.Rendering.Sprite> sprites = scene.Sprites;
+            int backdrop = Math.Clamp(scene.BackdropSprites, 0, sprites.Length);
+            if (backdrop > 0)
+            {
+                _sprites.Draw(target, size, MonitorArea(frame, size), sprites[..backdrop], 1f);
+            }
+
             if (scene.HasAtmosphere)
             {
                 _atmosphere.Draw(target, size, MonitorArea(frame, size), scene, frame.Opacity);
             }
 
-            _sprites.Draw(target, size, MonitorArea(frame, size), scene.Sprites, frame.Opacity);
+            _sprites.Draw(target, size, MonitorArea(frame, size), sprites[backdrop..], frame.Opacity);
 
             // Visitors walk on top of the weather (PLAN.md, section 4.7), drawn with Direct2D on the same target.
             if (scene.Visitors.Length > 0 || scene.Box.IsVisible)

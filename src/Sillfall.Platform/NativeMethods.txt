@@ -7,7 +7,9 @@ CheckMenuRadioItem
 CHILDID_SELF
 CloseHandle
 COPYDATASTRUCT
+CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 CreatePopupMenu
+CreateWaitableTimerEx
 CreateWindowEx
 DefWindowProc
 DestroyIcon
@@ -16,6 +18,7 @@ DestroyWindow
 DispatchMessage
 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 DwmGetWindowAttribute
+DwmSetWindowAttribute
 DWMWINDOWATTRIBUTE
 EnumDisplayMonitors
 EnumWindows
@@ -32,6 +35,7 @@ EVENT_SYSTEM_MINIMIZESTART
 EVENT_SYSTEM_MOVESIZEEND
 EVENT_SYSTEM_MOVESIZESTART
 FindWindow
+FindWindowEx
 GetClassName
 GetCurrentPackageFullName
 GetCurrentProcess
@@ -40,6 +44,7 @@ GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
 GetGuiResources
+GetLayeredWindowAttributes
 GetMessage
 GetModuleHandle
 GetMonitorInfo
@@ -64,7 +69,9 @@ LoadCursor
 LoadIcon
 LoadImage
 MA_NOACTIVATE
+MonitorFromWindow
 MONITORINFOEXW
+MsgWaitForMultipleObjectsEx
 OBJECT_IDENTIFIER
 OpenProcess
 PBT_APMPOWERSTATUSCHANGE
@@ -86,6 +93,7 @@ SetLayeredWindowAttributes
 SetMenuDefaultItem
 SetThreadDpiAwarenessContext
 SetTimer
+SetWaitableTimer
 SetWindowDisplayAffinity
 SetWindowPos
 SetWinEventHook

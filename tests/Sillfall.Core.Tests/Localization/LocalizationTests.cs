@@ -86,6 +86,16 @@ public partial class LocalizationTests
     }
 
     [Fact]
+    public void NoText_NamesTheOldFileExtension()
+    {
+        // F-11: the import button still said ".wscene" (an earlier product name). The extension comes from
+        // SceneCodec.FileExtension through a placeholder now.
+        s_english.Concat(s_german).Where(pair => pair.Value.Contains(".wscene", StringComparison.OrdinalIgnoreCase)).Should().BeEmpty();
+        s_english["Templates.Import"].Should().Contain("{0}");
+        s_german["Templates.Import"].Should().Contain("{0}");
+    }
+
+    [Fact]
     public void Get_UnknownKey_ShowsTheKey()
     {
         Texts.Get("No.Such.Key").Should().Be("No.Such.Key", "a missing text is visible instead of silently empty");

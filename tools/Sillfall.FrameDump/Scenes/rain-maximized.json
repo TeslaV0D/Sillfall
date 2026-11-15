@@ -1,0 +1,14 @@
+{
+  // Finding F-05: rain over a maximized window and a smaller window in front of it. The maximized window has no
+  // top edge to hit, so no rain falls across its content; the small window in front still collects water, and its
+  // corner streams end where they leave it (they never run across the maximized window below).
+  "name": "rain-maximized",
+  "seed": 15,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 200, "y": 140, "width": 240, "height": 120 },
+    { "id": 1, "x": 0, "y": 0, "width": 640, "height": 370, "maximized": true }
+  ],
+  "effects": { "rain": 1.0, "rainDepth": 0.7 },
+  "captures": [ 2.0, 5.0 ]
+}

@@ -47,9 +47,13 @@ public sealed partial class OverlayHost : IDisposable
     private const nuint TrackingTimerId = 2;
     private const nuint PollTimerId = 3;
     private const nuint StateTimerId = 4;
+    private const nuint ScreenUseConfirmTimerId = 5;
 
     /// <summary>How often the shell is asked about full-screen apps; it sends no message when that changes.</summary>
     private const uint StateIntervalMilliseconds = 2000;
+
+    /// <summary>A changed full-screen answer is confirmed this much later before the overlays go or come back.</summary>
+    private const uint ScreenUseConfirmMilliseconds = 400;
 
     // Session and power messages (wtsapi32, winuser), as numbers: CsWin32 offers them only as loose constants.
     private const uint WtsSessionChangeMessage = 0x02B1;
@@ -67,6 +71,12 @@ public sealed partial class OverlayHost : IDisposable
     /// <summary>Window events are coalesced: at most one snapshot per frame (60 Hz).</summary>
     private const uint TrackingDelayMilliseconds = 16;
 
+    /// <summary>
+    /// After a window moved, resized, minimized or was restored, the render loop reads the windows every frame for this
+    /// long: snap, maximize and restore animate the frame after the last event (finding F-07).
+    /// </summary>
+    private const double FollowWindowsSeconds = 0.6;
+
     /// <summary>Fallback for changes that raise no event (PLAN.md, section 3.2: 10 Hz).</summary>
     private const uint PollIntervalMilliseconds = 100;
 
@@ -81,11 +91,12 @@ public sealed partial class OverlayHost : IDisposable
 
     private const int DeviceRecoveryAttempts = 3;
 
-    /// <summary>Frames after the start of the loop that are not measured for allocations (JIT, buffer growth).</summary>
+    /// <summary>
+    /// Frames with content after the start of the loop that are not measured for allocations (JIT, buffer growth). Only
+    /// frames that draw something count: the first draw of the sprite batch is part of the warm-up, and grass shows its
+    /// first blades only after a while.
+    /// </summary>
     private const int AllocationWarmUpFrames = 60;
-
-    /// <summary>Upper frame rate. Normally the swap chain paces the loop; this only guards against a busy loop.</summary>
-    private const double MinimumFrameSeconds = 1.0 / 240;
 
     private const int StateCreated = 0;
     private const int StateStarted = 1;
@@ -112,6 +123,7 @@ public sealed partial class OverlayHost : IDisposable
     private readonly Lock _systemStateLock = new();
     private Core.Settings.SystemState _systemState = Core.Settings.SystemState.Default;
     private uint _foregroundProcessId;
+    private readonly Core.Settings.ScreenUseFilter _screenUse = new();
 
     /// <summary>Process id to "the app rules hide the weather over its windows", filled as processes appear.</summary>
     private readonly Dictionary<uint, bool> _weatherHiddenByProcess = [];
@@ -133,6 +145,12 @@ public sealed partial class OverlayHost : IDisposable
     private readonly Core.Visitors.VisitorScheduler _visitorScheduler = new((ulong)Environment.TickCount64 + 1);
     private readonly Core.Simulation.CursorMotion _cursor = new();
     private bool _trackingPending;
+
+    /// <summary>A window is in its move/size loop (dragged or resized by the user): tracked every frame until it ends.</summary>
+    private bool _moveSizeActive;
+
+    /// <summary>Stopwatch timestamp until which the render loop reads the windows every frame.</summary>
+    private long _followWindowsUntil;
     private float _rainHitsPerSecond;
 
     // Render loop state and statistics, only touched on the overlay thread.
@@ -143,6 +161,8 @@ public sealed partial class OverlayHost : IDisposable
     private long _measuredLoopFrames;
     private long _loopAllocatedBytes;
     private readonly FrameStatistics _frameStatistics = new();
+    private readonly FramePacing _pacing = new();
+    private FrameWaiter? _frameWaiter;
 
     /// <summary>Creates the host. It takes ownership of <paramref name="renderer"/> and disposes it on the overlay thread.</summary>
     public OverlayHost(IOverlayRenderer renderer, OverlayOptions options)
@@ -435,6 +455,7 @@ public sealed partial class OverlayHost : IDisposable
             _engine.ResumeAfterIdle();
             _lastFrameTimestamp = Stopwatch.GetTimestamp();
             _loopFramesSinceStart = 0;
+            _pacing.Reset();
         }
         else if (!shouldAnimate && _animating)
         {
@@ -451,16 +472,37 @@ public sealed partial class OverlayHost : IDisposable
     private void RenderAnimationFrame()
     {
         long start = Stopwatch.GetTimestamp();
-        double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
-        // Smoothness: a frame rate cap from the options. A little early is fine, vsync timing jitters.
-        double minimum = _options.FrameRateCap > 0 ? 0.92 / _options.FrameRateCap : MinimumFrameSeconds;
-        if (elapsed < minimum)
+        double now = start / (double)Stopwatch.Frequency;
+
+        // Smoothness: a frame rate cap from the options, on a fixed schedule (FramePacing). The wait ends early when a
+        // message arrives; the loop then handles it and comes back here.
+        double wait = _pacing.WaitBeforeNextFrame(now, _options.FrameRateCap);
+        if (wait > 0)
         {
-            Thread.Sleep(1);
+            _frameWaiter ??= new FrameWaiter();
+            _frameWaiter.Wait(wait);
             return;
         }
 
+        _pacing.FrameStarted(now, _options.FrameRateCap);
+        double elapsed = (start - _lastFrameTimestamp) / (double)Stopwatch.Frequency;
         _lastFrameTimestamp = start;
+
+        // While a window moves, the windows are read every frame instead of waiting for the coalescing timer, which a
+        // drag's flood of events starves (finding F-07). Snap and restore animations are followed to their end. This
+        // is window tracking, not simulation: a new window's surfaces (and their fields, F-02) are made here, before
+        // the allocation measurement of the frame starts.
+        if (_moveSizeActive || _trackingPending || start < _followWindowsUntil)
+        {
+            if (_trackingPending)
+            {
+                PInvoke.KillTimer((HWND)_controlWindow, TrackingTimerId);
+                _trackingPending = false;
+            }
+
+            UpdateWindows(force: false);
+        }
+
         bool measure = _loopFramesSinceStart >= AllocationWarmUpFrames;
         long allocatedBefore = measure ? GC.GetAllocatedBytesForCurrentThread() : 0;
 
@@ -484,7 +526,11 @@ public sealed partial class OverlayHost : IDisposable
             _measuredLoopFrames++;
         }
 
-        _loopFramesSinceStart++;
+        if (_engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere || _engine.Frame.Visitors.Length > 0)
+        {
+            _loopFramesSinceStart++;
+        }
+
         _animationFrames++;
         _frameStatistics.Add(elapsed, (simulated - start) / (double)Stopwatch.Frequency);
 
@@ -505,6 +551,8 @@ public sealed partial class OverlayHost : IDisposable
 
             _overlays.Clear();
             _renderer.Dispose();
+            _frameWaiter?.Dispose();
+            _frameWaiter = null;
 
             foreach (HWINEVENTHOOK hook in _hooks)
             {
@@ -607,6 +655,11 @@ public sealed partial class OverlayHost : IDisposable
                     return new LRESULT(0);
 
                 case PInvoke.WM_TIMER when isControlWindow && wParam.Value == StateTimerId:
+                    UpdateScreenUse();
+                    return new LRESULT(0);
+
+                case PInvoke.WM_TIMER when isControlWindow && wParam.Value == ScreenUseConfirmTimerId:
+                    PInvoke.KillTimer(window, ScreenUseConfirmTimerId);
                     UpdateScreenUse();
                     return new LRESULT(0);
 
@@ -744,12 +797,53 @@ public sealed partial class OverlayHost : IDisposable
         PublishSystemState(state, updated);
     }
 
-    /// <summary>The shell has no message for full-screen apps: it is asked every two seconds and on every focus change.</summary>
+    /// <summary>
+    /// The shell has no message for full-screen apps: it is asked every two seconds and on every focus change. A changed
+    /// answer is confirmed by a second look shortly after (<see cref="Core.Settings.ScreenUseFilter"/>), so one odd sample
+    /// never removes and rebuilds the overlays.
+    /// </summary>
     private void UpdateScreenUse()
     {
-        (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+        (bool fullScreen, bool presentation) = SampleScreenUse();
         Core.Settings.SystemState state = SystemState;
-        PublishSystemState(state, state with { FullScreen = fullScreen, Presentation = presentation });
+        PublishSystemState(state, state with
+        {
+            FullScreen = fullScreen,
+            Presentation = presentation,
+            TextInputPanelOpen = Shell.SystemInfo.IsTextInputPanelOpen(),
+        });
+    }
+
+    /// <summary>
+    /// The clipboard history and the emoji panel are shown by uncloaking a frame window around a <c>TextInputHost</c>
+    /// window, without taking the foreground (finding F-17): checked when such a window shows, hides, cloaks or uncloaks.
+    /// </summary>
+    private unsafe void OnCoreWindowEvent(HWND window)
+    {
+        const int Capacity = 64;
+        char* buffer = stackalloc char[Capacity];
+        int length = PInvoke.GetClassName(window, buffer, Capacity);
+        var className = new ReadOnlySpan<char>(buffer, Math.Max(length, 0));
+        if (!className.Equals(Shell.SystemInfo.FrameWindowClass, StringComparison.Ordinal)
+            && !className.Equals(Shell.SystemInfo.CoreWindowClass, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Core.Settings.SystemState state = SystemState;
+        PublishSystemState(state, state with { TextInputPanelOpen = Shell.SystemInfo.IsTextInputPanelOpen() });
+    }
+
+    private (bool FullScreen, bool Presentation) SampleScreenUse()
+    {
+        Core.Settings.ScreenUseSample sample = Shell.SystemInfo.ScreenUse();
+        (bool FullScreen, bool Presentation) published = _screenUse.Update(Core.Settings.ScreenUseRules.Evaluate(sample));
+        if (_screenUse.Pending && _controlWindow != 0)
+        {
+            PInvoke.SetTimer((HWND)_controlWindow, ScreenUseConfirmTimerId, ScreenUseConfirmMilliseconds, null);
+        }
+
+        return published;
     }
 
     private void UpdateSystemState(bool power, bool animations, HWND foreground)
@@ -776,7 +870,7 @@ public sealed partial class OverlayHost : IDisposable
             }
 
             // A game going full screen usually takes the focus first: no need to wait for the timer.
-            (bool fullScreen, bool presentation) = Shell.SystemInfo.ScreenUse();
+            (bool fullScreen, bool presentation) = SampleScreenUse();
             updated = updated with { FullScreen = fullScreen, Presentation = presentation };
         }
 
@@ -816,10 +910,24 @@ public sealed partial class OverlayHost : IDisposable
                     ScheduleWindowUpdate();
                     break;
 
+                // The user drags or resizes a window: its location events arrive in a flood that keeps the coalescing
+                // timer from firing (WM_TIMER only comes when the queue is empty), so the render loop reads the
+                // windows itself every frame until the move ends (finding F-07).
                 case PInvoke.EVENT_SYSTEM_MOVESIZESTART:
+                    _moveSizeActive = true;
+                    FollowWindows();
+                    ScheduleWindowUpdate();
+                    break;
+
                 case PInvoke.EVENT_SYSTEM_MOVESIZEEND:
+                    _moveSizeActive = false;
+                    FollowWindows();
+                    ScheduleWindowUpdate();
+                    break;
+
                 case PInvoke.EVENT_SYSTEM_MINIMIZESTART:
                 case PInvoke.EVENT_SYSTEM_MINIMIZEEND:
+                    FollowWindows();
                     ScheduleWindowUpdate();
                     break;
 
@@ -827,6 +935,16 @@ public sealed partial class OverlayHost : IDisposable
                 default:
                     if (objectId == (int)OBJECT_IDENTIFIER.OBJID_WINDOW && childId == (int)PInvoke.CHILDID_SELF)
                     {
+                        if (winEvent is PInvoke.EVENT_OBJECT_CLOAKED or PInvoke.EVENT_OBJECT_UNCLOAKED or PInvoke.EVENT_OBJECT_SHOW or PInvoke.EVENT_OBJECT_HIDE)
+                        {
+                            OnCoreWindowEvent(window);
+                        }
+
+                        if (winEvent == PInvoke.EVENT_OBJECT_LOCATIONCHANGE)
+                        {
+                            FollowWindows();
+                        }
+
                         ScheduleWindowUpdate();
                     }
 
@@ -841,6 +959,10 @@ public sealed partial class OverlayHost : IDisposable
             ErrorCaught?.Invoke(this, exception);
         }
     }
+
+    /// <summary>Lets the render loop read the windows every frame for a moment (snap and restore animations).</summary>
+    private void FollowWindows() =>
+        _followWindowsUntil = Stopwatch.GetTimestamp() + (long)(FollowWindowsSeconds * Stopwatch.Frequency);
 
     /// <summary>Coalesces bursts of window events (a drag raises hundreds) into one update per frame.</summary>
     private void ScheduleWindowUpdate()
@@ -968,8 +1090,6 @@ public sealed partial class OverlayHost : IDisposable
             _visitors.LeaveAll();
         }
 
-        SyncHitWindows();
-
         // App rules may have changed: processes are looked up again as they show up.
         _hiddenProcessNames = new HashSet<string>(_options.HideOverProcesses, StringComparer.OrdinalIgnoreCase);
         _weatherHiddenByProcess.Clear();
@@ -1003,6 +1123,10 @@ public sealed partial class OverlayHost : IDisposable
         }
 
         UpdatePolling();
+
+        // After the overlays changed: a pause removes them, and then no visitor hit window may stay behind to catch
+        // clicks over an invisible visitor (finding F-19).
+        SyncHitWindows();
         if (_overlays.Count == 0)
         {
             UpdateAnimation();

@@ -13,6 +13,11 @@ namespace Sillfall.App;
 /// over the desktop and changing its size, while memory, handles and GDI/USER objects are sampled every 30 seconds.
 /// <see cref="SoakAnalysis"/> judges the growth after warm-up. Started with <c>--soak=&lt;minutes&gt;</c> together with
 /// <c>--smoke-test=&lt;report&gt;</c>; the samples go to <c>soak.csv</c> next to the report.
+/// <para>
+/// With <c>--soak-hidden</c> the app window is hidden and stays still: the budget scenario of PLAN.md, section 9
+/// (weather on, settings closed, only the tray icon), so the CPU and memory figures are the overlay's, not WinUI's
+/// (finding F-03).
+/// </para>
 /// </summary>
 internal static class SoakRun
 {
@@ -36,17 +41,26 @@ internal static class SoakRun
             TimeSpan nextSample = TimeSpan.Zero;
             int step = 0;
             RectInt32 area = DisplayArea.Primary.WorkArea;
+            if (smokeTest.SoakHidden)
+            {
+                window.AppWindow.Hide();
+            }
+
             while (clock.Elapsed.TotalMinutes < minutes)
             {
                 // The window wanders and changes its size: snow slides, puddles move, grass and visitors follow.
                 step++;
                 int width = 600 + ((step * 97) % 400);
                 int height = 400 + ((step * 61) % 250);
-                window.AppWindow.MoveAndResize(new RectInt32(
-                    area.X + ((step * 173) % Math.Max(area.Width - width, 1)),
-                    area.Y + 60 + ((step * 89) % Math.Max(area.Height - height - 60, 1)),
-                    width,
-                    height));
+                if (!smokeTest.SoakHidden)
+                {
+                    window.AppWindow.MoveAndResize(new RectInt32(
+                        area.X + ((step * 173) % Math.Max(area.Width - width, 1)),
+                        area.Y + 60 + ((step * 89) % Math.Max(area.Height - height - 60, 1)),
+                        width,
+                        height));
+                }
+
                 if (step % 6 == 0)
                 {
                     window.InviteVisitor();
@@ -77,7 +91,7 @@ internal static class SoakRun
             double cpu = (Process.GetCurrentProcess().TotalProcessorTime - cpuAtStart).TotalSeconds / clock.Elapsed.TotalSeconds * 100;
             string budget = string.Create(
                 CultureInfo.InvariantCulture,
-                $"Soak: {clock.Elapsed.TotalMinutes:0} min, {samples.Count} samples, CPU {cpu:0.0} % of a core, frame {status?.FrameMilliseconds ?? 0:0.0} ms, simulation {status?.SimulationMilliseconds ?? 0:0.00} ms, {status?.Sprites ?? 0} sprites");
+                $"Soak{(smokeTest.SoakHidden ? " (window hidden)" : string.Empty)}: {clock.Elapsed.TotalMinutes:0} min, {samples.Count} samples, CPU {cpu:0.0} % of a core, frame {status?.FrameMilliseconds ?? 0:0.0} ms, simulation {status?.SimulationMilliseconds ?? 0:0.00} ms, {status?.Sprites ?? 0} sprites, private memory {samples[0].PrivateMegabytes:0} -> {samples[^1].PrivateMegabytes:0} MB");
             int exitCode = smokeTest.WriteReport(diagnostics, [budget]);
             window.Close();
             Environment.Exit(exitCode);

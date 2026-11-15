@@ -11,6 +11,10 @@ namespace Sillfall.Core.Settings;
 /// <param name="FullScreen">Another app runs full screen (a game, a video, Direct3D exclusive mode).</param>
 /// <param name="Presentation">Windows' presentation mode is on.</param>
 /// <param name="RemoteSession">The desktop is shown through Remote Desktop.</param>
+/// <param name="TextInputPanelOpen">
+/// The clipboard history (Win+V) or the emoji panel (Win+.) is open. They belong to <c>TextInputHost.exe</c> and do not
+/// take the foreground, so the foreground process cannot show them (finding F-17).
+/// </param>
 public readonly record struct SystemState(
     bool OnBattery,
     bool AnimationsEnabled,
@@ -19,7 +23,8 @@ public readonly record struct SystemState(
     bool Locked = false,
     bool FullScreen = false,
     bool Presentation = false,
-    bool RemoteSession = false)
+    bool RemoteSession = false,
+    bool TextInputPanelOpen = false)
 {
     /// <summary>
     /// Processes of the Windows shell that open over everything: Start, search, notifications, quick settings. The
@@ -28,8 +33,9 @@ public readonly record struct SystemState(
     public static IReadOnlyList<string> ShellProcesses { get; } =
         ["StartMenuExperienceHost.exe", "SearchHost.exe", "SearchApp.exe", "ShellExperienceHost.exe", "ShellHost.exe"];
 
-    /// <summary>Whether Start, search or a shell panel is in front.</summary>
-    public bool ShellOpen => ForegroundProcess is { Length: > 0 } process && ShellProcesses.Contains(process, StringComparer.OrdinalIgnoreCase);
+    /// <summary>Whether Start, search, a shell panel, the clipboard history or the emoji panel is open.</summary>
+    public bool ShellOpen => TextInputPanelOpen
+        || (ForegroundProcess is { Length: > 0 } process && ShellProcesses.Contains(process, StringComparer.OrdinalIgnoreCase));
 
     public static SystemState Default => new(OnBattery: false, AnimationsEnabled: true, ForegroundProcess: null);
 }

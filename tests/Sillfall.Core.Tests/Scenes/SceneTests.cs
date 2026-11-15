@@ -39,12 +39,76 @@ public class SceneTests
     }
 
     [Theory]
+    [InlineData("sillfall://scene?d={0}")]
+    [InlineData("sillfall://scene/?d={0}")]
+    [InlineData("SILLFALL://SCENE/?d={0}")]
+    [InlineData("Sillfall://Scene?d={0}")]
+    [InlineData("sillfall://scene/?d={0}&")]
+    [InlineData("sillfall://scene/?d={0}&utm=x")]
+    [InlineData("sillfall://scene/?from=share&d={0}")]
+    [InlineData("sillfall://scene/?d={0}#top")]
+    [InlineData("  sillfall://scene/?d={0}  ")]
+    public void Link_ReadsWhatTheShellAndBrowsersHandOver(string form)
+    {
+        // F-04: Windows hands the protocol handler "sillfall://scene/?d=…", with a slash after the host.
+        string data = SceneCodec.ToLink(s_scene)[SceneCodec.LinkPrefix.Length..];
+        string link = string.Format(System.Globalization.CultureInfo.InvariantCulture, form, data);
+
+        SceneCodec.TryFromLink(link, out Scene scene, out string? error).Should().BeTrue(error);
+        scene.Should().BeEquivalentTo(s_scene.Sanitized());
+    }
+
+    [Fact]
+    public void Link_PercentEncodedData_IsRead()
+    {
+        string data = SceneCodec.ToLink(s_scene)[SceneCodec.LinkPrefix.Length..];
+        string encoded = string.Concat(data.Select(c => c is '-' or '_' ? $"%{(int)c:X2}" : c.ToString()));
+
+        encoded.Should().Contain("%", "the test needs at least one encoded character");
+        SceneCodec.TryFromLink("sillfall://scene/?d=" + encoded, out Scene scene, out string? error).Should().BeTrue(error);
+        scene.Should().BeEquivalentTo(s_scene.Sanitized());
+    }
+
+    [Fact]
+    public void ToLink_WritesTheCanonicalForm()
+    {
+        SceneCodec.ToLink(s_scene).Should().StartWith("sillfall://scene?d=");
+        SceneCodec.LinkPrefix.Should().Be("sillfall://scene?d=");
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("https://example.com/scene?d=abc")]
     [InlineData("sillfall://scene?d=!!!")]
     [InlineData("sillfall://scene?d=AAAA")]
-    public void Link_RejectsAnythingElse(string link)
+    [InlineData("sillfall://other?d=AAAA")]
+    [InlineData("sillfall://other/?d={0}")]
+    [InlineData("sillfall://scene/extra?d={0}")]
+    [InlineData("sillfall://scenery?d={0}")]
+    [InlineData("sillfall:scene?d={0}")]
+    [InlineData("sillfall://scene/?e={0}")]
+    [InlineData("sillfall://scene/?d=")]
+    [InlineData("sillfall://scene/")]
+    public void Link_RejectsAnythingElse(string form)
     {
+        string link = string.Format(System.Globalization.CultureInfo.InvariantCulture, form, SceneCodec.ToLink(s_scene)[SceneCodec.LinkPrefix.Length..]);
+
+        SceneCodec.TryFromLink(link, out _, out string? error).Should().BeFalse();
+        error.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Link_WithEmptyData_SaysTheLinkIsDamaged()
+    {
+        SceneCodec.TryFromLink("sillfall://scene/?d=AAAA", out _, out string? error).Should().BeFalse();
+        error.Should().Contain("damaged");
+    }
+
+    [Fact]
+    public void Link_Oversized_IsRejected()
+    {
+        string link = "sillfall://scene/?d=" + new string('A', SceneCodec.MaxSize);
+
         SceneCodec.TryFromLink(link, out _, out string? error).Should().BeFalse();
         error.Should().NotBeNullOrEmpty();
     }

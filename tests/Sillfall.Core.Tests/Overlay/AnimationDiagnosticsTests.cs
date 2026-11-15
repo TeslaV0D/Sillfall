@@ -28,6 +28,25 @@ public class AnimationDiagnosticsTests
         AnimationDiagnostics.EvaluateAnimation(before, after, 2.0).Passed.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(120, 60, true)]   // 60 fps at a 60 fps cap
+    [InlineData(130, 60, true)]   // 65 fps: within 10 %
+    [InlineData(140, 60, false)]  // 70 fps: above the cap
+    [InlineData(360, 0, true)]    // 180 fps without a cap
+    public void EvaluateAnimation_WithACap_FailsAboveIt(long frames, int cap, bool expected)
+    {
+        OverlayStatus before = Status() with { IsAnimating = true };
+        OverlayStatus after = Status() with { IsAnimating = true, AnimationFrames = frames, Sprites = 10 };
+
+        DiagnosticResult result = AnimationDiagnostics.EvaluateAnimation(before, after, 2.0, cap);
+
+        result.Passed.Should().Be(expected);
+        if (cap > 0)
+        {
+            result.Detail.Should().Contain($"(cap {cap})");
+        }
+    }
+
     [Fact]
     public void EvaluateAnimation_FogOrSunWithoutSprites_CountsAsContent()
     {

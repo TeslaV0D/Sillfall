@@ -70,6 +70,40 @@ Since M1 (ADR-0003): device rebuilds on `DEVICE_REMOVED/RESET`, up to three time
 - **CI:** Dedicated job runs 5 minutes on every push. Catches only fast leaks. Longer runs via workflow dispatch (~5.5 h max).
 - **8 hours:** Full run on a real PC: `pwsh tools/ci/soak-test.ps1 -Minutes 480`.
 
+## Amendment 2026-11: full-screen detection does not trust `QUNS_BUSY` alone
+
+Desktop run 2026-11-14 (findings F-01, F-18): while Sillfall's own topmost, full-monitor overlay exists, the shell
+reports `QUNS_BUSY` whatever is in front (measured: busy exactly while the overlay existed, `QUNS_ACCEPTS_NOTIFICATIONS`
+without Sillfall). The own-process guard only helped with Sillfall's window in front. With any other app or the
+desktop in front, the pause removed the overlay, the shell state cleared, the overlay came back: a 2 s blink loop.
+
+Decision:
+
+- `ScreenUseRules.Evaluate` (Core, unit-tested) decides from a `ScreenUseSample`: the shell state, the foreground
+  window's visible frame, its monitor's bounds, and whether it is this process, the desktop/taskbar (`Progman`,
+  `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`), maximized, captioned. Only class names and rectangles are read.
+- `QUNS_BUSY` counts as full screen only if the foreground window covers its whole monitor, is not the desktop, not
+  this app, and is not a maximized window with a title bar (auto-hide taskbar). `QUNS_RUNNING_D3D_FULL_SCREEN` and
+  `QUNS_PRESENTATION_MODE` are trusted as reported, except with this app in front.
+- `ScreenUseFilter` adds hysteresis: a changed answer is published only after two samples in a row agree. The second
+  sample is taken 400 ms after the first (a one-shot timer), so a real full-screen app still pauses within about half
+  a second of taking the focus.
+- Smoke run `foreground`: a helper process's window in front, the full-monitor overlay must stay for 6 s.
+
+## Amendment 2026-11: clipboard history and emoji panel
+
+Finding F-17: Win+V and Win+. open panels of `TextInputHost.exe`, which do not take the foreground, so the foreground
+process check never saw them. `SystemState.TextInputPanelOpen` is set while an uncloaked
+`ApplicationFrameWindow` holds a `Windows.UI.Core.CoreWindow` of `TextInputHost.exe` (the frame stays visible but cloaked
+while the panel is closed; measured with both panels); `ShellOpen` includes it, so
+"Hide the weather while Start, search or notifications are open" covers both panels. Checked when such a window shows,
+hides, cloaks or uncloaks (WinEvents already hooked) and with the 2 s screen check. Only class and process names are
+read.
+
+Finding F-19: a pause removed the overlays but left a visitor's hit window catching clicks. The hit windows are now
+synced after the overlays changed, so a pause hides them (a held visitor is let go). Smoke check "Click-through while
+paused".
+
 ## Consequences
 
 - Windows behavior here cannot be replayed in CI: lock, standby, exclusive fullscreen games, RDP, Start menu. Checklist M13.

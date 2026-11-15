@@ -170,15 +170,66 @@ public class SnowEffectTests
     }
 
     [Fact]
-    public void FarFlakes_AreHiddenBehindWindows()
+    public void Flakes_AreHiddenOverWindows()
     {
         (SimulationEngine engine, _) = Create(intensity: 1f);
         Run(engine, seconds: 10);
 
         Sprite[] flakes = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Flake && s.HalfSize.X > 1.5f)];
         Sprite[] small = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Flake && s.HalfSize.X < 0.85f)];
-        flakes.Should().Contain(s => s_window.Bounds.Contains((int)s.Center.X, (int)s.Center.Y), "near flakes fall in front of windows");
-        small.Should().NotContain(s => s_window.Bounds.Contains((int)s.Center.X, (int)s.Center.Y), "far flakes fall behind them");
+        flakes.Should().NotBeEmpty("near flakes still fall over the desktop");
+        flakes.Should().NotContain(s => s_window.Bounds.Contains((int)s.Center.X, (int)s.Center.Y), "near flakes settle on top edges and never drift across a window's content (F-05)");
+        small.Should().NotContain(s => s_window.Bounds.Contains((int)s.Center.X, (int)s.Center.Y), "far flakes fall behind the windows");
+    }
+
+    [Fact]
+    public void MaximizedWindow_GetsNoSnowOverItsContent()
+    {
+        // F-05: flakes fell across the content of windows at the top of the screen.
+        var maximized = new TrackedWindow(9, s_monitor.WorkArea, WindowTraits.Maximized);
+        (SimulationEngine engine, SnowEffect snow) = Create(intensity: 1f);
+        engine.SetWindows(WindowSnapshot.Of(0.1, maximized));
+
+        for (int frame = 0; frame < 300; frame++)
+        {
+            engine.Advance(FrameTime);
+            engine.Frame.Sprites.ToArray()
+                .Where(s => s.Shape is SpriteShape.Flake or SpriteShape.Disc && maximized.Bounds.Contains((int)MathF.Floor(s.Center.X), (int)MathF.Floor(s.Center.Y)))
+                .Should().BeEmpty($"frame {frame}");
+        }
+
+        snow.FlakeCount.Should().BePositive();
+    }
+
+    [Fact]
+    public void ShakenOffSnow_IsVisibleOverItsOwnWindowOnly()
+    {
+        var front = new TrackedWindow(1, PixelRect.FromSize(600, 300, 500, 300));
+        var behind = new TrackedWindow(2, PixelRect.FromSize(200, 0, 1400, 1000));
+        (SimulationEngine engine, SnowEffect snow) = Create(intensity: 0f);
+        engine.SetWindows(WindowSnapshot.Of(0.1, front, behind));
+        snow.Fill(engine.Context, 20f);
+        engine.Advance(FrameTime);
+
+        int[] offsets = [80, -80, 80, -80];
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            engine.SetWindows(WindowSnapshot.Of(0.2 + (0.05 * (i + 1)), front with { Bounds = PixelRect.FromSize(600 + offsets[i], 300, 500, 300) }, behind));
+        }
+
+        snow.ClumpCount.Should().BePositive("shaking throws the snow off");
+        for (int frame = 0; frame < 120; frame++)
+        {
+            engine.Advance(FrameTime);
+            // A clump is drawn as two discs around its centre: a margin of its size around the window it fell from, and
+            // inside the edges of the window behind (a clump leaving it at the bottom may still show its upper half).
+            PixelRect current = engine.Context.Windows[0].Bounds;
+            var home = new PixelRect(current.Left - 12, current.Top - 12, current.Right + 12, current.Bottom + 12);
+            var content = new PixelRect(behind.Bounds.Left + 12, behind.Bounds.Top + 12, behind.Bounds.Right - 12, behind.Bounds.Bottom - 12);
+            engine.Frame.Sprites.ToArray()
+                .Where(s => s.Shape == SpriteShape.Disc && content.Contains((int)s.Center.X, (int)s.Center.Y) && !home.Contains((int)s.Center.X, (int)s.Center.Y))
+                .Should().BeEmpty($"frame {frame}: clumps are hidden over the window behind");
+        }
     }
 
     [Fact]
@@ -328,6 +379,29 @@ public class SnowEffectTests
                 Frame();
             }
         }).Should().Be(0);
+    }
+
+    [Fact]
+    public void FrameLoop_WindowAppearingMidRun_GetsItsFirstSnowWithoutAllocating()
+    {
+        // F-02: the pile of a new edge was made when the first flake landed on it, inside the frame loop (4048 B in the
+        // smoke test). It is made when the surfaces change now, outside Simulate and Emit.
+        (SimulationEngine engine, SnowEffect snow) = Create(intensity: 1f);
+        Run(engine, seconds: 10);
+
+        var newcomer = new TrackedWindow(11, PixelRect.FromSize(1500, 500, 380, 300));
+        engine.SetWindows(WindowSnapshot.Of(10.1, s_window, newcomer));
+        snow.PileOf(newcomer.Id).Should().NotBeNull("the pile exists before anything lands on it");
+        snow.PileOf(newcomer.Id)!.IsBare.Should().BeTrue();
+
+        Allocations.Measure(() =>
+        {
+            for (int i = 0; i < 600; i++)
+            {
+                engine.Advance(FrameTime);
+            }
+        }).Should().Be(0);
+        snow.PileOf(newcomer.Id)!.IsBare.Should().BeFalse("snow landed on the new window during the measured frames");
     }
 
     [Fact]

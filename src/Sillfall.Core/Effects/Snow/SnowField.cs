@@ -97,6 +97,11 @@ public sealed class SnowField
     /// </summary>
     public void Add(float localX, float volume)
     {
+        if (volume > 0f)
+        {
+            IsBare = false;
+        }
+
         if (volume <= 0f)
         {
             return;
@@ -217,8 +222,15 @@ public sealed class SnowField
         Array.Clear(_height);
         LeftShed = 0f;
         RightShed = 0f;
+        IsBare = true;
         return volume;
     }
+
+    /// <summary>
+    /// No snow was added since the field was made or emptied. A bare field needs no simulation: fields exist for every
+    /// surface (finding F-02), most of them stay bare.
+    /// </summary>
+    public bool IsBare { get; private set; } = true;
 
     /// <summary>
     /// Covers the field with a layer of <paramref name="height"/> pixels that already rests at the angle of repose
@@ -227,6 +239,7 @@ public sealed class SnowField
     public void Fill(float height)
     {
         height = Math.Clamp(height, 0f, MaxHeight);
+        IsBare &= height <= 0f;
         for (int i = 0; i < _height.Length; i++)
         {
             int fromEnd = Math.Min(i, _height.Length - 1 - i) + 1;

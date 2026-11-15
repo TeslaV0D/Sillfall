@@ -15,21 +15,28 @@ public static class AnimationDiagnostics
     /// <summary>Fewer measured frames than this are not enough to call the loop allocation-free.</summary>
     public const long MinimumMeasuredFrames = 30;
 
-    /// <summary>Whether the loop rendered steadily between two measurements <paramref name="seconds"/> apart.</summary>
-    public static DiagnosticResult EvaluateAnimation(OverlayStatus before, OverlayStatus after, double seconds)
+    /// <summary>A capped loop may run this much faster than its cap before the check fails (finding F-06).</summary>
+    public const double CapTolerance = 1.1;
+
+    /// <summary>
+    /// Whether the loop rendered steadily between two measurements <paramref name="seconds"/> apart, and not faster than
+    /// <paramref name="frameRateCap"/> allows (0: no cap).
+    /// </summary>
+    public static DiagnosticResult EvaluateAnimation(OverlayStatus before, OverlayStatus after, double seconds, int frameRateCap = 0)
     {
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(seconds);
 
         double fps = (after.AnimationFrames - before.AnimationFrames) / seconds;
-        bool passed = after.IsAnimating && fps >= MinimumFramesPerSecond && (after.Sprites > 0 || after.HasAtmosphere);
+        bool withinCap = frameRateCap <= 0 || fps <= frameRateCap * CapTolerance;
+        bool passed = after.IsAnimating && fps >= MinimumFramesPerSecond && withinCap && (after.Sprites > 0 || after.HasAtmosphere);
         return new DiagnosticResult(
             "Animation",
             passed,
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"{fps:0} fps, {after.FrameMilliseconds:0.0} ms per frame, simulation {after.SimulationMilliseconds:0.00} ms, {after.Sprites} sprite(s){(after.HasAtmosphere ? ", fog/sun layer" : string.Empty)}"));
+                $"{fps:0} fps{(frameRateCap > 0 ? $" (cap {frameRateCap})" : string.Empty)}, {after.FrameMilliseconds:0.0} ms per frame, simulation {after.SimulationMilliseconds:0.00} ms, {after.Sprites} sprite(s){(after.HasAtmosphere ? ", fog/sun layer" : string.Empty)}"));
     }
 
     /// <summary>Whether the render loop allocated nothing after its warm-up (PLAN.md, section 9: 0 B in the frame loop).</summary>

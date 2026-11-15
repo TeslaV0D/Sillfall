@@ -8,6 +8,7 @@ using Sillfall.Audio;
 using Sillfall.Core;
 using Sillfall.Core.Diagnostics;
 using Sillfall.Core.Effects;
+using Sillfall.Core.Localization;
 using Sillfall.Core.Overlay;
 using Sillfall.Core.Scenes;
 using Sillfall.Core.Settings;
@@ -114,6 +115,7 @@ public partial class App : Application
             Fog = new EffectSettings { Intensity = (_smokeTest?.Fog ?? false) ? 1f : 0f },
             Sun = new EffectSettings { Intensity = (_smokeTest?.Sun ?? false) ? 1f : 0f },
             Grass = new EffectSettings { Intensity = (_smokeTest?.Grass ?? false) ? 1f : 0f },
+            FrameRateCap = _smokeTest?.FrameRateCap ?? 0,
         };
 
         // One app per session: a second start hands its scene link (if any) to the first one and ends.
@@ -350,11 +352,20 @@ public partial class App : Application
         _settingsWindow?.ShowPage(message.Length > 0 ? "templates" : "effects");
     }
 
-    /// <summary>Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized).</summary>
+    /// <summary>
+    /// Applies a shared scene and keeps it as a template (the link's contents are untrusted and sanitized). A link that
+    /// cannot be read opens the Templates page with the reason instead of failing silently (finding F-04).
+    /// </summary>
     private void ApplySceneLink(string link)
     {
-        if (_controller is null || !SceneCodec.TryFromLink(link, out Scene scene, out _))
+        if (_controller is null)
         {
+            return;
+        }
+
+        if (!SceneCodec.TryFromLink(link, out Scene scene, out string? error))
+        {
+            _settingsWindow?.ShowTemplateError(Texts.Get("Scene.LinkFailed"), error ?? Texts.Get("Templates.BadLink"));
             return;
         }
 
@@ -703,6 +714,19 @@ public partial class App : Application
             Core.Geometry.PixelRect box = status.VisitorBox;
             results.Add(new DiagnosticResult("Visitor hit window", true, string.Create(CultureInfo.InvariantCulture, $"{status.VisitorHitWindows.Count} over a visitor at {bounds.Left}, {bounds.Top}; box at {box.Left}, {box.Top}")));
 
+            // A pause removes the overlays; no hit window may stay to catch clicks over the invisible visitor (F-19).
+            window.ApplyOptions(before with { VisitorsInteractive = true, Enabled = false });
+            await Task.Delay(400);
+            OverlayStatus? paused = window.Refresh();
+            results.Add(new DiagnosticResult(
+                "Click-through while paused",
+                paused is { Overlays.Count: 0, VisitorHitWindows.Count: 0 },
+                string.Create(CultureInfo.InvariantCulture, $"{paused?.Overlays.Count ?? -1} overlay(s), {paused?.VisitorHitWindows.Count ?? -1} hit window(s) during the pause")));
+            window.ApplyOptions(before with { VisitorsInteractive = true });
+            await Task.Delay(TimeSpan.FromSeconds(1.2));
+            status = window.Refresh() ?? status;
+            bounds = status.Visitors.Count > 0 ? status.Visitors[0].Bounds : bounds;
+
             // Grab it in the middle and carry it to the box in small steps, as a hand would.
             int fromX = bounds.Left + (bounds.Width / 2);
             int fromY = bounds.Top + (bounds.Height / 2);
@@ -757,7 +781,7 @@ public partial class App : Application
             return results;
         }
 
-        results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds));
+        results.Add(AnimationDiagnostics.EvaluateAnimation(start, running, s_animationObservation.TotalSeconds, window.Options.FrameRateCap));
         results.Add(AnimationDiagnostics.EvaluateLoopAllocations(running));
 
         setEffect(0f);

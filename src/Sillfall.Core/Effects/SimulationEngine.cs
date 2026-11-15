@@ -184,6 +184,10 @@ public sealed class SimulationEngine
         _extractor.Extract(Context.Windows, Context.Monitors, Context.Surfaces);
         Context.SurfaceIndex.Build(Context.Surfaces);
         _surfacesDirty = false;
+        foreach (IEffectSystem effect in _effects)
+        {
+            effect.OnSurfacesChanged(Context);
+        }
     }
 
     private static float PrimaryScale(IReadOnlyList<MonitorInfo> monitors)

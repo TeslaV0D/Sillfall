@@ -76,8 +76,11 @@ public sealed class CityIndex
     }
 
     /// <summary>
-    /// Cities matching <paramref name="query"/>, best first: the whole name, then the start of a name, then the start of a
-    /// word in a name; bigger cities first among equals. "Name, CC" limits the search to a country (ISO code).
+    /// Cities matching <paramref name="query"/>, best first: the city's own name exactly, an alternate name exactly ("Wien"),
+    /// the start of its own name, the start of an alternate name, the start of a word; bigger cities first among equals.
+    /// When a name matched exactly or at its start, the weaker matches are left out: districts carry the city's name at the
+    /// start of their alternate names ("Berlin-Neukölln") and crowded out "Berlin (DE)" (finding F-20). Accents and case do
+    /// not matter. "Name, CC" limits the search to a country (ISO code).
     /// </summary>
     public IReadOnlyList<City> Search(string query, int limit = 10)
     {
@@ -108,7 +111,10 @@ public sealed class CityIndex
             }
 
             string keys = _keys[i];
-            int score = keys.Contains(whole, StringComparison.Ordinal) ? 3
+            string own = Normalize(_cities[i].Name);
+            int score = own == key ? 5
+                : keys.Contains(whole, StringComparison.Ordinal) ? 4
+                : own.StartsWith(key, StringComparison.Ordinal) ? 3
                 : keys.Contains(start, StringComparison.Ordinal) ? 2
                 : keys.Contains(word, StringComparison.Ordinal) || keys.Contains($"-{key}", StringComparison.Ordinal) ? 1
                 : 0;
@@ -118,8 +124,20 @@ public sealed class CityIndex
             }
         }
 
-        // The list is sorted by population, so the index breaks ties in favour of bigger cities.
-        return [.. matches.OrderByDescending(match => match.Score).ThenBy(match => match.Index).Take(limit).Select(match => _cities[match.Index])];
+        // A city's own name matched: places that only carry the query inside a name (a city's districts, "Berlin-Marzahn")
+        // would just crowd the short list.
+        if (matches.Exists(match => match.Score >= 3))
+        {
+            matches.RemoveAll(match => match.Score <= 2);
+        }
+
+        // Bigger cities first among equals; the list order breaks the remaining ties.
+        return [.. matches
+            .OrderByDescending(match => match.Score)
+            .ThenByDescending(match => _cities[match.Index].Population)
+            .ThenBy(match => match.Index)
+            .Take(limit)
+            .Select(match => _cities[match.Index])];
     }
 
     /// <summary>

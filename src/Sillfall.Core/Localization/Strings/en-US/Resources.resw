@@ -155,6 +155,14 @@ Frame rate limit: {1}. {2}</value></data>
   <data name="Rarity.Common" xml:space="preserve"><value>common</value></data>
   <data name="Rarity.Rare" xml:space="preserve"><value>rare</value></data>
   <data name="Rarity.Uncommon" xml:space="preserve"><value>uncommon</value></data>
+  <data name="Scene.Error.Damaged" xml:space="preserve"><value>The link is damaged.</value></data>
+  <data name="Scene.Error.EmptyOrTooLarge" xml:space="preserve"><value>The file is empty or too large for a scene.</value></data>
+  <data name="Scene.Error.Newer" xml:space="preserve"><value>The scene was made by a newer version of the app.</value></data>
+  <data name="Scene.Error.NotALink" xml:space="preserve"><value>This is not a scene link.</value></data>
+  <data name="Scene.Error.NotAScene" xml:space="preserve"><value>This is not a scene.</value></data>
+  <data name="Scene.Error.TooMuchData" xml:space="preserve"><value>The link holds too much data for a scene.</value></data>
+  <data name="Scene.Error.Unreadable" xml:space="preserve"><value>The scene cannot be read: {0}</value></data>
+  <data name="Scene.LinkFailed" xml:space="preserve"><value>The template link could not be opened</value></data>
   <data name="Settings.WindowTitle" xml:space="preserve"><value>{0} settings</value></data>
   <data name="Sound.Enable" xml:space="preserve"><value>Sound</value></data>
   <data name="Sound.Note" xml:space="preserve"><value>The rain sound and the visitors' sounds are made on the fly, without recordings.</value></data>
@@ -199,7 +207,7 @@ Frame rate limit: {1}. {2}</value></data>
   <data name="Templates.Emoji" xml:space="preserve"><value>Emoji</value></data>
   <data name="Templates.Export" xml:space="preserve"><value>Export…</value></data>
   <data name="Templates.FileType" xml:space="preserve"><value>{0} scene</value></data>
-  <data name="Templates.Import" xml:space="preserve"><value>Import a .wscene file…</value></data>
+  <data name="Templates.Import" xml:space="preserve"><value>Import a {0} file…</value></data>
   <data name="Templates.Link" xml:space="preserve"><value>Link</value></data>
   <data name="Templates.LinkCopied" xml:space="preserve"><value>Link copied. Anyone with the app can open it.</value></data>
   <data name="Templates.Name" xml:space="preserve"><value>Name</value></data>

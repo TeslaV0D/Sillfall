@@ -18,7 +18,13 @@ param(
     [ValidateSet('x64', 'ARM64')]
     [string] $Platform = 'x64',
     [string] $Configuration = 'Release',
-    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-soak')
+    [string] $ReportDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-soak'),
+
+    # Budget scenario (PLAN.md, section 9): app window hidden and still, so the figures are the overlay's.
+    [switch] $HiddenWindow,
+
+    # Frame rate cap like Smoothness (60 = Auto on mains). 0: the display's rate.
+    [int] $FrameRateCap = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,7 +50,11 @@ Remove-Item $report -ErrorAction SilentlyContinue
 
 $minutesText = $Minutes.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 Write-Host "=== Soak run, $minutesText minute(s) ==="
-$process = Start-Process -FilePath $exe.FullName -ArgumentList @("--smoke-test=$report", "--soak=$minutesText", '--no-test-pattern') -PassThru
+$arguments = @("--smoke-test=$report", "--soak=$minutesText", '--no-test-pattern', "--frame-rate-cap=$FrameRateCap")
+if ($HiddenWindow) {
+    $arguments += '--soak-hidden'
+}
+$process = Start-Process -FilePath $exe.FullName -ArgumentList $arguments -PassThru
 $null = $process.Handle
 
 # The app ends itself after the given time; a few minutes more for start-up and the last sample.

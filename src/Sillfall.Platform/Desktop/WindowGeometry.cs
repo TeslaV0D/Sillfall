@@ -28,6 +28,16 @@ public static class WindowGeometry
             : default;
     }
 
+    /// <summary>
+    /// Hides or shows a window of this process through DWM without hiding it for the app: a cloaked window keeps
+    /// rendering, so it can be shown only once its first frame is ready (finding F-10).
+    /// </summary>
+    public static unsafe void SetCloaked(nint window, bool cloaked)
+    {
+        BOOL value = cloaked;
+        PInvoke.DwmSetWindowAttribute((HWND)window, DWMWINDOWATTRIBUTE.DWMWA_CLOAK, &value, (uint)sizeof(BOOL));
+    }
+
     /// <summary>Windows on another virtual desktop and suspended store apps are visible but cloaked.</summary>
     internal static unsafe bool IsCloaked(HWND window)
     {

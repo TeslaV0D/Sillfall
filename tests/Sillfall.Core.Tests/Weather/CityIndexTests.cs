@@ -36,6 +36,16 @@ public class CityIndexTests
     }
 
     [Fact]
+    public void Search_ExactName_ComesFirstWithoutTheDistricts()
+    {
+        // F-20: "Berlin" showed Marzahn, Friedrichshain, … and Berlin (DE) last.
+        IReadOnlyList<City> cities = Bundled.Search("Berlin", limit: 8);
+
+        cities[0].DisplayName.Should().Be("Berlin (DE)");
+        cities.Select(city => city.Name).Should().NotContain(["Marzahn", "Friedrichshain", "Kreuzberg", "Neukölln", "Charlottenburg"]);
+    }
+
+    [Fact]
     public void Search_StartOfAName_ListsBigCitiesFirst()
     {
         IReadOnlyList<City> cities = Bundled.Search("Frankf", limit: 5);

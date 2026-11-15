@@ -35,10 +35,22 @@ param(
 
     [string] $PreviewDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) 'sillfall-smoke'),
 
-    [int] $TimeoutSeconds = 150
+    [int] $TimeoutSeconds = 150,
+
+    # Runs only these (visible, excluded-from-capture, surfaces, drops, rain, snow, leaves, fog, sun, grass, visitors,
+    # foreground, frame-cap, settings, sandbox). Empty: all of them.
+    [string[]] $Only = @(),
+
+    # Skips the build and uses the existing unpackaged output (for repeated local runs).
+    [switch] $NoBuild
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Test-Selected([string] $Name) {
+    return $Only.Count -eq 0 -or $Only -contains $Name
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
 $project = Join-Path $repoRoot 'src' 'Sillfall.App' 'Sillfall.App.csproj'
 
@@ -47,6 +59,34 @@ Add-Type -Namespace Sillfall.Ci -Name Native -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
 [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr window, int attribute, int[] rect, int size);
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
+[DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, int[] rect);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr window, System.Text.StringBuilder name, int capacity);
+public delegate bool EnumWindowsProc(IntPtr window, IntPtr parameter);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+
+// Visible Sillfall overlay windows of a process: "<width>x<height>" each. Class names only, no titles.
+public static System.Collections.Generic.List<string> Overlays(uint processId)
+{
+    var found = new System.Collections.Generic.List<string>();
+    EnumWindows((window, parameter) =>
+    {
+        uint owner;
+        GetWindowThreadProcessId(window, out owner);
+        var name = new System.Text.StringBuilder(256);
+        GetClassName(window, name, 256);
+        if (owner == processId && IsWindowVisible(window) && name.ToString().StartsWith("Sillfall.Overlay.", StringComparison.Ordinal))
+        {
+            var rect = new int[4];
+            GetWindowRect(window, rect);
+            found.Add((rect[2] - rect[0]) + "x" + (rect[3] - rect[1]));
+        }
+        return true;
+    }, IntPtr.Zero);
+    return found;
+}
 '@
 
 # Visible frame of a window in physical pixels (DWMWA_EXTENDED_FRAME_BOUNDS = 9): left, top, right, bottom.
@@ -325,6 +365,128 @@ function Invoke-WeatherRun {
     Write-Host "Smoke run '$name' passed."
 }
 
+# Another app's ordinary window in front must not pause the weather (finding F-01): the shell reports "busy" while
+# Sillfall's own full-monitor overlay exists, and the overlay used to be removed and rebuilt every 2 s. A helper
+# process shows a normal window and takes the focus; the full-monitor overlay must stay on screen the whole time.
+function Invoke-ForegroundRun {
+    $name = 'foreground'
+    $report = Join-Path $ReportDirectory "smoke-report-$name.txt"
+    Remove-Item $report -ErrorAction SilentlyContinue
+    Write-Host "=== Smoke run '$name' ==="
+    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", '--smoke-hold=12000', '--rain', '--no-test-pattern') -PassThru
+    $null = $process.Handle
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while (-not (Test-Path $report) -and -not $process.HasExited -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+    }
+
+    $failures = @()
+    if ((Test-Path $report) -and -not $process.HasExited) {
+        $helperScript = @'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -Namespace Helper -Name Focus -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra); [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);'
+$form = [System.Windows.Forms.Form]::new()
+$form.Text = 'Sillfall smoke helper'
+$form.StartPosition = 'Manual'
+$form.SetBounds(200, 300, 700, 450)
+$timer = [System.Windows.Forms.Timer]::new()
+$timer.Interval = 9000
+$timer.Add_Tick({ $form.Close() })
+$timer.Start()
+$form.Add_Shown({ [Helper.Focus]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [Helper.Focus]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero); [void][Helper.Focus]::SetForegroundWindow($form.Handle); $form.Activate() })
+[System.Windows.Forms.Application]::Run($form)
+'@
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($helperScript))
+        $helper = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile', '-EncodedCommand', $encoded) -PassThru
+        Start-Sleep -Milliseconds 2000
+
+        $width = [Sillfall.Ci.Native]::GetSystemMetrics(0)
+        $height = [Sillfall.Ci.Native]::GetSystemMetrics(1)
+        $samples = 30
+        $present = 0
+        $helperInFront = 0
+        for ($i = 0; $i -lt $samples; $i++) {
+            if ([Sillfall.Ci.Native]::Overlays([uint32]$process.Id) -contains "${width}x${height}") {
+                $present++
+            }
+            [uint32]$owner = 0
+            [void][Sillfall.Ci.Native]::GetWindowThreadProcessId([Sillfall.Ci.Native]::GetForegroundWindow(), [ref]$owner)
+            if ($owner -eq $helper.Id) {
+                $helperInFront++
+            }
+            Start-Sleep -Milliseconds 200
+        }
+
+        if (-not $helper.HasExited) {
+            $helper.Kill()
+        }
+
+        $verdict = if ($present -eq $samples) { 'ok' } else { 'FAILED' }
+        Write-Host "  probe $verdict`: full-monitor overlay present in $present of $samples samples (6 s), helper window in front in $helperInFront"
+        if ($present -ne $samples) {
+            $failures += "overlay present in $present of $samples samples while another app's window was in front"
+        }
+        if ($helperInFront -eq 0) {
+            Write-Host '  note: the helper window never got the focus; the check only shows that the overlay stayed.'
+        }
+    }
+
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill()
+        throw "Smoke run '$name' did not finish within $TimeoutSeconds s."
+    }
+
+    if (Test-Path $report) {
+        Write-Host '--- report ---'
+        Get-Content $report | Write-Host
+        Write-Host '--------------'
+    }
+    else {
+        throw "Smoke run '$name' wrote no report (exit code $($process.ExitCode))."
+    }
+
+    if ($process.ExitCode -ne 0) {
+        throw "Smoke run '$name' failed with exit code $($process.ExitCode)."
+    }
+
+    if ($failures.Count -gt 0) {
+        throw "Smoke run '$name': $($failures -join '; ')."
+    }
+
+    Write-Host "Smoke run '$name' passed."
+}
+
+# Frame pacing with a cap (finding F-06): rain at the 60 fps cap of Smoothness "Auto". The app fails its Animation
+# check when the loop runs more than 10 % faster than the cap; below the cap it is reported for review.
+function Invoke-FrameCapRun {
+    $name = 'frame-cap'
+    $report = Join-Path $ReportDirectory "smoke-report-$name.txt"
+    Remove-Item $report -ErrorAction SilentlyContinue
+    Write-Host "=== Smoke run '$name' ==="
+    $process = Start-Process -FilePath $script:exe.FullName -ArgumentList @("--smoke-test=$report", '--rain', '--frame-rate-cap=60', '--no-test-pattern') -PassThru
+    $null = $process.Handle
+    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        $process.Kill()
+        throw "Smoke run '$name' did not finish within $TimeoutSeconds s."
+    }
+
+    if (Test-Path $report) {
+        Write-Host '--- report ---'
+        Get-Content $report | Write-Host
+        Write-Host '--------------'
+    }
+    else {
+        throw "Smoke run '$name' wrote no report (exit code $($process.ExitCode))."
+    }
+
+    if ($process.ExitCode -ne 0) {
+        throw "Smoke run '$name' failed with exit code $($process.ExitCode)."
+    }
+
+    Write-Host "Smoke run '$name' passed."
+}
+
 # The settings window and the flyout: the app shows every page and writes it as a PNG into the previews.
 function Invoke-SettingsTour {
     $name = 'settings'
@@ -362,7 +524,7 @@ function Invoke-SandboxRun {
         Where-Object { $_.FullName -match "[\\/]$Configuration[\\/]" } |
         Select-Object -First 1
     if (-not $sandbox) {
-        throw 'Sillfall.Sandbox.exe was not found. Build the solution first.'
+        throw "Sillfall.Sandbox.exe ($Configuration) was not found. Run the script without -NoBuild, it builds the sandbox too."
     }
 
     $process = Start-Process -FilePath $sandbox.FullName -ArgumentList @('--exit-after=6', '--effect=snow', '--fill-snow') -PassThru
@@ -385,9 +547,20 @@ New-Item -ItemType Directory -Force -Path $ReportDirectory, $PreviewDirectory | 
 # Unpackaged, so the exe starts without MSIX deployment and brings the Windows App SDK runtime along.
 # --no-incremental: the packaged build writes to the same folders. Reusing its output leaves the
 # unpackaged exe without the WinUI resources (XamlParseException for themeresources.xaml).
-dotnet build $project -c $Configuration -p:Platform=$Platform -p:WindowsPackageType=None --no-incremental
-if ($LASTEXITCODE -ne 0) {
-    throw "Building the unpackaged app failed with exit code $LASTEXITCODE."
+if (-not $NoBuild) {
+    dotnet build $project -c $Configuration -p:Platform=$Platform -p:WindowsPackageType=None --no-incremental
+    if ($LASTEXITCODE -ne 0) {
+        throw "Building the unpackaged app failed with exit code $LASTEXITCODE."
+    }
+
+    # The last run needs the sandbox in the same configuration (finding F-15: a local Debug build of the solution
+    # left no Release sandbox behind, and the script only built the app).
+    if (Test-Selected 'sandbox') {
+        dotnet build (Join-Path $repoRoot 'tools' 'Sillfall.Sandbox' 'Sillfall.Sandbox.csproj') -c $Configuration -p:Platform=$Platform
+        if ($LASTEXITCODE -ne 0) {
+            throw "Building the sandbox failed with exit code $LASTEXITCODE."
+        }
+    }
 }
 
 $rid = "win-$($Platform.ToLowerInvariant())"
@@ -398,18 +571,16 @@ if (-not $script:exe) {
     throw "Sillfall.App.exe for $Configuration/$rid was not found."
 }
 
-Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true }
-Invoke-SmokeRun -Name 'excluded-from-capture' -ExtraArguments @('--exclude-from-capture') -Probes { param($b, $w) Get-PatternProbes $b $w $false }
-Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-SurfaceProbes $b $w }
-Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-DropProbes $b $w }
-Invoke-WeatherRun -Name 'rain'
-Invoke-WeatherRun -Name 'snow'
-Invoke-WeatherRun -Name 'leaves'
-Invoke-WeatherRun -Name 'fog'
-Invoke-WeatherRun -Name 'sun'
-Invoke-WeatherRun -Name 'grass'
-Invoke-WeatherRun -Name 'visitors'
-Invoke-SettingsTour
-Invoke-SandboxRun
+if (Test-Selected 'visible') { Invoke-SmokeRun -Name 'visible' -ExtraArguments @() -Probes { param($b, $w) Get-PatternProbes $b $w $true } }
+if (Test-Selected 'excluded-from-capture') { Invoke-SmokeRun -Name 'excluded-from-capture' -ExtraArguments @('--exclude-from-capture') -Probes { param($b, $w) Get-PatternProbes $b $w $false } }
+if (Test-Selected 'surfaces') { Invoke-SmokeRun -Name 'surfaces' -ExtraArguments @('--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-SurfaceProbes $b $w } }
+if (Test-Selected 'drops') { Invoke-SmokeRun -Name 'drops' -ExtraArguments @('--test-drops', '--show-surfaces', '--no-test-pattern') -Probes { param($b, $w) Get-DropProbes $b $w } }
+foreach ($weather in 'rain', 'snow', 'leaves', 'fog', 'sun', 'grass', 'visitors') {
+    if (Test-Selected $weather) { Invoke-WeatherRun -Name $weather }
+}
+if (Test-Selected 'foreground') { Invoke-ForegroundRun }
+if (Test-Selected 'frame-cap') { Invoke-FrameCapRun }
+if (Test-Selected 'settings') { Invoke-SettingsTour }
+if (Test-Selected 'sandbox') { Invoke-SandboxRun }
 
 Write-Host 'Smoke test passed.'
