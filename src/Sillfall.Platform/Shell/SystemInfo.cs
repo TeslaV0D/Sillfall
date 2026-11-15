@@ -66,31 +66,39 @@ public static class SystemInfo
             HasCaption: (style & WINDOW_STYLE.WS_CAPTION) == WINDOW_STYLE.WS_CAPTION);
     }
 
-    /// <summary>Class of the clipboard history and emoji panel windows (and other CoreWindows).</summary>
+    /// <summary>Class of the content window inside the clipboard history and emoji panel (and other modern apps).</summary>
     public const string CoreWindowClass = "Windows.UI.Core.CoreWindow";
 
+    /// <summary>Class of the top-level frame around a modern app's or panel's <see cref="CoreWindowClass"/> window.</summary>
+    public const string FrameWindowClass = "ApplicationFrameWindow";
+
     /// <summary>
-    /// Whether the clipboard history (Win+V) or the emoji panel (Win+.) is open: a visible, uncloaked
-    /// <see cref="CoreWindowClass"/> window of <c>TextInputHost.exe</c> (finding F-17). It stays cloaked while closed.
-    /// Only the class and the process name are read.
+    /// Whether the clipboard history (Win+V) or the emoji panel (Win+.) is open (finding F-17). Both are shown in an
+    /// <see cref="FrameWindowClass"/> window whose child is a <see cref="CoreWindowClass"/> of <c>TextInputHost.exe</c>;
+    /// the frame stays visible but cloaked while the panel is closed, and neither takes the foreground. Only class and
+    /// process names are read.
     /// </summary>
     public static unsafe bool IsTextInputPanelOpen()
     {
-        HWND window = HWND.Null;
-        fixed (char* className = CoreWindowClass)
+        HWND frame = HWND.Null;
+        fixed (char* frameClass = FrameWindowClass)
+        fixed (char* coreClass = CoreWindowClass)
         {
             while (true)
             {
-                window = PInvoke.FindWindowEx(HWND.Null, window, className, (char*)null);
-                if (window.IsNull)
+                frame = PInvoke.FindWindowEx(HWND.Null, frame, frameClass, (char*)null);
+                if (frame.IsNull)
                 {
                     return false;
                 }
 
-                if (PInvoke.IsWindowVisible(window)
-                    && !Desktop.WindowGeometry.IsCloaked(window)
-                    && !Desktop.WindowGeometry.GetVisibleBounds(window).IsEmpty
-                    && string.Equals(ProcessNameOf(window), "TextInputHost.exe", StringComparison.OrdinalIgnoreCase))
+                if (!PInvoke.IsWindowVisible(frame) || Desktop.WindowGeometry.IsCloaked(frame))
+                {
+                    continue;
+                }
+
+                HWND content = PInvoke.FindWindowEx(frame, HWND.Null, coreClass, (char*)null);
+                if (!content.IsNull && string.Equals(ProcessNameOf(content), "TextInputHost.exe", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }

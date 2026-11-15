@@ -93,8 +93,9 @@ Decision:
 ## Amendment 2026-11: clipboard history and emoji panel
 
 Finding F-17: Win+V and Win+. open panels of `TextInputHost.exe`, which do not take the foreground, so the foreground
-process check never saw them. `SystemState.TextInputPanelOpen` is set while a visible, uncloaked
-`Windows.UI.Core.CoreWindow` of `TextInputHost.exe` exists (it stays cloaked while closed); `ShellOpen` includes it, so
+process check never saw them. `SystemState.TextInputPanelOpen` is set while an uncloaked
+`ApplicationFrameWindow` holds a `Windows.UI.Core.CoreWindow` of `TextInputHost.exe` (the frame stays visible but cloaked
+while the panel is closed; measured with both panels); `ShellOpen` includes it, so
 "Hide the weather while Start, search or notifications are open" covers both panels. Checked when such a window shows,
 hides, cloaks or uncloaks (WinEvents already hooked) and with the 2 s screen check. Only class and process names are
 read.

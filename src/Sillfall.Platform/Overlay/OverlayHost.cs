@@ -815,15 +815,17 @@ public sealed partial class OverlayHost : IDisposable
     }
 
     /// <summary>
-    /// The clipboard history and the emoji panel are shown by uncloaking a <c>TextInputHost</c> window, without taking
-    /// the foreground (finding F-17): checked when such a window shows, hides, cloaks or uncloaks.
+    /// The clipboard history and the emoji panel are shown by uncloaking a frame window around a <c>TextInputHost</c>
+    /// window, without taking the foreground (finding F-17): checked when such a window shows, hides, cloaks or uncloaks.
     /// </summary>
     private unsafe void OnCoreWindowEvent(HWND window)
     {
         const int Capacity = 64;
         char* buffer = stackalloc char[Capacity];
         int length = PInvoke.GetClassName(window, buffer, Capacity);
-        if (!new ReadOnlySpan<char>(buffer, Math.Max(length, 0)).Equals(Shell.SystemInfo.CoreWindowClass, StringComparison.Ordinal))
+        var className = new ReadOnlySpan<char>(buffer, Math.Max(length, 0));
+        if (!className.Equals(Shell.SystemInfo.FrameWindowClass, StringComparison.Ordinal)
+            && !className.Equals(Shell.SystemInfo.CoreWindowClass, StringComparison.Ordinal))
         {
             return;
         }
