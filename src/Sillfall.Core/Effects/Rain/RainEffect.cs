@@ -91,6 +91,30 @@ public sealed class RainEffect : IEffectSystem
     /// <summary>Diameter in mm above which a Worthington jet can form on a wet edge.</summary>
     private const float JetDiameter = 2.5f;
 
+    /// <summary>Base pinning mass in bin units; roughness scales friction around this. Above WaterPerDrip so a fresh drip often sticks until fed.</summary>
+    private const float PinMass = 1.65f;
+
+    /// <summary>Drip speed in px/s per excess bin-unit of mass above friction, at 100 % scaling.</summary>
+    private const float DripSpeedPerMass = 110f;
+
+    /// <summary>Mass left behind in the trail per px of travel (bin units / px at 100 %).</summary>
+    private const float TrailLoss = 0.0035f;
+
+    /// <summary>Below this mass a stuck drip can evaporate after <see cref="DripEvaporateAfter"/>.</summary>
+    private const float MinMass = 0.35f;
+
+    /// <summary>Seconds a low-mass drip may sit still before it evaporates.</summary>
+    private const float DripEvaporateAfter = 6f;
+
+    /// <summary>Mass lost per second while a drip is pinned (pane evaporation).</summary>
+    private const float DripIdleEvaporation = 0.12f;
+
+    /// <summary>How long a trail point stays visible, in seconds.</summary>
+    private const float TrailLifetime = 2.5f;
+
+    /// <summary>Feed into an existing drip if its head is still within this many px of the top (at 100 %).</summary>
+    private const float DripMergeDistance = 8f;
+
     private static readonly Vector3 s_rainColor = new(0.78f, 0.85f, 0.95f);
     private static readonly Vector3 s_waterColor = new(0.80f, 0.88f, 1f);
 
@@ -148,6 +172,18 @@ public sealed class RainEffect : IEffectSystem
     /// <summary>Horizontal velocities of live splash droplets in px/s (tests).</summary>
     internal ReadOnlySpan<float> SplashVx => _splashVx.AsSpan(0, _splashes);
 
+    /// <summary>Mass of live drips in bin units (tests).</summary>
+    internal ReadOnlySpan<float> DripMasses => _dripMass.AsSpan(0, _drips);
+
+    /// <summary>Vertical speeds of live drips in px/s (tests).</summary>
+    internal ReadOnlySpan<float> DripVelocities => _dripVy.AsSpan(0, _drips);
+
+    /// <summary>Desktop Y of live drip heads (tests).</summary>
+    internal ReadOnlySpan<float> DripYs => _dripY.AsSpan(0, _drips);
+
+    /// <summary>How often a drip slowed to a stop while still on the frame (tests).</summary>
+    internal int DripStickEvents { get; private set; }
+
     // Ripples where drops hit.
     private readonly float[] _rippleX = new float[MaxRipples];
     private readonly float[] _rippleY = new float[MaxRipples];
@@ -161,11 +197,15 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _dripY = new float[MaxDrips];
     private readonly float[] _dripVy = new float[MaxDrips];
     private readonly float[] _dripPhase = new float[MaxDrips];
+    private readonly float[] _dripMass = new float[MaxDrips];
+    private readonly float[] _dripIdle = new float[MaxDrips];
+    private readonly bool[] _dripWasSliding = new bool[MaxDrips];
     private readonly long[] _dripOwner = new long[MaxDrips];
     private readonly int[] _dripColumn = new int[MaxDrips];
     private readonly int[] _dripOutward = new int[MaxDrips];
     private readonly float[] _trailX = new float[MaxDrips * TrailLength];
     private readonly float[] _trailY = new float[MaxDrips * TrailLength];
+    private readonly float[] _trailTime = new float[MaxDrips * TrailLength];
     private readonly int[] _trailCount = new int[MaxDrips];
     private int _drips;
 
@@ -278,7 +318,7 @@ public sealed class RainEffect : IEffectSystem
 
         ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         EmitPuddles(frame, context, waterColor, brightness);
-        EmitDrips(frame, windows, waterColor, brightness);
+        EmitDrips(frame, windows, waterColor, brightness, (float)context.Time);
         EmitRipples(frame, windows, waterColor, brightness);
         EmitSplashes(frame, windows, rainColor, brightness);
         EmitDrops(frame, windows, rainColor, brightness);
@@ -667,6 +707,18 @@ public sealed class RainEffect : IEffectSystem
     /// <param name="top">Row the drip starts at.</param>
     private void SpawnDrip(long owner, int column, int outward, int top)
     {
+        // Feed an existing drip still hanging near this corner instead of starting a parallel rivulet.
+        float mergeLimit = top + (DripMergeDistance * _scale);
+        for (int existing = 0; existing < _drips; existing++)
+        {
+            if (_dripOwner[existing] == owner && _dripColumn[existing] == column && _dripY[existing] <= mergeLimit)
+            {
+                _dripMass[existing] += WaterPerDrip;
+                _dripIdle[existing] = 0f;
+                return;
+            }
+        }
+
         if (_drips >= MaxDrips)
         {
             return;
@@ -676,8 +728,11 @@ public sealed class RainEffect : IEffectSystem
         _dripOutward[i] = outward;
         _dripX[i] = column + 0.5f + (outward * DripRadius * _scale * 0.5f);
         _dripY[i] = top;
-        _dripVy[i] = 10f * _scale;
+        _dripVy[i] = 0f;
         _dripPhase[i] = _random.NextFloat(0f, 100f);
+        _dripMass[i] = WaterPerDrip;
+        _dripIdle[i] = 0f;
+        _dripWasSliding[i] = false;
         _dripOwner[i] = owner;
         _dripColumn[i] = column;
         _trailCount[i] = 0;
@@ -685,19 +740,56 @@ public sealed class RainEffect : IEffectSystem
 
     private void SimulateDrips(float dt, SimulationContext context)
     {
+        float time = (float)context.Time;
         int i = 0;
         while (i < _drips)
         {
             int index = context.Windows.IndexOf(_dripOwner[i]);
             if (index < 0)
             {
-                ReleaseDrip(i);
+                DiscardDrip(i);
                 continue;
             }
 
             PixelRect bounds = context.Windows[index].Bounds;
-            _dripVy[i] = MathF.Min(_dripVy[i] + (220f * _scale * dt), DripMaxSpeed * _scale);
+            // Stick-slip: roughness along the frame pins light drips until enough mass builds up.
+            float roughness = 0.5f + (0.5f * Noise1D.Sample((_dripY[i] / _scale) * 0.05f, 31));
+            float friction = PinMass * (0.7f + (0.6f * roughness));
+            float targetV = MathF.Max(0f, _dripMass[i] - friction) * DripSpeedPerMass * _scale;
+            targetV = MathF.Min(targetV, DripMaxSpeed * _scale);
+            bool sliding = targetV > 1f * _scale;
+            if (_dripWasSliding[i] && !sliding && _dripY[i] > bounds.Top + (20f * _scale) && _dripY[i] < bounds.Bottom - (10f * _scale))
+            {
+                DripStickEvents++;
+            }
+
+            _dripWasSliding[i] = sliding;
+            _dripVy[i] += (targetV - _dripVy[i]) * MathF.Min(1f, 8f * dt);
+            if (_dripVy[i] > 0f)
+            {
+                _dripMass[i] -= TrailLoss * _dripVy[i] * dt / _scale;
+                if (_dripMass[i] < 0f)
+                {
+                    _dripMass[i] = 0f;
+                }
+            }
+
             _dripY[i] += _dripVy[i] * dt;
+
+            if (_dripVy[i] < 1f * _scale)
+            {
+                _dripIdle[i] += dt;
+                _dripMass[i] = MathF.Max(0f, _dripMass[i] - (DripIdleEvaporation * dt));
+                if (_dripMass[i] < MinMass && _dripIdle[i] > DripEvaporateAfter)
+                {
+                    DiscardDrip(i);
+                    continue;
+                }
+            }
+            else
+            {
+                _dripIdle[i] = 0f;
+            }
 
             // Meander: the drip wobbles a little around the side column as it runs down.
             _dripPhase[i] += dt * 1.7f;
@@ -713,6 +805,7 @@ public sealed class RainEffect : IEffectSystem
                 int slot = count % TrailLength;
                 _trailX[trail + slot] = _dripX[i];
                 _trailY[trail + slot] = _dripY[i];
+                _trailTime[trail + slot] = time;
                 _trailCount[i] = count + 1;
             }
 
@@ -733,26 +826,38 @@ public sealed class RainEffect : IEffectSystem
         if (_drops < MaxDrops)
         {
             int d = _drops++;
-            AssignDropSize(d, MeanSpawnDiameter);
+            AssignDropSize(d, Math.Clamp(1.5f + _dripMass[i], 1.5f, 4f));
             _dropX[d] = _dripX[i];
             _dropY[d] = _dripY[i];
             _dropVx[d] = 0f;
-            _dropVy[d] = _dripVy[i];
+            _dropVy[d] = MathF.Max(_dripVy[i], 40f * _scale);
             _dropZ[d] = 0.98f;
             _dropHome[d] = _dripOwner[i];
         }
 
+        SwapRemoveDrip(i);
+    }
+
+    /// <summary>Removes a drip without shedding a falling drop (evaporation or a vanished window).</summary>
+    private void DiscardDrip(int i) => SwapRemoveDrip(i);
+
+    private void SwapRemoveDrip(int i)
+    {
         int last = --_drips;
         _dripX[i] = _dripX[last];
         _dripY[i] = _dripY[last];
         _dripVy[i] = _dripVy[last];
         _dripPhase[i] = _dripPhase[last];
+        _dripMass[i] = _dripMass[last];
+        _dripIdle[i] = _dripIdle[last];
+        _dripWasSliding[i] = _dripWasSliding[last];
         _dripOwner[i] = _dripOwner[last];
         _dripColumn[i] = _dripColumn[last];
         _dripOutward[i] = _dripOutward[last];
         _trailCount[i] = _trailCount[last];
         Array.Copy(_trailX, last * TrailLength, _trailX, i * TrailLength, TrailLength);
         Array.Copy(_trailY, last * TrailLength, _trailY, i * TrailLength, TrailLength);
+        Array.Copy(_trailTime, last * TrailLength, _trailTime, i * TrailLength, TrailLength);
     }
 
     private void ReleaseDrips(long owner)
@@ -885,7 +990,7 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
-    private void EmitDrips(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
+    private void EmitDrips(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness, float time)
     {
         for (int i = 0; i < _drips; i++)
         {
@@ -899,7 +1004,7 @@ public sealed class RainEffect : IEffectSystem
             int count = Math.Min(_trailCount[i], TrailLength);
             int newest = _trailCount[i] - 1;
 
-            // Trail: segments between remembered points, fading towards the oldest.
+            // Trail: segments between remembered points, fading by age and tapering towards the oldest end.
             Vector2 previous = new(_dripX[i], _dripY[i]);
             for (int n = 0; n < count; n++)
             {
@@ -912,12 +1017,14 @@ public sealed class RainEffect : IEffectSystem
                 var point = new Vector2(_trailX[trail + slot], _trailY[trail + slot]);
                 Vector2 delta = previous - point;
                 float length = delta.Length();
-                if (length > 0.5f && !WindowOcclusion.HidesAttached(windows, point.X, point.Y, _dripOwner[i]))
+                float age = time - _trailTime[trail + slot];
+                if (length > 0.5f && age < TrailLifetime && !WindowOcclusion.HidesAttached(windows, point.X, point.Y, _dripOwner[i]))
                 {
-                    float alpha = 0.45f * (1f - (n / (float)TrailLength)) * brightness;
+                    float alpha = 0.45f * (1f - (age / TrailLifetime)) * brightness;
+                    float halfWidth = (0.8f - (0.4f * (n / (float)Math.Max(count - 1, 1)))) * _scale;
                     frame.Add(new Sprite(
                         (previous + point) / 2f,
-                        new Vector2((length / 2f) + (0.8f * _scale), 0.8f * _scale),
+                        new Vector2((length / 2f) + halfWidth, halfWidth),
                         MathF.Atan2(delta.Y, delta.X),
                         SpriteShape.Streak,
                         Sprite.Premultiply(color, MathF.Min(1f, alpha))));

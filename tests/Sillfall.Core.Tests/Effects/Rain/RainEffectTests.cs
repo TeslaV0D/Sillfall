@@ -435,6 +435,120 @@ public class RainEffectTests
     }
 
     [Fact]
+    public void Drips_StickAndSlip_StopAtLeastOnceBeforeTheBottom()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 0.7f);
+        // Burst of water so drips start slipping, then starve them so trail loss pins them mid-frame.
+        for (int i = 0; i < 180; i++)
+        {
+            WaterField? field = rain.PuddleOf(s_window.Id);
+            if (field is not null)
+            {
+                field.LeftRunoff += 2f;
+                field.RightRunoff += 2f;
+            }
+
+            engine.Advance(FrameTime);
+        }
+
+        for (int i = 0; i < 600 && rain.DripStickEvents == 0; i++)
+        {
+            engine.Advance(FrameTime);
+        }
+
+        rain.DripStickEvents.Should().BePositive("rivulets pin on rough patches after shedding trail mass");
+    }
+
+    [Fact]
+    public void Drips_WithEnoughWater_AlwaysReachTheBottom()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        Run(engine, seconds: 3);
+
+        // Build a heavy drip at each corner and confirm it reaches the bottom.
+        for (int feed = 0; feed < 80; feed++)
+        {
+            WaterField? field = rain.PuddleOf(s_window.Id);
+            if (field is not null)
+            {
+                field.LeftRunoff += 2f;
+                field.RightRunoff += 2f;
+            }
+
+            engine.Advance(FrameTime);
+        }
+
+        float top = s_window.Bounds.Top;
+        float bottom = s_window.Bounds.Bottom;
+        bool sawNearBottom = false;
+        for (int i = 0; i < 900; i++)
+        {
+            WaterField? field = rain.PuddleOf(s_window.Id);
+            if (field is not null)
+            {
+                field.LeftRunoff += 1.5f;
+                field.RightRunoff += 1.5f;
+            }
+
+            engine.Advance(FrameTime);
+            for (int d = 0; d < rain.DripYs.Length; d++)
+            {
+                if (rain.DripMasses[d] > 4f && rain.DripYs[d] > top + 0.7f * (bottom - top))
+                {
+                    sawNearBottom = true;
+                }
+            }
+
+            if (sawNearBottom)
+            {
+                break;
+            }
+        }
+
+        sawNearBottom.Should().BeTrue("a well-fed drip overcomes pinning and runs to the bottom");
+    }
+
+    [Fact]
+    public void Drips_FedAtTheCorner_MergeInsteadOfSpawning()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 0.9f);
+        // Wait until a drip is hanging near the top (still mergeable).
+        for (int i = 0; i < 600 && rain.DripCount == 0; i++)
+        {
+            engine.Advance(FrameTime);
+        }
+
+        rain.DripCount.Should().BePositive();
+        float top = s_window.Bounds.Top;
+        rain.DripYs.ToArray().Should().Contain(y => y <= top + 8f);
+
+        int before = rain.DripCount;
+        float massBefore = rain.DripMasses.ToArray().Sum();
+        WaterField field = rain.PuddleOf(s_window.Id)!;
+        for (int i = 0; i < 10; i++)
+        {
+            field.LeftRunoff += 1.5f;
+            field.RightRunoff += 1.5f;
+            engine.Advance(FrameTime);
+        }
+
+        rain.DripCount.Should().BeLessThanOrEqualTo(before + 2, "new water feeds the hanging corner drip instead of stacking rivulets");
+        rain.DripMasses.ToArray().Sum().Should().BeGreaterThan(massBefore);
+    }
+
+    [Fact]
+    public void Drips_AfterRain_DisappearSoTheEffectGoesIdle()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 0.7f);
+        Run(engine, seconds: 6);
+        rain.Settings = new EffectSettings { Intensity = 0f };
+        Run(engine, seconds: 45);
+
+        rain.DripCount.Should().Be(0);
+        rain.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
     public void Splashes_HeavyRain_AverageAtMostOnePointTwoPerHit()
     {
         (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
