@@ -46,7 +46,9 @@
 
   <ItemGroup>
     <Content Include="Assets\**\*.png" />
-    <Content Include="Assets\AppIcon.ico" />
+    <!-- Read at run time by the tray icon and the windows: it must also land in the unpackaged publish folder the
+         setup is built from (the setup's app had no tray icon). -->
+    <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 

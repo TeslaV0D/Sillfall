@@ -16,7 +16,7 @@
   <Identity
     Name="Sillfall.Dev"
     Publisher="CN=Sillfall Development"
-    Version="0.1.0.0" />
+    Version="0.1.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="eea4a309-960d-4b58-ae92-8b844afa60a4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
