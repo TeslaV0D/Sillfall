@@ -207,7 +207,7 @@ Frame rate limit: {1}. {2}</value></data>
   <data name="Templates.Emoji" xml:space="preserve"><value>Emoji</value></data>
   <data name="Templates.Export" xml:space="preserve"><value>Export…</value></data>
   <data name="Templates.FileType" xml:space="preserve"><value>{0} scene</value></data>
-  <data name="Templates.Import" xml:space="preserve"><value>Import a .wscene file…</value></data>
+  <data name="Templates.Import" xml:space="preserve"><value>Import a {0} file…</value></data>
   <data name="Templates.Link" xml:space="preserve"><value>Link</value></data>
   <data name="Templates.LinkCopied" xml:space="preserve"><value>Link copied. Anyone with the app can open it.</value></data>
   <data name="Templates.Name" xml:space="preserve"><value>Name</value></data>

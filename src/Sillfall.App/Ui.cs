@@ -83,20 +83,47 @@ internal static class Ui
             return null;
         }
 
+        InfoBar bar = LiveSyncPausedBar(controller, resumed);
+        UpdateSyncPausedBar(bar, controller);
+        return bar;
+    }
+
+    /// <summary>
+    /// The "weather sync paused" notice, also while it has nothing to say (then closed): a page keeps it and updates it
+    /// with <see cref="UpdateSyncPausedBar"/> when the settings change (finding F-08).
+    /// </summary>
+    public static InfoBar LiveSyncPausedBar(AppController controller, Action resumed)
+    {
+        ArgumentNullException.ThrowIfNull(controller);
         var bar = new InfoBar
         {
-            IsOpen = true,
+            IsOpen = false,
             IsClosable = false,
             Severity = InfoBarSeverity.Warning,
             Title = Texts.Get("Sync.PausedTitle"),
-            Message = Texts.Format(sync.Paused.Count == 1 ? "Sync.PausedOne" : "Sync.PausedMany", string.Join(", ", sync.Paused.Select(Name))),
         };
+        AutomationProperties.SetName(bar, bar.Title);
         bar.ActionButton = ActionButton(Texts.Get("Sync.Resume"), () =>
         {
             controller.ResumeSync();
             resumed();
         });
         return bar;
+    }
+
+    /// <summary>Opens the notice while the sync is on and paused for something, and closes it otherwise.</summary>
+    public static void UpdateSyncPausedBar(InfoBar bar, AppController controller)
+    {
+        ArgumentNullException.ThrowIfNull(bar);
+        ArgumentNullException.ThrowIfNull(controller);
+        WeatherSyncConfig sync = controller.Settings.WeatherSync;
+        bool show = sync.Enabled && sync.Paused.Count > 0;
+        if (show)
+        {
+            bar.Message = Texts.Format(sync.Paused.Count == 1 ? "Sync.PausedOne" : "Sync.PausedMany", string.Join(", ", sync.Paused.Select(Name)));
+        }
+
+        bar.IsOpen = show;
     }
 
     public static TextBlock Heading(string text) => new()
@@ -282,11 +309,22 @@ internal static class Ui
     /// </summary>
     public static async Task<(int Width, int Height)> SavePngAsync(UIElement element, string path)
     {
-        (byte[]? png, int width, int height) = await RenderPngAsync(element);
-        if (png is null)
+        var bitmap = new RenderTargetBitmap();
+        await bitmap.RenderAsync(element);
+        int width = bitmap.PixelWidth;
+        int height = bitmap.PixelHeight;
+        if (width == 0 || height == 0)
         {
             return (0, 0);
         }
+
+        // The window's backdrop (Mica) is transparent in the capture: put it on the theme's solid background colour, so
+        // the picture looks like the window does (finding F-16).
+        byte[] pixels = (await bitmap.GetPixelsAsync()).ToArray();
+        bool dark = element is FrameworkElement { ActualTheme: ElementTheme.Dark };
+        byte shade = dark ? (byte)0x20 : (byte)0xF3;
+        Backdrop.Flatten(pixels, shade, shade, shade);
+        byte[] png = PngEncoder.Encode(pixels, width, height);
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path, png);

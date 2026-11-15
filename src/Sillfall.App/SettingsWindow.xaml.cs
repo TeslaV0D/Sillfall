@@ -45,7 +45,11 @@ public sealed partial class SettingsWindow : Window
     private readonly AppController _controller;
     private readonly DispatcherQueueTimer _liveTimer;
     private string _page = "effects";
+    private bool _shownOnce;
     private (string Title, string Message)? _templateNotice;
+    private InfoBar? _pauseBanner;
+    private string? _shownReason;
+    private InfoBar? _syncPausedBar;
     private bool _quitting;
     private TextBlock? _liveText;
     private TextBlock? _syncStatus;
@@ -56,7 +60,16 @@ public sealed partial class SettingsWindow : Window
     {
         _controller = controller;
         InitializeComponent();
-        _controller.Changed += (_, _) => UpdateSyncStatus();
+        _controller.Changed += (_, _) => OnControllerChanged();
+
+        // The visitor page shows counts, cards and achievements: a collect while it is open rebuilds it (finding F-08).
+        _controller.VisitorRewarded += (_, _) =>
+        {
+            if (_page == "visitors" && AppWindow.IsVisible)
+            {
+                BuildPage();
+            }
+        };
 
         Title = Texts.Format("Settings.WindowTitle", AppInfo.Name);
         SettingsTitleBar.Title = Title;
@@ -110,8 +123,60 @@ public sealed partial class SettingsWindow : Window
             }
         }
 
+        if (!_shownOnce)
+        {
+            _shownOnce = true;
+            ShowFirstTime();
+            return;
+        }
+
         AppWindow.Show();
         Activate();
+    }
+
+    /// <summary>
+    /// The first time, the window is shown cloaked (DWM keeps it invisible while it renders) until its content has
+    /// rendered a few frames: otherwise it showed as a solid black rectangle for about 0.3 s (finding F-10).
+    /// </summary>
+    private void ShowFirstTime()
+    {
+        nint handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        Platform.Desktop.WindowGeometry.SetCloaked(handle, cloaked: true);
+        AppWindow.Show();
+        Activate();
+
+        int frames = 0;
+        bool placed = false;
+        DispatcherQueueTimer fallback = DispatcherQueue.CreateTimer();
+        void Place()
+        {
+            if (placed)
+            {
+                return;
+            }
+
+            placed = true;
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= OnRendering;
+            fallback.Stop();
+            Platform.Desktop.WindowGeometry.SetCloaked(handle, cloaked: false);
+        }
+
+        // Frames are counted from the moment the content is loaded: the first ones after that still show nothing.
+        void OnRendering(object? sender, object e)
+        {
+            if (RootGrid.IsLoaded && ++frames >= 4)
+            {
+                Place();
+            }
+        }
+
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += OnRendering;
+
+        // Should rendering stall, the window still comes to its place.
+        fallback.Interval = TimeSpan.FromSeconds(1.5);
+        fallback.IsRepeating = false;
+        fallback.Tick += (_, _) => Place();
+        fallback.Start();
     }
 
     /// <summary>
@@ -167,6 +232,7 @@ public sealed partial class SettingsWindow : Window
         _liveTimer.Stop();
         _liveText = null;
         _syncStatus = null;
+        _syncPausedBar = null;
         PageHost.Children.Clear();
         // Titles follow the language, which may have changed since the last page.
         Title = Texts.Format("Settings.WindowTitle", AppInfo.Name);
@@ -181,10 +247,11 @@ public sealed partial class SettingsWindow : Window
 
         string title = Texts.Get(Pages.FirstOrDefault(page => page.Key == _page).Title ?? string.Empty);
         PageHost.Children.Add(Ui.Title(title));
-        if (_controller.Decision.Reason is { } reason)
-        {
-            PageHost.Children.Add(new InfoBar { IsOpen = true, IsClosable = false, Severity = InfoBarSeverity.Informational, Title = reason });
-        }
+        // Always there, closed while the weather runs: it follows pauses and resumes while the page is open (F-08).
+        _shownReason = _controller.Decision.Reason;
+        _pauseBanner = new InfoBar { IsOpen = _shownReason is not null, IsClosable = false, Severity = InfoBarSeverity.Informational, Title = _shownReason ?? string.Empty };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_pauseBanner, _pauseBanner.Title);
+        PageHost.Children.Add(_pauseBanner);
 
         switch (_page)
         {
@@ -377,7 +444,7 @@ public sealed partial class SettingsWindow : Window
                 ShowStatus(status, InfoBarSeverity.Error, error ?? Texts.Get("Templates.BadLink"));
             }
         })));
-        Add(Ui.ActionButton(Texts.Get("Templates.Import"), () => _ = ImportAsync(status)));
+        Add(Ui.ActionButton(Texts.Format("Templates.Import", SceneCodec.FileExtension), () => _ = ImportAsync(status)));
         Add(status);
     }
 
@@ -424,11 +491,32 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
+    /// <summary>The "weather sync paused" notice; kept and updated while the page is shown (finding F-08).</summary>
     private void AddSyncPausedBar()
     {
-        if (Ui.SyncPausedBar(_controller, BuildPage) is { } bar)
+        _syncPausedBar = Ui.LiveSyncPausedBar(_controller, () => { });
+        Ui.UpdateSyncPausedBar(_syncPausedBar, _controller);
+        Add(_syncPausedBar);
+    }
+
+    /// <summary>
+    /// The settings or the runtime decision changed (finding F-08): the visible page's pause banner and sync notice follow
+    /// at once, without rebuilding the page (a slider being dragged keeps its place).
+    /// </summary>
+    private void OnControllerChanged()
+    {
+        UpdateSyncStatus();
+        if (_pauseBanner is { } banner && _controller.Decision.Reason != _shownReason)
         {
-            Add(bar);
+            _shownReason = _controller.Decision.Reason;
+            banner.Title = _shownReason ?? string.Empty;
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(banner, banner.Title);
+            banner.IsOpen = _shownReason is not null;
+        }
+
+        if (_syncPausedBar is { } bar)
+        {
+            Ui.UpdateSyncPausedBar(bar, _controller);
         }
     }
 

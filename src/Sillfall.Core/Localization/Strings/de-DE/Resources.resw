@@ -207,7 +207,7 @@ Bildratengrenze: {1}. {2}</value></data>
   <data name="Templates.Emoji" xml:space="preserve"><value>Emoji</value></data>
   <data name="Templates.Export" xml:space="preserve"><value>Exportieren…</value></data>
   <data name="Templates.FileType" xml:space="preserve"><value>{0}-Szene</value></data>
-  <data name="Templates.Import" xml:space="preserve"><value>.wscene-Datei importieren…</value></data>
+  <data name="Templates.Import" xml:space="preserve"><value>{0}-Datei importieren…</value></data>
   <data name="Templates.Link" xml:space="preserve"><value>Link</value></data>
   <data name="Templates.LinkCopied" xml:space="preserve"><value>Link kopiert. Jeder mit der App kann ihn öffnen.</value></data>
   <data name="Templates.Name" xml:space="preserve"><value>Name</value></data>
