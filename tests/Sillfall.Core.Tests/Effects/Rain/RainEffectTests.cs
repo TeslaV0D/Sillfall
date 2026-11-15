@@ -405,6 +405,75 @@ public class RainEffectTests
     }
 
     [Fact]
+    public void DropSizes_SmallDropsOutnumberLargeOnes()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        Run(engine, seconds: 2);
+
+        float[] sizes = [.. rain.DropSizes];
+        sizes.Length.Should().BeGreaterThan(500);
+        float mean = sizes.Average();
+        float median = sizes.OrderBy(s => s).ElementAt(sizes.Length / 2);
+        median.Should().BeLessThan(mean, "Marshall–Palmer: many small drops, few large ones");
+        (sizes.Count(s => s > 3f) / (float)sizes.Length).Should().BeLessThan(0.05f);
+    }
+
+    [Fact]
+    public void TerminalVelocity_GrowsWithDiameter()
+    {
+        RainEffect.TerminalVelocity(1f).Should().BeLessThan(RainEffect.TerminalVelocity(2f));
+        RainEffect.TerminalVelocity(2f).Should().BeLessThan(RainEffect.TerminalVelocity(3f));
+    }
+
+    [Fact]
+    public void TerminalVelocity_LevelsOffForLargeDrops()
+    {
+        // Atlas et al. 1973 asymptote is 9.65 m/s; growth from 3→4 mm is already much smaller than 1→2 mm.
+        RainEffect.TerminalVelocity(4f).Should().BeInRange(8.5f, 9.65f);
+        (RainEffect.TerminalVelocity(4f) - RainEffect.TerminalVelocity(3f)).Should().BeLessThan(
+            RainEffect.TerminalVelocity(2f) - RainEffect.TerminalVelocity(1f));
+    }
+
+    [Fact]
+    public void WindGust_SmallDropsFollowFasterThanLargeOnes()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        engine.Context.Wind.Base = new Vector2(200f, 0f);
+        engine.Context.Wind.Gustiness = 0f;
+        Run(engine, seconds: 1);
+
+        // Sudden gust: small drops should close more of the gap to the new target in one step.
+        engine.Context.Wind.Base = new Vector2(500f, 0f);
+        float[] sizes = [.. rain.DropSizes];
+        float[] before = [.. rain.DropVx];
+        engine.Advance(FrameTime);
+        float[] after = [.. rain.DropVx];
+
+        float smallGain = 0f;
+        float largeGain = 0f;
+        int small = 0;
+        int large = 0;
+        for (int i = 0; i < sizes.Length && i < after.Length; i++)
+        {
+            float gain = after[i] - before[i];
+            if (sizes[i] < 1.2f)
+            {
+                smallGain += gain;
+                small++;
+            }
+            else if (sizes[i] > 2.5f)
+            {
+                largeGain += gain;
+                large++;
+            }
+        }
+
+        small.Should().BePositive();
+        large.Should().BePositive();
+        (smallGain / small).Should().BeGreaterThan(largeGain / large);
+    }
+
+    [Fact]
     public void HighDpi_ScalesDropsAndPuddleBins()
     {
         (SimulationEngine normal, _) = Create(intensity: 0.5f);
