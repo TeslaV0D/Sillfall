@@ -45,6 +45,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 ## Findings
 
 ## F-01 – Weather blinks off and on every 2 s while another app is in the foreground (self-triggered "full screen" pause)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** high (could be critical: makes the weather unusable whenever any other app is active; see the open point under Actual)
 - **Area:** System state
 - **Steps to reproduce:**
@@ -67,6 +68,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** `src/Sillfall.Platform/Shell/SystemInfo.cs` `ScreenUse()` treats `QUNS_BUSY` as full screen unless the foreground window is this process. The overlay itself (topmost, full monitor) appears to be what the shell reports as "busy", so a self-check is needed that ignores the app's own overlay windows (or verifies the foreground window really covers its monitor). `OverlayHost.UpdateScreenUse` (2 s timer) then removes the overlays (ADR-0016: "A pause removes overlay windows entirely"), which clears the state, which resumes: a feedback loop.
 
 ## F-02 – Smoke test fails in the snow run: 4048 B allocated in the frame loop
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** Performance
 - **Steps to reproduce:**
@@ -78,6 +80,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** `SnowEffect.FieldFor` creates a `SnowField` lazily the first time a flake lands on a new top edge. For the 1906 px smoke window with 2 px bins that is `new float[953]` (3836 B) plus the `SnowField` object and `_fields` dictionary growth, close to 4048 B. On this machine the first landing falls inside the measured frames; on CI it probably happens during warm-up, which would explain why CI is green. Rain's `WaterField` does not show it.
 
 ## F-03 – Soak: CPU, frame time and memory above the PLAN.md budgets
+**Status:** partly (measured, follow-up needed) on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** Performance
 - **Steps to reproduce:** `pwsh tools/ci/soak-test.ps1 -Minutes 10` (all six effects at 40–60 %, visitors, window moved/resized every few seconds).
@@ -92,6 +95,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** not investigated.
 
 ## F-04 – `sillfall://` links opened through Windows (Run, shell) are silently ignored
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** high
 - **Area:** Startup
 - **Steps to reproduce:**
@@ -105,6 +109,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** `SceneCodec.TryFromLink` / `TryDecodeLink` check `link.StartsWith(LinkPrefix)` with `LinkPrefix = "sillfall://scene?d="`, so `scene/?d=` is rejected. `App.ApplySceneLink` then returns without any feedback (`out _` discards the reason). `SceneTests` only cover the exact prefix. A browser link will probably fail the same way.
 
 ## F-05 – Rain (and other near particles) falls across window content wherever a window's top edge is not exposed (maximized, at y = 0, or covered by another window)
+**Status:** fixed, visual sign-off open on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** high (the user confirmed it on a maximized browser: "it rains through the window, it is visible on the screen, it should not")
 - **Area:** Rain
 - **Steps to reproduce:**
@@ -124,6 +129,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `RainEffect` near-drop handling combined with the dropped top-edge slot from `SurfaceExtractor` (ADR-0004 table), and the free fall of gutters below a window (ADR-0006 §3 "At the window bottom they fall freely"). Near particles are only stopped by exposed top edges; they are never occluded by the windows they pass in front of. Same in `SnowEffect`/`LeavesEffect` near layers.
 
 ## F-06 – Frame rate does not match the Smoothness setting on a 180 Hz monitor
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** Performance
 - **Steps to reproduce:**
@@ -136,6 +142,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** `OverlayHost.RenderAnimationFrame` waits with `Thread.Sleep(1)` until `0.92 / cap` (or `MinimumFrameSeconds`) has passed. With the default 15.6 ms timer resolution `Sleep(1)` sleeps ~15.6 ms, so "Smoothest" ends up at 64 fps and the 60 fps cap overshoots to the next 180 Hz vblank (~50 fps). When another app has raised the timer resolution, `Sleep(1)` is 1 ms and the rate reaches 182 fps. A waitable timer (high resolution) or pacing on the swap chain's frame latency waitable object would make it independent.
 
 ## F-07 – Effects attached to a window lag behind it, or are left behind, when it is dragged or snapped by the user
+**Status:** fixed (please check by hand) on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** high
 - **Area:** Tracking
 - **Steps to reproduce:**
@@ -150,6 +157,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** not investigated. Candidates: the `SetWinEventHook` location-change coalescing in `WindowEnumerator`/`WindowMotionTracker` during the modal move loop (scripted `SetWindowPos` moves are fine), DWM snap animations (the frame bounds animate after the final position), and F-06 (the loop runs at ~48 fps instead of the display rate). F-01 was active during the user's test (Notepad in front), so the 2 s overlay rebuilds may add to it. Re-check after F-01 is fixed.
 
 ## F-08 – Settings pages show stale state (pause banner, visitor collection) until the page is opened again
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Settings UI
 - **Steps to reproduce:**
@@ -165,6 +173,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** the settings pages in `SettingsWindow.xaml.cs` build their content when a page is shown and do not subscribe to the runtime decision / collection changes.
 
 ## F-09 – Rain sound does not sound like rain
+**Status:** waiting for the maintainer's decision on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** question
 - **Area:** Sound
 - **Steps to reproduce:** rain 50 %, Settings → Sound → Sound on (default volumes).
@@ -175,6 +184,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `src/Sillfall.Audio` procedural rain synthesis (not investigated). Needs a maintainer's ear and a sign-off on what it should sound like.
 
 ## F-10 – Settings window shows as a solid black rectangle for ~0.2 s at start
+**Status:** mostly fixed (2–3 black frames remain) on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Startup
 - **Steps to reproduce:** quit Sillfall, start `Sillfall.App.exe` (no arguments), capture the screen every ~30 ms.
@@ -185,6 +195,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** WinUI first frame before the backdrop/content is ready; showing the window after the first `Rendering`/`Loaded` would hide it. Not investigated.
 
 ## F-11 – Templates button still says ".wscene" (both languages)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Settings UI
 - **Steps to reproduce:** Settings → Templates.
@@ -195,6 +206,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** the two `.resw` lines above (leftover from an earlier product name).
 
 ## F-12 – First start shows no weather; the "Clear sky ☀️" template turns everything off
+**Status:** waiting for the maintainer's decision on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** question
 - **Area:** Startup
 - **Steps to reproduce:** start with no `settings.json`; or Templates → Clear sky.
@@ -205,6 +217,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `src/Sillfall.Core/Scenes/ScenePresets.cs` (Clear sky), default `EffectConfig.Intensity`.
 
 ## F-13 – Sunlight is hard to see on the real desktop
+**Status:** waiting for the maintainer's decision on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** question
 - **Area:** Sun
 - **Steps to reproduce:** Sunlight at 100 % alone, or the Spring morning template (sun 0.7, grass, fog 0.2).
@@ -215,6 +228,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `AtmospherePass` sun strength / alpha (ADR-0010 §4). Not investigated.
 
 ## F-14 – Sandbox does not draw fog or sun rays (G and U keys)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Fog
 - **Steps to reproduce:** start `tools/Sillfall.Sandbox`, press G (fog) or U (sun) and wait 30 s.
@@ -225,6 +239,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `tools/Sillfall.Sandbox/SandboxWindow.cs`: the render loop copies only `_engine.Frame.Sprites` into its own `_scene` and never passes the fog/sun layers. FrameDump passes `capture.Scene` and does render them.
 
 ## F-15 – Local smoke test cannot find the Sandbox after the documented build
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Startup (tooling)
 - **Steps to reproduce:** `dotnet build Sillfall.slnx -p:Platform=x64` (Debug, as in the briefing and CLAUDE.md), then `pwsh tools/ci/smoke-test.ps1`.
@@ -235,6 +250,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `tools/ci/smoke-test.ps1` `Invoke-SandboxRun` (or the briefing's build command).
 
 ## F-16 – Smoke settings-tour pictures are hard to review (white text on a washed-out background)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Settings UI (tooling)
 - **Steps to reproduce:** `pwsh tools/ci/smoke-test.ps1`, open `%TEMP%\sillfall-smoke\settings\*.png`.
@@ -245,6 +261,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `RunSettingsTourAsync` in `App.xaml.cs`; draw an opaque theme background under the capture.
 
 ## F-17 – Weather is not hidden over the clipboard history (Win+V) and the emoji panel (Win+.)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** System state
 - **Steps to reproduce:** rain on, Advanced → "Hide the weather while Start, search or notifications are open" on (default). Open and close each of: Start (Win), search (Win+S), notifications (Win+N), quick settings (Win+A), clipboard (Win+V), emoji panel (Win+.).
@@ -255,6 +272,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** the shell process list in `OverlayHost`/`SystemInfo` (ADR-0016 §1: `StartMenuExperienceHost`, `SearchHost`, `ShellExperienceHost`, …). The clipboard and emoji panels belong to `TextInputHost.exe`, which does not take the foreground. So a foreground-process check cannot see them; a visible-window check for `TextInputHost` would be needed.
 
 ## F-18 – No weather while the desktop itself is in front (empty virtual desktop, after minimizing the last window)
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** System state
 - **Steps to reproduce:**
@@ -267,6 +285,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location (guess):** probably the same full-screen misdetection as F-01. With the desktop (`Progman`/`WorkerW`, process explorer) in front, the shell state is "busy" whenever the overlay exists, so the pause never ends. The same would apply to Win+D ("show desktop"). Re-check after F-01.
 
 ## F-19 – A visitor's invisible hit window stays and moves while the weather is paused
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** Visitors
 - **Steps to reproduce:**
@@ -280,6 +299,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `OverlayHost.SyncHitWindows` / visitor hit windows (ADR-0014) are not torn down on pause.
 
 ## F-20 – City search ranks the exact match last
+**Status:** fixed on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** low
 - **Area:** Settings UI
 - **Steps to reproduce:** Weather sync on → City search, type `Berlin`.
@@ -290,6 +310,7 @@ Single instance (second start exits 0, existing window comes to front) · `--bac
 - **Suspected location:** `CityIndex` search ranking (alternate names probably score as high as the main name).
 
 ## F-21 – Transparent click-through overlay windows of other apps are tracked as normal windows
+**Status:** partly (filter hardened, could not be reproduced) on branch `fix/desktop-run-2026-11-14` (see `docs/manual-tests/fixes-2026-11.md`).
 - **Severity:** medium
 - **Area:** Tracking
 - **Steps to reproduce:**
