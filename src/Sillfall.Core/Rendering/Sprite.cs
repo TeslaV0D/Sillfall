@@ -36,6 +36,20 @@ public enum SpriteShape : uint
     /// The quad's half height must cover the curve: <see cref="Sprite.BladeHalfHeight"/>.
     /// </summary>
     Blade = 6,
+
+    /// <summary>
+    /// Raindrop: tapered capsule with the head at +x. <see cref="Sprite.HalfSize"/>.x is half the length,
+    /// .y the head radius. <see cref="Sprite.Param"/> is rim strength 0..1 (0 = no dark rim, for distant drops).
+    /// Bright core, darker rim and a glint near the head fake refraction without sampling the desktop.
+    /// </summary>
+    Raindrop = 7,
+
+    /// <summary>
+    /// Water film on a top edge: a trapezoid from height <see cref="Sprite.Variant"/> (left, px) to
+    /// <see cref="Sprite.Param"/> (right, px). Hard sides and bottom so adjacent bins abut without seams.
+    /// A thin glint runs along the water surface.
+    /// </summary>
+    WaterFilm = 8,
 }
 
 /// <summary>

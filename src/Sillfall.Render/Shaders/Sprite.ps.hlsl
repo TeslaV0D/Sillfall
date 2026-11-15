@@ -1,4 +1,4 @@
-// Shades a sprite quad: solid rectangle, soft disc, streak (capsule), ring, snow flake, leaf or grass blade. Premultiplied output.
+// Shades a sprite quad: solid rectangle, soft disc, streak, raindrop, water film, ring, snow flake, leaf or grass blade. Premultiplied output.
 
 struct PixelInput
 {
@@ -109,6 +109,47 @@ float LeafDistance(float2 n, uint variant)
 
 float4 main(PixelInput input) : SV_Target
 {
+    if (input.Shape == 7)
+    {
+        // Raindrop: tapered capsule, head at +x. Bright core, darker rim, tail fades out.
+        float r = max(input.HalfSize.y, 0.001);
+        float halfLength = max(input.HalfSize.x, r);
+        float t = saturate((input.Local.x / halfLength + 1.0) * 0.5);       // 0 tail .. 1 head
+        float radius = r * lerp(0.35, 1.0, t);                               // taper towards the tail
+        float axis = halfLength - r;
+        float2 p = float2(max(abs(input.Local.x) - axis, 0.0), input.Local.y);
+        float distance = length(p) - radius;
+        float cover = Coverage(distance);
+
+        float along = lerp(0.12, 1.0, t * t);                                // tail fades
+        float across = saturate(abs(input.Local.y) / max(radius, 0.001));    // 0 axis .. 1 edge
+        float shade = lerp(1.0, 0.45, smoothstep(0.45, 1.0, across) * input.Param); // darker rim
+
+        float4 color = input.Color * (cover * along);
+        color.rgb *= shade;
+
+        // Glint near the head: fakes refraction without sampling the desktop.
+        float2 glintCenter = float2(axis, -0.35 * r);
+        float glint = saturate(1.0 - length(input.Local - glintCenter) / max(0.8 * r, 0.6)) * 0.35;
+        color.rgb = min(color.rgb + glint * color.a, color.a);              // stay premultiplied (rgb <= a)
+        return color;
+    }
+
+    if (input.Shape == 8)
+    {
+        // Water film on a top edge: a trapezoid from height Bend (left) to Param (right), glint along the top.
+        // Hard sides and bottom: bins abut without seams, and nothing reaches into the window below the edge.
+        if (abs(input.Local.x) > input.HalfSize.x || input.Local.y > input.HalfSize.y) return 0;
+        float u = saturate((input.Local.x / max(input.HalfSize.x, 0.001) + 1.0) * 0.5);
+        float height = lerp(input.Bend, input.Param, u);
+        float above = (input.HalfSize.y - input.Local.y) - height;           // > 0 above the water surface
+        float cover = Coverage(above);
+        float glint = saturate(1.0 - abs(above + 0.6) / 0.8) * 0.55;          // thin bright line just below the top
+        float4 color = input.Color * cover;
+        color.rgb = min(color.rgb + glint * color.a, color.a);
+        return color;
+    }
+
     if (input.Shape == 1)
     {
         // Disc: an ellipse when the half sizes differ. Approximate distance to the edge in pixels.
@@ -131,9 +172,10 @@ float4 main(PixelInput input) : SV_Target
 
     if (input.Shape == 3)
     {
-        // Ring: the outline of the ellipse, about 1.2 px thick.
+        // Ring: the outline of the ellipse. Thickness defaults to 1.2 px (half = 0.6); Param > 0 overrides half-thickness.
+        float thickness = input.Param > 0 ? input.Param : 0.6;
         float2 normalized = input.Local / max(input.HalfSize, 0.001);
-        float distance = abs(length(normalized) - 1.0) * min(input.HalfSize.x, input.HalfSize.y) - 0.6;
+        float distance = abs(length(normalized) - 1.0) * min(input.HalfSize.x, input.HalfSize.y) - thickness;
         return input.Color * Coverage(distance);
     }
 

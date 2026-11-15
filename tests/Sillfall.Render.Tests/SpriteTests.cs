@@ -121,6 +121,93 @@ public sealed class SpriteTests : IDisposable
     }
 
     [Fact]
+    public void Raindrop_HeadIsBrighterThanTail()
+    {
+        // 20 px long, 3 px head radius, lying along x with the head at +x.
+        RenderedImage image = Render(
+            "sprite-raindrop-head",
+            new Sprite(new Vector2(32, 24), new Vector2(10, 3), 0f, SpriteShape.Raindrop, new Vector4(1, 1, 1, 1)) { Param = 0.5f });
+
+        byte head = image[40, 24].Alpha;
+        byte tail = image[24, 24].Alpha;
+        ((int)head).Should().BeGreaterThan(2 * tail, "the head fades less than the tail");
+    }
+
+    [Fact]
+    public void Raindrop_WithRim_EdgeIsDarkerThanCore()
+    {
+        RenderedImage image = Render(
+            "sprite-raindrop-rim",
+            new Sprite(new Vector2(32, 24), new Vector2(10, 4), 0f, SpriteShape.Raindrop, new Vector4(1, 1, 1, 1)) { Param = 1f });
+
+        Pixel core = image[40, 24];
+        Pixel edge = image[40, 26];
+        core.Alpha.Should().BeGreaterThan(0);
+        edge.Alpha.Should().BeGreaterThan(0);
+        float coreRatio = core.Red / (float)core.Alpha;
+        float edgeRatio = edge.Red / (float)edge.Alpha;
+        edgeRatio.Should().BeLessThan(coreRatio, "the dark rim lowers rgb/a at the edge");
+    }
+
+    [Fact]
+    public void Raindrop_StaysPremultiplied()
+    {
+        RenderedImage image = Render(
+            "sprite-raindrop-premul",
+            new Sprite(new Vector2(32, 24), new Vector2(10, 3), 0f, SpriteShape.Raindrop, new Vector4(0.7f, 0.8f, 0.9f, 1f)) { Param = 1f });
+
+        for (int y = 0; y < s_size.Height; y++)
+        {
+            for (int x = 0; x < s_size.Width; x++)
+            {
+                Pixel p = image[x, y];
+                p.Red.Should().BeLessThanOrEqualTo(p.Alpha, $"r <= a at ({x},{y})");
+                p.Green.Should().BeLessThanOrEqualTo(p.Alpha, $"g <= a at ({x},{y})");
+                p.Blue.Should().BeLessThanOrEqualTo(p.Alpha, $"b <= a at ({x},{y})");
+            }
+        }
+    }
+
+    [Fact]
+    public void WaterFilm_FollowsLeftAndRightHeights()
+    {
+        // Quad from y = 20..30 (center 25, half height 5). Left height 8 px, right height 2 px.
+        RenderedImage image = Render(
+            "sprite-waterfilm-heights",
+            new Sprite(new Vector2(32, 25), new Vector2(16, 5), 0f, SpriteShape.WaterFilm, new Vector4(0, 0, 1, 1))
+            {
+                Variant = 8f,
+                Param = 2f,
+            });
+
+        // Left column: filled almost to the top of the quad. Right column: only the bottom 2 px.
+        image[20, 23].Alpha.Should().BeGreaterThan(200, "left side is filled high");
+        image[44, 23].Alpha.Should().Be(0, "right side is only 2 px tall");
+        image[44, 28].Alpha.Should().BeGreaterThan(200, "right side still fills its lower height");
+    }
+
+    [Fact]
+    public void WaterFilm_AdjacentBins_HaveNoSeam()
+    {
+        // Two abutting 8 px-wide bins of equal height: the seam pixel must match the middle (±2).
+        var left = new Sprite(new Vector2(28, 24), new Vector2(4, 4), 0f, SpriteShape.WaterFilm, new Vector4(1, 1, 1, 1))
+        {
+            Variant = 6f,
+            Param = 6f,
+        };
+        var right = new Sprite(new Vector2(36, 24), new Vector2(4, 4), 0f, SpriteShape.WaterFilm, new Vector4(1, 1, 1, 1))
+        {
+            Variant = 6f,
+            Param = 6f,
+        };
+        RenderedImage image = Render("sprite-waterfilm-seam", left, right);
+
+        int seam = image[32, 26].Alpha;
+        int mid = image[28, 26].Alpha;
+        Math.Abs(seam - mid).Should().BeLessThanOrEqualTo(2, "hard sides keep abutting bins from brightening at the seam");
+    }
+
+    [Fact]
     public void Cutouts_LeaveTheirWindowsClearOfWeather()
     {
         var frame = new RenderFrame();
