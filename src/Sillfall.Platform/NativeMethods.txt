@@ -34,6 +34,7 @@ EVENT_SYSTEM_MINIMIZESTART
 EVENT_SYSTEM_MOVESIZEEND
 EVENT_SYSTEM_MOVESIZESTART
 FindWindow
+FindWindowEx
 GetClassName
 GetCurrentPackageFullName
 GetCurrentProcess
@@ -42,6 +43,7 @@ GetCursorPos
 GetDpiForMonitor
 GetForegroundWindow
 GetGuiResources
+GetLayeredWindowAttributes
 GetMessage
 GetModuleHandle
 GetMonitorInfo

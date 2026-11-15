@@ -76,16 +76,27 @@ internal sealed class WindowEnumerator
     {
         tracked = default;
 
-        if (!PInvoke.IsWindowVisible(window) || PInvoke.IsIconic(window) || WindowGeometry.IsCloaked(window))
+        if (!PInvoke.IsWindowVisible(window))
         {
             return false;
         }
 
         var exStyle = (WINDOW_EX_STYLE)PInvoke.GetWindowLong(window, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
 
-        // Tool windows are palettes and floating toolbars. Click-through layered windows are overlays like ours.
-        const WINDOW_EX_STYLE ClickThrough = WINDOW_EX_STYLE.WS_EX_LAYERED | WINDOW_EX_STYLE.WS_EX_TRANSPARENT;
-        if ((exStyle & WINDOW_EX_STYLE.WS_EX_TOOLWINDOW) != 0 || (exStyle & ClickThrough) == ClickThrough)
+        // Tool windows are palettes and floating toolbars. Click-through or fully transparent layered windows are
+        // overlays like ours (WindowFilter, finding F-21). Only styles are read here.
+        byte alpha = 255;
+        byte layeredAlpha = 255;
+        LAYERED_WINDOW_ATTRIBUTES_FLAGS flags = 0;
+        if ((exStyle & WINDOW_EX_STYLE.WS_EX_LAYERED) != 0
+            && PInvoke.GetLayeredWindowAttributes(window, null, &layeredAlpha, &flags)
+            && (flags & LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_ALPHA) != 0)
+        {
+            alpha = layeredAlpha;
+        }
+
+        var facts = new WindowFacts(Visible: true, PInvoke.IsIconic(window), WindowGeometry.IsCloaked(window), (uint)exStyle, alpha);
+        if (!WindowFilter.IsTracked(facts))
         {
             return false;
         }

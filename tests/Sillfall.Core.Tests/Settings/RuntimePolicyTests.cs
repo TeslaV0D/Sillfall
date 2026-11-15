@@ -142,6 +142,19 @@ public class RuntimePolicyTests
     }
 
     [Fact]
+    public void Decide_ClipboardOrEmojiPanelOpen_StepsAside()
+    {
+        // F-17: Win+V and Win+. do not take the foreground; the tracker reports the visible TextInputHost window.
+        RuntimeDecision decision = RuntimePolicy.Decide(new AppSettings(), SystemState.Default with { ForegroundProcess = "notepad.exe", TextInputPanelOpen = true });
+
+        decision.Paused.Should().BeTrue();
+        decision.Reason.Should().Be("Hidden while Start, search or notifications are open");
+
+        var off = new AppSettings { Advanced = new AdvancedConfig { HideOverShell = false } };
+        RuntimePolicy.Decide(off, SystemState.Default with { TextInputPanelOpen = true }).Paused.Should().BeFalse();
+    }
+
+    [Fact]
     public void Decide_StartInFront_StaysWhenSwitchedOff()
     {
         var settings = new AppSettings { Advanced = new AdvancedConfig { HideOverShell = false } };

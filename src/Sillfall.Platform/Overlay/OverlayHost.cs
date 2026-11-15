@@ -806,7 +806,30 @@ public sealed partial class OverlayHost : IDisposable
     {
         (bool fullScreen, bool presentation) = SampleScreenUse();
         Core.Settings.SystemState state = SystemState;
-        PublishSystemState(state, state with { FullScreen = fullScreen, Presentation = presentation });
+        PublishSystemState(state, state with
+        {
+            FullScreen = fullScreen,
+            Presentation = presentation,
+            TextInputPanelOpen = Shell.SystemInfo.IsTextInputPanelOpen(),
+        });
+    }
+
+    /// <summary>
+    /// The clipboard history and the emoji panel are shown by uncloaking a <c>TextInputHost</c> window, without taking
+    /// the foreground (finding F-17): checked when such a window shows, hides, cloaks or uncloaks.
+    /// </summary>
+    private unsafe void OnCoreWindowEvent(HWND window)
+    {
+        const int Capacity = 64;
+        char* buffer = stackalloc char[Capacity];
+        int length = PInvoke.GetClassName(window, buffer, Capacity);
+        if (!new ReadOnlySpan<char>(buffer, Math.Max(length, 0)).Equals(Shell.SystemInfo.CoreWindowClass, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Core.Settings.SystemState state = SystemState;
+        PublishSystemState(state, state with { TextInputPanelOpen = Shell.SystemInfo.IsTextInputPanelOpen() });
     }
 
     private (bool FullScreen, bool Presentation) SampleScreenUse()
@@ -910,6 +933,11 @@ public sealed partial class OverlayHost : IDisposable
                 default:
                     if (objectId == (int)OBJECT_IDENTIFIER.OBJID_WINDOW && childId == (int)PInvoke.CHILDID_SELF)
                     {
+                        if (winEvent is PInvoke.EVENT_OBJECT_CLOAKED or PInvoke.EVENT_OBJECT_UNCLOAKED or PInvoke.EVENT_OBJECT_SHOW or PInvoke.EVENT_OBJECT_HIDE)
+                        {
+                            OnCoreWindowEvent(window);
+                        }
+
                         if (winEvent == PInvoke.EVENT_OBJECT_LOCATIONCHANGE)
                         {
                             FollowWindows();
@@ -1060,8 +1088,6 @@ public sealed partial class OverlayHost : IDisposable
             _visitors.LeaveAll();
         }
 
-        SyncHitWindows();
-
         // App rules may have changed: processes are looked up again as they show up.
         _hiddenProcessNames = new HashSet<string>(_options.HideOverProcesses, StringComparer.OrdinalIgnoreCase);
         _weatherHiddenByProcess.Clear();
@@ -1095,6 +1121,10 @@ public sealed partial class OverlayHost : IDisposable
         }
 
         UpdatePolling();
+
+        // After the overlays changed: a pause removes them, and then no visitor hit window may stay behind to catch
+        // clicks over an invisible visitor (finding F-19).
+        SyncHitWindows();
         if (_overlays.Count == 0)
         {
             UpdateAnimation();

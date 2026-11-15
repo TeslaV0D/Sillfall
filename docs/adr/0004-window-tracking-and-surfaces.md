@@ -55,6 +55,15 @@ Ground is bound to monitor index. If the monitor list changes, ground starts emp
 - WARP tests render the debug layer and check every drawn pixel lies in a band of extracted surfaces and vice versa.
 - In the smoke test the app moves its own window and checks tracking adopts the new position exactly. The script checks the desktop screenshot: debug lines sit on the two rows above and two columns beside the app window. Window position is read via DWM independently of the tracker.
 
+## Amendment 2026-11: other apps' overlays
+
+Finding F-21: another app's transparent, click-through layer (the Claude desktop app's computer-use layer,
+`WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE`) appeared to get weather edges after a scaling
+change. The enumerator already skipped layered + transparent windows, so the exact cause could not be confirmed (the
+layer was not on screen while fixing). The visibility and style rules now live in `WindowFilter` (Core, tested):
+invisible, minimized, cloaked, tool windows, layered + transparent windows, and layered windows with a constant alpha
+of 0 are not tracked. Checklist item for the maintainer in `docs/manual-tests/fixes-2026-11.md`.
+
 ## Amendment 2026-11: tracking during interactive moves
 
 Finding F-07: while the user drags or snaps a window, effects lagged behind or were left behind; scripted

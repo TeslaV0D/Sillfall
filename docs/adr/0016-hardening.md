@@ -90,6 +90,19 @@ Decision:
   a second of taking the focus.
 - Smoke run `foreground`: a helper process's window in front, the full-monitor overlay must stay for 6 s.
 
+## Amendment 2026-11: clipboard history and emoji panel
+
+Finding F-17: Win+V and Win+. open panels of `TextInputHost.exe`, which do not take the foreground, so the foreground
+process check never saw them. `SystemState.TextInputPanelOpen` is set while a visible, uncloaked
+`Windows.UI.Core.CoreWindow` of `TextInputHost.exe` exists (it stays cloaked while closed); `ShellOpen` includes it, so
+"Hide the weather while Start, search or notifications are open" covers both panels. Checked when such a window shows,
+hides, cloaks or uncloaks (WinEvents already hooked) and with the 2 s screen check. Only class and process names are
+read.
+
+Finding F-19: a pause removed the overlays but left a visitor's hit window catching clicks. The hit windows are now
+synced after the overlays changed, so a pause hides them (a held visitor is let go). Smoke check "Click-through while
+paused".
+
 ## Consequences
 
 - Windows behavior here cannot be replayed in CI: lock, standby, exclusive fullscreen games, RDP, Start menu. Checklist M13.

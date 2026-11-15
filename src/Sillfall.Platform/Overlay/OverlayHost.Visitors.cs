@@ -124,6 +124,13 @@ public sealed partial class OverlayHost
     /// </summary>
     private void SyncHitWindows()
     {
+        // A pause while a visitor is held: it is put down where it is, the capture goes.
+        if (_overlays.Count == 0 && _heldVisitor != 0)
+        {
+            Drop(cancelled: true);
+            PInvoke.ReleaseCapture();
+        }
+
         int used = 0;
         if (_options.VisitorsInteractive && _overlays.Count > 0)
         {

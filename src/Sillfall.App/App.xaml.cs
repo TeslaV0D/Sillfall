@@ -714,6 +714,19 @@ public partial class App : Application
             Core.Geometry.PixelRect box = status.VisitorBox;
             results.Add(new DiagnosticResult("Visitor hit window", true, string.Create(CultureInfo.InvariantCulture, $"{status.VisitorHitWindows.Count} over a visitor at {bounds.Left}, {bounds.Top}; box at {box.Left}, {box.Top}")));
 
+            // A pause removes the overlays; no hit window may stay to catch clicks over the invisible visitor (F-19).
+            window.ApplyOptions(before with { VisitorsInteractive = true, Enabled = false });
+            await Task.Delay(400);
+            OverlayStatus? paused = window.Refresh();
+            results.Add(new DiagnosticResult(
+                "Click-through while paused",
+                paused is { Overlays.Count: 0, VisitorHitWindows.Count: 0 },
+                string.Create(CultureInfo.InvariantCulture, $"{paused?.Overlays.Count ?? -1} overlay(s), {paused?.VisitorHitWindows.Count ?? -1} hit window(s) during the pause")));
+            window.ApplyOptions(before with { VisitorsInteractive = true });
+            await Task.Delay(TimeSpan.FromSeconds(1.2));
+            status = window.Refresh() ?? status;
+            bounds = status.Visitors.Count > 0 ? status.Visitors[0].Bounds : bounds;
+
             // Grab it in the middle and carry it to the box in small steps, as a hand would.
             int fromX = bounds.Left + (bounds.Width / 2);
             int fromY = bounds.Top + (bounds.Height / 2);
