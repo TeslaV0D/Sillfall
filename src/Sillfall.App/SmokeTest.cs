@@ -46,6 +46,7 @@ internal sealed class SmokeTest
     private const string SoakSwitch = "--soak=";
     private const string SettingsTourSwitch = "--settings-tour=";
     private const string FrameRateCapSwitch = "--frame-rate-cap=";
+    private const string SoakHiddenSwitch = "--soak-hidden";
 
     private readonly string _reportPath;
 
@@ -97,6 +98,9 @@ internal sealed class SmokeTest
     /// <summary>Invites a visitor onto the app window: checks spawning, the render loop and the keyboard collect.</summary>
     public bool Visitors { get; private init; }
 
+    /// <summary>The soak test runs with the app window hidden and still (budget scenario, finding F-03).</summary>
+    public bool SoakHidden { get; private init; }
+
     /// <summary>Frame rate cap of the render loop, 0 for the display's rate (the default).</summary>
     public int FrameRateCap { get; private init; }
 
@@ -132,6 +136,7 @@ internal sealed class SmokeTest
         {
             SettingsTour = ValueOf(args, SettingsTourSwitch) is { Length: > 0 } tour ? Path.GetFullPath(tour) : null,
             Visitors = args.Contains(VisitorsSwitch, StringComparer.OrdinalIgnoreCase),
+            SoakHidden = args.Contains(SoakHiddenSwitch, StringComparer.OrdinalIgnoreCase),
             FrameRateCap = int.TryParse(ValueOf(args, FrameRateCapSwitch), NumberStyles.None, CultureInfo.InvariantCulture, out int cap) ? cap : 0,
             SoakMinutes = double.TryParse(ValueOf(args, SoakSwitch), NumberStyles.Float, CultureInfo.InvariantCulture, out double soak) ? Math.Max(soak, 0) : 0,
         };
