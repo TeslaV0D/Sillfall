@@ -46,6 +46,7 @@ public sealed class GrassEffect : IEffectSystem
     private float _scale = 1f;
     private float _time;
     private float _wither = 1f;
+    private bool _grown;
 
     public GrassEffect(ulong seed = 1)
     {
@@ -59,7 +60,11 @@ public sealed class GrassEffect : IEffectSystem
     /// <summary>Rain intensity of the rain effect, 0 to 1. Rain makes the grass grow faster (PLAN.md, section 4.7).</summary>
     public float RainIntensity { get; set; }
 
-    public bool IsActive => Settings.ClampedIntensity > 0f || _strips.Count > 0 || _fading.Count > 0;
+    /// <summary>
+    /// Strips exist for every surface from the moment the surfaces change (finding F-02), so whether there is grass to
+    /// show is tracked separately: something grew since the last time the grass withered away.
+    /// </summary>
+    public bool IsActive => Settings.ClampedIntensity > 0f || _grown || _fading.Count > 0;
 
     /// <summary>Number of blades on the top edge of a window, or 0.</summary>
     public int BladesOn(long windowId) => _strips.TryGetValue(new SurfaceKey(windowId, SurfaceEdge.Top), out Strip? strip) ? strip.Count : 0;
@@ -83,6 +88,8 @@ public sealed class GrassEffect : IEffectSystem
         {
             strip.GrowTo(Math.Clamp(share, 0f, 1f));
         }
+
+        _grown |= share > 0f;
     }
 
     public void Simulate(float dt, SimulationContext context)
@@ -114,16 +121,27 @@ public sealed class GrassEffect : IEffectSystem
             }
 
             strip.Origin = new Vector2(bounds.Left, bounds.Top);
-            strip.Grow(growth);
-            if (_wither <= 0f)
+            if (growth > 0f)
             {
-                _stale.Add(entry.Key);
+                strip.Grow(growth);
+                _grown = true;
             }
         }
 
         foreach (SurfaceKey key in _stale)
         {
             _strips.Remove(key);
+        }
+
+        // Withered away: the strips stay (no allocation when it grows again), the blades start from the ground.
+        if (_wither <= 0f && _grown)
+        {
+            foreach (Strip strip in _strips.Values)
+            {
+                strip.Cut();
+            }
+
+            _grown = false;
         }
 
         for (int i = _fading.Count - 1; i >= 0; i--)
@@ -200,6 +218,14 @@ public sealed class GrassEffect : IEffectSystem
         }
 
         return false;
+    }
+
+    /// <summary>Every new surface gets its strip now, not when grass first grows on it in the frame loop (F-02).</summary>
+    public void OnSurfacesChanged(SimulationContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        _scale = context.PixelScale;
+        EnsureStrips(context);
     }
 
     private static bool TryBounds(SurfaceKey key, SimulationContext context, out PixelRect bounds)
@@ -345,6 +371,9 @@ public sealed class GrassEffect : IEffectSystem
                 Height[i] = MathF.Min(MaxHeight[i], Height[i] + amount);
             }
         }
+
+        /// <summary>Back to the ground: every blade at height 0.</summary>
+        public void Cut() => Array.Clear(Height, 0, Count);
 
         public void GrowTo(float share)
         {

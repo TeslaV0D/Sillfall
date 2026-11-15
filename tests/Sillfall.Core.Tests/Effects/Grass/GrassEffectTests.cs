@@ -180,6 +180,46 @@ public class GrassEffectTests
     }
 
     [Fact]
+    public void FrameLoop_GrassSwitchedOnAgainAndANewWindow_DoNotAllocate()
+    {
+        // F-02: strips were made in Simulate: for a new window, and again after the grass withered (the smoke test's
+        // grass run switches it off and on). They are made when the surfaces change now and kept while withered.
+        (SimulationEngine engine, GrassEffect grass) = Create(intensity: 0f);
+        for (int i = 0; i < 120; i++)
+        {
+            engine.Advance(FrameTime);
+        }
+
+        var newcomer = new TrackedWindow(11, PixelRect.FromSize(1500, 500, 380, 300));
+        engine.SetWindows(WindowSnapshot.Of(2.1, s_window, newcomer));
+        grass.Settings = new EffectSettings { Intensity = 1f };
+
+        Allocations.Measure(() =>
+        {
+            for (int i = 0; i < 600; i++)
+            {
+                engine.Advance(FrameTime);
+            }
+        }).Should().Be(0);
+        grass.TallestOn(newcomer.Id).Should().BePositive("grass grew on the new window during the measured frames");
+    }
+
+    [Fact]
+    public void Grass_StopsAfterWitheringAlthoughItsStripsStay()
+    {
+        (SimulationEngine engine, GrassEffect grass) = Create(intensity: 1f);
+        grass.Grow(engine.Context, 1f);
+        grass.Settings = new EffectSettings { Intensity = 0f };
+        for (int i = 0; i < 60 * 60 && grass.IsActive; i++)
+        {
+            engine.Advance(FrameTime);
+        }
+
+        grass.IsActive.Should().BeFalse();
+        grass.TallestOn(s_window.Id).Should().Be(0f);
+    }
+
+    [Fact]
     public void HighDpi_ScalesTheBlades()
     {
         (SimulationEngine normal, GrassEffect normalGrass) = Create(intensity: 1f);

@@ -91,7 +91,11 @@ public sealed partial class OverlayHost : IDisposable
 
     private const int DeviceRecoveryAttempts = 3;
 
-    /// <summary>Frames after the start of the loop that are not measured for allocations (JIT, buffer growth).</summary>
+    /// <summary>
+    /// Frames with content after the start of the loop that are not measured for allocations (JIT, buffer growth). Only
+    /// frames that draw something count: the first draw of the sprite batch is part of the warm-up, and grass shows its
+    /// first blades only after a while.
+    /// </summary>
     private const int AllocationWarmUpFrames = 60;
 
     private const int StateCreated = 0;
@@ -522,7 +526,11 @@ public sealed partial class OverlayHost : IDisposable
             _measuredLoopFrames++;
         }
 
-        _loopFramesSinceStart++;
+        if (_engine.Frame.SpriteCount > 0 || _engine.Frame.HasAtmosphere || _engine.Frame.Visitors.Length > 0)
+        {
+            _loopFramesSinceStart++;
+        }
+
         _animationFrames++;
         _frameStatistics.Add(elapsed, (simulated - start) / (double)Stopwatch.Frequency);
 
