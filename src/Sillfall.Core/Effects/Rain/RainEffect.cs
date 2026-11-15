@@ -79,6 +79,18 @@ public sealed class RainEffect : IEffectSystem
     /// <summary>Mean diameter used for the wind-side spawn margin (mid-range drop).</summary>
     private const float MeanSpawnDiameter = 1.4f;
 
+    /// <summary>Splash droplets spawned per unit of impact energy (d³ · (vy/scale)²).</summary>
+    private const float SplashPerEnergy = 1.05f;
+
+    /// <summary>Base splash launch speed scale at 100 % DPI, before the sqrt(vy) factor.</summary>
+    private const float SplashSpeed = 38f;
+
+    /// <summary>Water depth (bin units) above which the edge counts as wet for splash/ripple scaling.</summary>
+    private const float WetEdgeThreshold = 0.4f;
+
+    /// <summary>Diameter in mm above which a Worthington jet can form on a wet edge.</summary>
+    private const float JetDiameter = 2.5f;
+
     private static readonly Vector3 s_rainColor = new(0.78f, 0.85f, 0.95f);
     private static readonly Vector3 s_waterColor = new(0.80f, 0.88f, 1f);
 
@@ -117,12 +129,24 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _splashVy = new float[MaxSplashes];
     private readonly float[] _splashLife = new float[MaxSplashes];
 
+    /// <summary>Initial lifetime of a splash, so Emit can fade by life / startLife.</summary>
+    private readonly float[] _splashStartLife = new float[MaxSplashes];
+
     /// <summary>Row of the surface a splash came from. Falling back to it, the droplet is gone.</summary>
     private readonly float[] _splashFloor = new float[MaxSplashes];
 
     /// <summary>Window whose top edge a splash jumped from, or none for the floor.</summary>
     private readonly long[] _splashHome = new long[MaxSplashes];
     private int _splashes;
+
+    /// <summary>Splash droplets created in the last simulation step (tests).</summary>
+    internal int LastStepSplashDroplets { get; private set; }
+
+    /// <summary>Hits recorded in the last simulation step (tests).</summary>
+    internal int LastStepHits { get; private set; }
+
+    /// <summary>Horizontal velocities of live splash droplets in px/s (tests).</summary>
+    internal ReadOnlySpan<float> SplashVx => _splashVx.AsSpan(0, _splashes);
 
     // Ripples where drops hit.
     private readonly float[] _rippleX = new float[MaxRipples];
@@ -353,6 +377,7 @@ public sealed class RainEffect : IEffectSystem
         float top = context.DesktopBounds.Top;
         float time = (float)context.Time;
         int hits = 0;
+        LastStepSplashDroplets = 0;
 
         Span<float> gusts = stackalloc float[GustBands];
         float bandHeight = MathF.Max(context.DesktopBounds.Height / (float)GustBands, 1f);
@@ -378,7 +403,7 @@ public sealed class RainEffect : IEffectSystem
             if (z >= threshold && context.SurfaceIndex.TryFindLanding(nextX, _dropY[i], nextY, out SurfaceHit hit))
             {
                 SurfaceSegment segment = context.Surfaces.Segments[hit.Segment];
-                Hit(nextX, hit.Row, z, segment, context, scale);
+                Hit(nextX, hit.Row, z, _dropSize[i], _dropVx[i], _dropVy[i], segment, context, scale);
                 hits++;
                 RemoveDrop(i);
                 continue;
@@ -395,43 +420,84 @@ public sealed class RainEffect : IEffectSystem
             i++;
         }
 
+        LastStepHits = hits;
         return hits;
     }
 
-    private void Hit(float x, int row, float z, in SurfaceSegment segment, SimulationContext context, float scale)
+    private void Hit(float x, int row, float z, float d, float vx, float vy, in SurfaceSegment segment, SimulationContext context, float scale)
     {
         long home = segment.Key.Edge == SurfaceEdge.Top ? segment.Key.OwnerId : WindowOcclusion.NoHome;
-        int droplets = 3 + _random.NextInt(4);
-        float speed = (120f + (180f * z)) * scale;
-        for (int d = 0; d < droplets && _splashes < MaxSplashes; d++)
+        float water = 0f;
+        if (segment.Key.Edge == SurfaceEdge.Top)
         {
-            int s = _splashes++;
-            float angle = -MathF.PI * _random.NextFloat(0.15f, 0.85f);
-            float v = speed * _random.NextFloat(0.5f, 1f);
-            _splashX[s] = x;
-            _splashY[s] = row - scale;
-            _splashFloor[s] = row - scale;
-            _splashVx[s] = MathF.Cos(angle) * v;
-            _splashVy[s] = MathF.Sin(angle) * v;
-            _splashLife[s] = _random.NextFloat(0.15f, 0.35f);
-            _splashHome[s] = home;
+            WaterField field = FieldFor(segment.Key.OwnerId, context);
+            float localX = x - segment.Origin;
+            water = field.Bins[field.BinAt(localX)];
+            field.Add(localX, WaterPerHit * (0.5f + z));
         }
+
+        bool wet = water > WetEdgeThreshold;
+        float fall = MathF.Max(vy / (1500f * scale), 0f);
+        float energy = d * d * d * fall * fall;
+        float expected = energy * SplashPerEnergy;
+        if (wet)
+        {
+            expected *= 0.6f;
+        }
+
+        int droplets = Math.Clamp((int)(expected + _random.NextFloat()), 0, 4);
+        float speed = SplashSpeed * MathF.Sqrt(MathF.Max(vy / scale, 0f)) * scale;
+        for (int n = 0; n < droplets && _splashes < MaxSplashes; n++)
+        {
+            SpawnSplashDroplet(x, row, home, scale, speed, vx, upward: false);
+        }
+
+        // Worthington jet: a large drop into standing water throws one droplet straight up.
+        if (d > JetDiameter && wet && _splashes < MaxSplashes)
+        {
+            SpawnSplashDroplet(x, row, home, scale, speed * 0.5f, vx: 0f, upward: true);
+            droplets++;
+        }
+
+        LastStepSplashDroplets += droplets;
 
         if (_ripples < MaxRipples)
         {
             int r = _ripples++;
+            float rippleScale = wet ? 1.6f : 0.6f;
             _rippleX[r] = x;
             _rippleY[r] = row - scale;
             _rippleAge[r] = 0f;
-            _rippleSize[r] = (3f + (4f * z)) * scale;
+            _rippleSize[r] = (3f + (4f * z)) * scale * rippleScale;
             _rippleHome[r] = home;
         }
+    }
 
-        if (segment.Key.Edge == SurfaceEdge.Top)
+    /// <summary>Crown lobe left/right, or a vertical Worthington jet when <paramref name="upward"/>.</summary>
+    private void SpawnSplashDroplet(float x, int row, long home, float scale, float speed, float vx, bool upward)
+    {
+        int s = _splashes++;
+        float life = _random.NextFloat(0.15f, 0.35f);
+        _splashX[s] = x;
+        _splashY[s] = row - scale;
+        _splashFloor[s] = row - scale;
+        _splashLife[s] = life;
+        _splashStartLife[s] = life;
+        _splashHome[s] = home;
+
+        if (upward)
         {
-            WaterField field = FieldFor(segment.Key.OwnerId, context);
-            field.Add(x - segment.Origin, WaterPerHit * (0.5f + z));
+            _splashVx[s] = 0.25f * vx;
+            _splashVy[s] = -speed * _random.NextFloat(0.6f, 1f);
+            return;
         }
+
+        // Two lobes left/right of the vertical: 20°–65° from the horizontal, upward.
+        float side = _random.NextFloat() < 0.5f ? -1f : 1f;
+        float fromHorizontal = _random.NextFloat(20f, 65f) * (MathF.PI / 180f);
+        float v = speed * _random.NextFloat(0.6f, 1f);
+        _splashVx[s] = (side * MathF.Cos(fromHorizontal) * v) + (0.25f * vx);
+        _splashVy[s] = -MathF.Sin(fromHorizontal) * v;
     }
 
     private WaterField FieldFor(long windowId, SimulationContext context)
@@ -455,11 +521,13 @@ public sealed class RainEffect : IEffectSystem
 
     private void SimulateSplashes(float dt)
     {
+        float drag = MathF.Max(0f, 1f - (1.5f * dt));
         int i = 0;
         while (i < _splashes)
         {
             _splashLife[i] -= dt;
-            _splashVy[i] += Gravity * _scale * dt;
+            _splashVx[i] *= drag;
+            _splashVy[i] = (_splashVy[i] * drag) + (Gravity * _scale * dt);
             _splashX[i] += _splashVx[i] * dt;
             _splashY[i] += _splashVy[i] * dt;
 
@@ -472,6 +540,7 @@ public sealed class RainEffect : IEffectSystem
                 _splashVx[i] = _splashVx[last];
                 _splashVy[i] = _splashVy[last];
                 _splashLife[i] = _splashLife[last];
+                _splashStartLife[i] = _splashStartLife[last];
                 _splashFloor[i] = _splashFloor[last];
                 _splashHome[i] = _splashHome[last];
                 continue;

@@ -435,6 +435,43 @@ public class RainEffectTests
     }
 
     [Fact]
+    public void Splashes_HeavyRain_AverageAtMostOnePointTwoPerHit()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        long hits = 0;
+        long droplets = 0;
+        for (int i = 0; i < 300; i++)
+        {
+            engine.Advance(FrameTime);
+            hits += rain.LastStepHits;
+            droplets += rain.LastStepSplashDroplets;
+        }
+
+        hits.Should().BeGreaterThan(200);
+        (droplets / (double)hits).Should().BeLessThanOrEqualTo(1.2);
+    }
+
+    [Fact]
+    public void Splashes_HeavyRain_StayWithinBudget()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        Run(engine, seconds: 5);
+        rain.SplashCount.Should().BeLessThanOrEqualTo(RainEffect.MaxSplashes);
+    }
+
+    [Fact]
+    public void Splashes_DriftWithTheWind()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        engine.Context.Wind.Base = new Vector2(350f, 0f);
+        engine.Context.Wind.Gustiness = 0f;
+        Run(engine, seconds: 2);
+
+        rain.SplashCount.Should().BePositive();
+        rain.SplashVx.ToArray().Average().Should().BePositive("impact carries the wind's horizontal velocity into the crown");
+    }
+
+    [Fact]
     public void WindGust_SmallDropsFollowFasterThanLargeOnes()
     {
         (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
