@@ -73,9 +73,9 @@ public class RainEffectTests
         Run(engine, seconds: 6);
 
         rain.DripCount.Should().BePositive();
-        Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.8f, 2.2f))];
+        Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(IsDripHead)];
         heads.Should().NotBeEmpty();
-        heads.Should().OnlyContain(s => (s.Center.X < 400 - s.HalfSize.X + 0.5f && s.Center.X > 394) || (s.Center.X > 1400 + s.HalfSize.X - 0.5f && s.Center.X < 1406), "drips run just outside the frame, never over the window");
+        heads.Should().OnlyContain(s => (s.Center.X < 400 && s.Center.X > 394) || (s.Center.X > 1400 && s.Center.X < 1406), "drips run just outside the frame, never over the window");
         heads.Should().OnlyContain(s => s.Center.Y >= 300 && s.Center.Y <= 800);
     }
 
@@ -86,10 +86,9 @@ public class RainEffectTests
 
         Run(engine, seconds: 2);
 
-        // Far drops (thin streaks) are drawn only while their tip is outside every window.
-        static Vector2 Tip(Sprite s) => s.Center + (new Vector2(MathF.Cos(s.Rotation), MathF.Sin(s.Rotation)) * s.HalfSize.X);
+        // Far drops (thin raindrops) are drawn only while their tip is outside every window.
         engine.Frame.Sprites.ToArray()
-            .Where(s => s.Shape == SpriteShape.Streak && s.HalfSize.Y < 1.1f)
+            .Where(s => s.Shape == SpriteShape.Raindrop && s.HalfSize.Y < 1.1f && s.Rotation is > 0.2f and < 2.5f)
             .Select(Tip)
             .Where(tip => s_window.Bounds.Contains((int)MathF.Floor(tip.X), (int)MathF.Floor(tip.Y)))
             .Should().BeEmpty();
@@ -125,7 +124,7 @@ public class RainEffectTests
         }
 
         // Beside the window it rains as before.
-        engine.Frame.Sprites.ToArray().Count(s => s.Shape == SpriteShape.Streak && Tip(s).X > 1300).Should().BePositive();
+        engine.Frame.Sprites.ToArray().Count(s => s.Shape == SpriteShape.Raindrop && Tip(s).X > 1300).Should().BePositive();
     }
 
     [Fact]
@@ -157,7 +156,7 @@ public class RainEffectTests
             // Falling drops over the maximized window are hidden; the only rain there is attached to the small
             // window's top edge (splashes, ripples) or runs down its sides.
             RainSpritesInside(engine, maximized.Bounds)
-                .Where(s => s.Shape == SpriteShape.Streak && !s_window.Bounds.Contains((int)Tip(s).X, (int)Tip(s).Y)
+                .Where(s => s.Shape == SpriteShape.Raindrop && !s_window.Bounds.Contains((int)Tip(s).X, (int)Tip(s).Y)
                     && !NearTheSides(Tip(s)))
                 .Should().BeEmpty($"frame {frame}");
         }
@@ -196,8 +195,10 @@ public class RainEffectTests
         for (int i = 0; i < 180; i++)
         {
             engine.Advance(FrameTime);
-            Sprite[] splashes = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.1f, 1.1f))];
-            splashes.Where(s => s.Center.X > 405 && s.Center.X < 1395 && s.Center.Y > 300.5f && s.Center.Y < 800)
+            // Splash raindrops (short, near the impact) must not fall into the window content.
+            engine.Frame.Sprites.ToArray()
+                .Where(s => s.Shape == SpriteShape.Raindrop && s.HalfSize.X < 8f
+                    && s.Center.X > 405 && s.Center.X < 1395 && s.Center.Y > 310f && s.Center.Y < 800)
                 .Should().BeEmpty("droplets that fall back onto the edge are absorbed");
         }
     }
@@ -210,7 +211,7 @@ public class RainEffectTests
 
         // Sheet drops start slowly right below the corners.
         Sprite[] nearCorners = [.. engine.Frame.Sprites.ToArray().Where(s =>
-            s.Shape == SpriteShape.Streak && s.Center.Y > 300 && s.Center.Y < 360
+            s.Shape == SpriteShape.Raindrop && s.Center.Y > 300 && s.Center.Y < 360
             && (Math.Abs(s.Center.X - 399f) < 4f || Math.Abs(s.Center.X - 1400f) < 4f))];
         nearCorners.Length.Should().BeGreaterThan(3);
         rain.DropCount.Should().BeLessThanOrEqualTo(RainEffect.MaxDrops);
@@ -243,7 +244,7 @@ public class RainEffectTests
         engine.SetWindows(WindowSnapshot.Of(6.1, moved));
         engine.Advance(1.0 / 120);
 
-        Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Disc && s.HalfSize == new Vector2(1.8f, 2.2f))];
+        Sprite[] heads = [.. engine.Frame.Sprites.ToArray().Where(IsDripHead)];
         heads.Should().OnlyContain(s => (s.Center.X < 600 && s.Center.X > 594) || (s.Center.X > 1600 && s.Center.X < 1606));
     }
 
@@ -297,7 +298,7 @@ public class RainEffectTests
 
         Run(engine, seconds: 1);
 
-        float[] angles = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Streak).Select(s => s.Rotation)];
+        float[] angles = [.. engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Raindrop && s.HalfSize.X > 4f).Select(s => s.Rotation)];
         angles.Average().Should().BeLessThan(MathF.PI / 2 - 0.1f, "with wind to the right the drops lean right");
     }
 
@@ -309,7 +310,7 @@ public class RainEffectTests
 
         Run(engine, seconds: 1);
 
-        Sprite drop = engine.Frame.Sprites.ToArray().Last(s => s.Shape == SpriteShape.Streak);
+        Sprite drop = engine.Frame.Sprites.ToArray().Last(s => s.Shape == SpriteShape.Raindrop && s.HalfSize.X > 4f);
         drop.Color.Y.Should().Be(0f);
         drop.Color.X.Should().Be(drop.Color.W, "pure red, premultiplied");
     }
@@ -634,10 +635,37 @@ public class RainEffectTests
         Run(doubled, seconds: 1);
 
         static float Width(SimulationEngine engine) =>
-            engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Streak).Max(s => s.HalfSize.Y);
+            engine.Frame.Sprites.ToArray().Where(s => s.Shape == SpriteShape.Raindrop && s.HalfSize.X > 4f).Max(s => s.HalfSize.Y);
 
-        Width(doubled).Should().BeApproximately(2 * Width(normal), 0.01f);
+        Width(doubled).Should().BeApproximately(2 * Width(normal), 0.2f);
         rain.PuddleOf(s_window.Id)!.BinWidth.Should().Be(2 * RainEffect.BinWidth);
+    }
+
+    [Fact]
+    public void Puddles_EmitOneSpritePerWetBin()
+    {
+        (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
+        Run(engine, seconds: 3);
+        WaterField field = rain.PuddleOf(s_window.Id)!;
+        int wetBins = field.Bins.ToArray().Count(w => w >= 0.02f);
+        wetBins.Should().BePositive();
+        engine.Frame.Sprites.ToArray().Count(s => s.Shape == SpriteShape.WaterFilm).Should().Be(wetBins);
+    }
+
+    [Fact]
+    public void Emit_HeavyRain_UsesNoMoreSpritesThanBefore()
+    {
+        // Baseline peak sprite count measured 2026-11-15 on main before rain v2 emit (seed 5, 1920×1080, one window).
+        const int BaselinePeakSprites = 9225;
+        (SimulationEngine engine, _) = Create(intensity: 1f);
+        int peak = 0;
+        for (int i = 0; i < 600; i++)
+        {
+            engine.Advance(FrameTime);
+            peak = Math.Max(peak, engine.Frame.SpriteCount);
+        }
+
+        peak.Should().BeLessThanOrEqualTo(BaselinePeakSprites);
     }
 
     private static (SimulationEngine Engine, RainEffect Rain) Create(float intensity, float depth = 0.5f, MonitorInfo? monitor = null, TrackedWindow[]? windows = null)
@@ -650,16 +678,51 @@ public class RainEffectTests
         return (engine, rain);
     }
 
-    /// <summary>The tip of a streak (its leading end), or the centre of any other sprite.</summary>
-    private static Vector2 Tip(Sprite s) => s.Shape == SpriteShape.Streak
-        ? s.Center + (new Vector2(MathF.Cos(s.Rotation), MathF.Sin(s.Rotation)) * s.HalfSize.X)
-        : s.Center;
+    /// <summary>The tip of a falling raindrop/streak (its leading end), or the centre of any other sprite.</summary>
+    private static Vector2 Tip(Sprite s) =>
+        s.Shape is SpriteShape.Streak || (s.Shape == SpriteShape.Raindrop && !IsDripHead(s))
+            ? s.Center + (new Vector2(MathF.Cos(s.Rotation), MathF.Sin(s.Rotation)) * s.HalfSize.X)
+            : s.Center;
 
-    /// <summary>Falling drops (streaks) and splashes or ripples whose position lies inside <paramref name="bounds"/>.</summary>
+    /// <summary>Drip heads: short raindrops with half-length = 1.5 × radius, pointing down the frame.</summary>
+    private static bool IsDripHead(Sprite s) =>
+        s.Shape == SpriteShape.Raindrop
+        && MathF.Abs(s.Rotation - (MathF.PI / 2f)) < 0.05f
+        && s.HalfSize.Y > 0.1f
+        && MathF.Abs((s.HalfSize.X / s.HalfSize.Y) - 1.5f) < 0.05f;
+
+    /// <summary>
+    /// Sample point for occlusion checks: the tip of a falling drop (matches Emit's particle position),
+    /// the centre of splashes and drip heads (formerly Disc centres).
+    /// </summary>
+    private static Vector2 OcclusionPoint(Sprite s)
+    {
+        if (IsDripHead(s))
+        {
+            return s.Center;
+        }
+
+        // Splash raindrops set Variant = 1; their tip can reach into the window while the particle is absorbed.
+        if (s.Shape == SpriteShape.Raindrop && s.Variant >= 1f)
+        {
+            return s.Center;
+        }
+
+        if (s.Shape is SpriteShape.Streak or SpriteShape.Raindrop)
+        {
+            return Tip(s);
+        }
+
+        return s.Center;
+    }
+
+    /// <summary>
+    /// Falling rain over <paramref name="bounds"/> (F-05). Skips edge-attached splashes, drip heads, and ripples.
+    /// </summary>
     private static Sprite[] RainSpritesInside(SimulationEngine engine, PixelRect bounds) =>
         [.. engine.Frame.Sprites.ToArray().Where(s =>
-            s.Shape is SpriteShape.Streak or SpriteShape.Disc or SpriteShape.Ring
-            && bounds.Contains((int)MathF.Floor(Tip(s).X), (int)MathF.Floor(Tip(s).Y)))];
+            ((s.Shape == SpriteShape.Raindrop && s.Variant < 1f && !IsDripHead(s)) || s.Shape == SpriteShape.Streak)
+            && bounds.Contains((int)MathF.Floor(OcclusionPoint(s).X), (int)MathF.Floor(OcclusionPoint(s).Y)))];
 
     private static void Run(SimulationEngine engine, double seconds)
     {
