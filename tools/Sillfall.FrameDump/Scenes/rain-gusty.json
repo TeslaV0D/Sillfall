@@ -1,0 +1,13 @@
+{
+  // Gusty rain: high wind and gustiness so turbulence bands and crown splashes show in the golden.
+  "name": "rain-gusty",
+  "seed": 21,
+  "monitor": { "width": 640, "height": 400, "taskbar": 30 },
+  "windows": [
+    { "id": 2, "x": 360, "y": 100, "width": 220, "height": 160 },
+    { "id": 1, "x": 40, "y": 160, "width": 280, "height": 180 }
+  ],
+  "effects": { "rain": 0.8, "rainDepth": 0.7 },
+  "wind": { "x": 120, "gustiness": 0.95 },
+  "captures": [ 1.5, 3.0, 4.5 ]
+}

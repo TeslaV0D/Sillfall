@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Sillfall.Core.Desktop;
 using Sillfall.Core.Geometry;
 using Sillfall.Core.Rendering;
@@ -57,8 +58,75 @@ public sealed class RainEffect : IEffectSystem
 
     private const float TrailSpacing = 5f;
 
+    /// <summary>Smallest raindrop diameter in millimetres.</summary>
+    private const float MinDiameter = 0.5f;
+
+    /// <summary>Largest raindrop diameter in millimetres.</summary>
+    private const float MaxDiameter = 4.0f;
+
+    /// <summary>
+    /// Screen pixels per metre of real fall. Chosen so a typical (~1 mm) mid-depth drop still falls
+    /// around 1200 px/s like the pre-v2 rain; a rare near 2 mm drop is then a bit faster than 1500 px/s.
+    /// </summary>
+    private const float PixelsPerMeter = 380f;
+
+    /// <summary>Wind response rate for a 1 mm drop, in 1/s. Larger drops drag more slowly: rate / d.</summary>
+    private const float DragRate = 6f;
+
+    /// <summary>Horizontal height bands that share one turbulence sample per step.</summary>
+    private const int GustBands = 32;
+
+    /// <summary>Share of wind speed added as band turbulence when wind is blowing.</summary>
+    private const float Turbulence = 0.25f;
+
+    /// <summary>Mean diameter used for the wind-side spawn margin (mid-range drop).</summary>
+    private const float MeanSpawnDiameter = 1.4f;
+
+    /// <summary>Splash droplets spawned per unit of impact energy (d³ · (vy/scale)²).</summary>
+    private const float SplashPerEnergy = 0.32f;
+
+    /// <summary>Base splash launch speed scale at 100 % DPI, before the sqrt(vy) factor.</summary>
+    private const float SplashSpeed = 28f;
+
+    /// <summary>Hard cap on crown lobes per hit (plus an optional Worthington jet).</summary>
+    private const int MaxSplashDropletsPerHit = 2;
+
+    /// <summary>Splash raindrop stretch: screen speed × this, capped relative to radius (avoids needle comb).</summary>
+    private const float SplashStretchPerSpeed = 0.005f;
+
+    /// <summary>Water depth (bin units) above which the edge counts as wet for splash/ripple scaling.</summary>
+    private const float WetEdgeThreshold = 0.4f;
+
+    /// <summary>Diameter in mm above which a Worthington jet can form on a wet edge.</summary>
+    private const float JetDiameter = 2.5f;
+
+    /// <summary>Base pinning mass in bin units; roughness scales friction around this. Above WaterPerDrip so a fresh drip often sticks until fed.</summary>
+    private const float PinMass = 1.65f;
+
+    /// <summary>Drip speed in px/s per excess bin-unit of mass above friction, at 100 % scaling.</summary>
+    private const float DripSpeedPerMass = 110f;
+
+    /// <summary>Mass left behind in the trail per px of travel (bin units / px at 100 %).</summary>
+    private const float TrailLoss = 0.0035f;
+
+    /// <summary>Below this mass a stuck drip can evaporate after <see cref="DripEvaporateAfter"/>.</summary>
+    private const float MinMass = 0.35f;
+
+    /// <summary>Seconds a low-mass drip may sit still before it evaporates.</summary>
+    private const float DripEvaporateAfter = 6f;
+
+    /// <summary>Mass lost per second while a drip is pinned (pane evaporation).</summary>
+    private const float DripIdleEvaporation = 0.12f;
+
+    /// <summary>How long a trail point stays visible, in seconds.</summary>
+    private const float TrailLifetime = 2.5f;
+
+    /// <summary>Feed into an existing drip if its head is still within this many px of the top (at 100 %).</summary>
+    private const float DripMergeDistance = 8f;
+
     private static readonly Vector3 s_rainColor = new(0.78f, 0.85f, 0.95f);
     private static readonly Vector3 s_waterColor = new(0.80f, 0.88f, 1f);
+    private static readonly Vector3 s_farTint = new(0.88f, 0.92f, 0.98f);
 
     private readonly Dictionary<long, WaterField> _puddles = [];
     private readonly List<long> _staleFields = [];
@@ -75,6 +143,15 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _dropVy = new float[MaxDrops];
     private readonly float[] _dropZ = new float[MaxDrops];
 
+    /// <summary>Drop diameter in millimetres.</summary>
+    private readonly float[] _dropSize = new float[MaxDrops];
+
+    /// <summary>Wind adaptation rate in 1/s, precomputed as <see cref="DragRate"/> / diameter.</summary>
+    private readonly float[] _dropDrag = new float[MaxDrops];
+
+    /// <summary>Cached terminal fall speed in m/s from <see cref="TerminalVelocity"/>.</summary>
+    private readonly float[] _dropVt = new float[MaxDrops];
+
     /// <summary>Window a drop came from (sliding off, a corner stream, a released drip), or none (<see cref="WindowOcclusion"/>).</summary>
     private readonly long[] _dropHome = new long[MaxDrops];
     private int _drops;
@@ -86,12 +163,36 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _splashVy = new float[MaxSplashes];
     private readonly float[] _splashLife = new float[MaxSplashes];
 
+    /// <summary>Initial lifetime of a splash, so Emit can fade by life / startLife.</summary>
+    private readonly float[] _splashStartLife = new float[MaxSplashes];
+
     /// <summary>Row of the surface a splash came from. Falling back to it, the droplet is gone.</summary>
     private readonly float[] _splashFloor = new float[MaxSplashes];
 
     /// <summary>Window whose top edge a splash jumped from, or none for the floor.</summary>
     private readonly long[] _splashHome = new long[MaxSplashes];
     private int _splashes;
+
+    /// <summary>Splash droplets created in the last simulation step (tests).</summary>
+    internal int LastStepSplashDroplets { get; private set; }
+
+    /// <summary>Hits recorded in the last simulation step (tests).</summary>
+    internal int LastStepHits { get; private set; }
+
+    /// <summary>Horizontal velocities of live splash droplets in px/s (tests).</summary>
+    internal ReadOnlySpan<float> SplashVx => _splashVx.AsSpan(0, _splashes);
+
+    /// <summary>Mass of live drips in bin units (tests).</summary>
+    internal ReadOnlySpan<float> DripMasses => _dripMass.AsSpan(0, _drips);
+
+    /// <summary>Vertical speeds of live drips in px/s (tests).</summary>
+    internal ReadOnlySpan<float> DripVelocities => _dripVy.AsSpan(0, _drips);
+
+    /// <summary>Desktop Y of live drip heads (tests).</summary>
+    internal ReadOnlySpan<float> DripYs => _dripY.AsSpan(0, _drips);
+
+    /// <summary>How often a drip slowed to a stop while still on the frame (tests).</summary>
+    internal int DripStickEvents { get; private set; }
 
     // Ripples where drops hit.
     private readonly float[] _rippleX = new float[MaxRipples];
@@ -106,11 +207,15 @@ public sealed class RainEffect : IEffectSystem
     private readonly float[] _dripY = new float[MaxDrips];
     private readonly float[] _dripVy = new float[MaxDrips];
     private readonly float[] _dripPhase = new float[MaxDrips];
+    private readonly float[] _dripMass = new float[MaxDrips];
+    private readonly float[] _dripIdle = new float[MaxDrips];
+    private readonly bool[] _dripWasSliding = new bool[MaxDrips];
     private readonly long[] _dripOwner = new long[MaxDrips];
     private readonly int[] _dripColumn = new int[MaxDrips];
     private readonly int[] _dripOutward = new int[MaxDrips];
     private readonly float[] _trailX = new float[MaxDrips * TrailLength];
     private readonly float[] _trailY = new float[MaxDrips * TrailLength];
+    private readonly float[] _trailTime = new float[MaxDrips * TrailLength];
     private readonly int[] _trailCount = new int[MaxDrips];
     private int _drips;
 
@@ -141,6 +246,15 @@ public sealed class RainEffect : IEffectSystem
 
     /// <summary>Splashes created in the last step, per second. Drives the rain sound.</summary>
     public float HitsPerSecond { get; private set; }
+
+    /// <summary>Diameters of the live drops in millimetres (tests).</summary>
+    internal ReadOnlySpan<float> DropSizes => _dropSize.AsSpan(0, _drops);
+
+    /// <summary>Horizontal velocities of the live drops in px/s (tests).</summary>
+    internal ReadOnlySpan<float> DropVx => _dropVx.AsSpan(0, _drops);
+
+    /// <summary>Wind drag rates of the live drops in 1/s (tests).</summary>
+    internal ReadOnlySpan<float> DropDrag => _dropDrag.AsSpan(0, _drops);
 
     /// <summary>
     /// The water field of a window's top edge (<see cref="WaterField.IsDry"/> until the first drop), or
@@ -214,13 +328,33 @@ public sealed class RainEffect : IEffectSystem
 
         ReadOnlySpan<TrackedWindow> windows = context.Windows.Windows;
         EmitPuddles(frame, context, waterColor, brightness);
-        EmitDrips(frame, windows, waterColor, brightness);
+        EmitDrips(frame, windows, waterColor, brightness, (float)context.Time);
         EmitRipples(frame, windows, waterColor, brightness);
         EmitSplashes(frame, windows, rainColor, brightness);
         EmitDrops(frame, windows, rainColor, brightness);
     }
 
-    private static float TerminalVelocity(float z) => 900f + (650f * z);
+    /// <summary>Terminal velocity in m/s for a drop of diameter <paramref name="d"/> in mm (Atlas et al. 1973).</summary>
+    internal static float TerminalVelocity(float d) => MathF.Max(9.65f - (10.3f * MathF.Exp(-0.6f * d)), 1f);
+
+    /// <summary>
+    /// Mean Marshall–Palmer diameter in mm for rain of the given intensity (0..1).
+    /// Kept near 1 mm so large drops (d &gt; 3 mm) stay under about 5 % even in heavy rain.
+    /// </summary>
+    internal static float MeanDropDiameter(float intensity) => 0.85f + (0.2f * Math.Clamp(intensity, 0f, 1f));
+
+    /// <summary>Depth parallax: distant drops fall and look smaller.</summary>
+    private static float Parallax(float z) => 0.55f + (0.45f * z);
+
+    /// <summary>Screen fall speed in px/s for a drop of diameter <paramref name="dMm"/> at depth <paramref name="z"/> and pixel scale.</summary>
+    private static float ScreenFallSpeed(float dMm, float z, float scale) =>
+        TerminalVelocity(dMm) * PixelsPerMeter * Parallax(z) * scale;
+
+    private static float Smoothstep(float edge0, float edge1, float x)
+    {
+        float t = Math.Clamp((x - edge0) / (edge1 - edge0), 0f, 1f);
+        return t * t * (3f - (2f * t));
+    }
 
     private static float MaxBin(WaterField field)
     {
@@ -258,10 +392,11 @@ public sealed class RainEffect : IEffectSystem
         // Wind blows drops in from the side: spawn wider than the desktop, on the windward side.
         float scale = context.PixelScale;
         float windX = context.Wind.Current.X * scale;
-        float fallTime = desktop.Height / (TerminalVelocity(0.5f) * scale);
+        float fallTime = desktop.Height / MathF.Max(ScreenFallSpeed(MeanSpawnDiameter, 0.5f, scale), 1f);
         float margin = MathF.Abs(windX) * fallTime;
         float left = desktop.Left - (windX > 0 ? margin : 0f);
         float width = desktop.Width + margin;
+        float mean = MeanDropDiameter(intensity);
 
         _spawnDebt += MathF.Pow(intensity, 1.2f) * SpawnRatePer1000Pixels * (width / 1000f) * dt;
         while (_spawnDebt >= 1f && _drops < MaxDrops)
@@ -269,10 +404,15 @@ public sealed class RainEffect : IEffectSystem
             _spawnDebt -= 1f;
             int i = _drops++;
             float z = _random.NextFloat();
+            float d = Math.Clamp(-MathF.Log(1f - (_random.NextFloat() * 0.999f)) * mean, MinDiameter, MaxDiameter);
+            float vt = TerminalVelocity(d);
             _dropZ[i] = z;
+            _dropSize[i] = d;
+            _dropVt[i] = vt;
+            _dropDrag[i] = DragRate / d;
             _dropX[i] = left + (_random.NextFloat() * width);
             _dropY[i] = desktop.Top - (_random.NextFloat() * 60f * scale);
-            _dropVy[i] = TerminalVelocity(z) * scale * _random.NextFloat(0.9f, 1f);
+            _dropVy[i] = vt * PixelsPerMeter * Parallax(z) * scale * _random.NextFloat(0.9f, 1f);
             _dropVx[i] = windX * (0.5f + (0.5f * z));
             _dropHome[i] = WindowOcclusion.NoHome;
         }
@@ -283,21 +423,35 @@ public sealed class RainEffect : IEffectSystem
         }
     }
 
+    [SkipLocalsInit]
     private int SimulateDrops(float dt, SimulationContext context)
     {
         float threshold = 1f - Math.Clamp(Depth, 0f, 1f);
         float scale = context.PixelScale;
         float windX = context.Wind.Current.X * scale;
         float bottom = context.DesktopBounds.Bottom + 20f;
+        float top = context.DesktopBounds.Top;
+        float time = (float)context.Time;
         int hits = 0;
+        LastStepSplashDroplets = 0;
+
+        Span<float> gusts = stackalloc float[GustBands];
+        float bandHeight = MathF.Max(context.DesktopBounds.Height / (float)GustBands, 1f);
+        float gustScale = Turbulence * MathF.Abs(windX);
+        for (int b = 0; b < GustBands; b++)
+        {
+            gusts[b] = Noise1D.Sample((b * 0.35f) + (time * 0.8f), 23) * gustScale;
+        }
 
         int i = 0;
         while (i < _drops)
         {
             float z = _dropZ[i];
-            _dropVy[i] = MathF.Min(_dropVy[i] + (Gravity * scale * dt), TerminalVelocity(z) * scale);
-            float targetVx = windX * (0.5f + (0.5f * z));
-            _dropVx[i] += (targetVx - _dropVx[i]) * MathF.Min(1f, 3f * dt);
+            float screenVt = _dropVt[i] * PixelsPerMeter * Parallax(z) * scale;
+            _dropVy[i] = MathF.Min(_dropVy[i] + (Gravity * scale * dt), screenVt);
+            int band = Math.Clamp((int)((_dropY[i] - top) / bandHeight), 0, GustBands - 1);
+            float targetVx = (windX * (0.5f + (0.5f * z))) + gusts[band];
+            _dropVx[i] += (targetVx - _dropVx[i]) * MathF.Min(1f, _dropDrag[i] * dt);
 
             float nextX = _dropX[i] + (_dropVx[i] * dt);
             float nextY = _dropY[i] + (_dropVy[i] * dt);
@@ -305,7 +459,7 @@ public sealed class RainEffect : IEffectSystem
             if (z >= threshold && context.SurfaceIndex.TryFindLanding(nextX, _dropY[i], nextY, out SurfaceHit hit))
             {
                 SurfaceSegment segment = context.Surfaces.Segments[hit.Segment];
-                Hit(nextX, hit.Row, z, segment, context, scale);
+                Hit(nextX, hit.Row, z, _dropSize[i], _dropVx[i], _dropVy[i], segment, context, scale);
                 hits++;
                 RemoveDrop(i);
                 continue;
@@ -322,43 +476,88 @@ public sealed class RainEffect : IEffectSystem
             i++;
         }
 
+        LastStepHits = hits;
         return hits;
     }
 
-    private void Hit(float x, int row, float z, in SurfaceSegment segment, SimulationContext context, float scale)
+    private void Hit(float x, int row, float z, float d, float vx, float vy, in SurfaceSegment segment, SimulationContext context, float scale)
     {
         long home = segment.Key.Edge == SurfaceEdge.Top ? segment.Key.OwnerId : WindowOcclusion.NoHome;
-        int droplets = 3 + _random.NextInt(4);
-        float speed = (120f + (180f * z)) * scale;
-        for (int d = 0; d < droplets && _splashes < MaxSplashes; d++)
+        float water = 0f;
+        if (segment.Key.Edge == SurfaceEdge.Top)
         {
-            int s = _splashes++;
-            float angle = -MathF.PI * _random.NextFloat(0.15f, 0.85f);
-            float v = speed * _random.NextFloat(0.5f, 1f);
-            _splashX[s] = x;
-            _splashY[s] = row - scale;
-            _splashFloor[s] = row - scale;
-            _splashVx[s] = MathF.Cos(angle) * v;
-            _splashVy[s] = MathF.Sin(angle) * v;
-            _splashLife[s] = _random.NextFloat(0.15f, 0.35f);
-            _splashHome[s] = home;
+            WaterField field = FieldFor(segment.Key.OwnerId, context);
+            float localX = x - segment.Origin;
+            water = field.Bins[field.BinAt(localX)];
+            field.Add(localX, WaterPerHit * (0.5f + z));
         }
+
+        bool wet = water > WetEdgeThreshold;
+        // Normalize by a typical near-drop screen speed so energy stays O(1) across pixel scales.
+        float fall = MathF.Max(vy / (2000f * scale), 0f);
+        float energy = d * d * d * fall * fall;
+        float expected = energy * SplashPerEnergy;
+        if (wet)
+        {
+            expected *= 0.55f;
+        }
+
+        // Stochastic: many light hits produce zero lobes so the top edge stays sparse, not a comb.
+        int droplets = expected < 0.35f
+            ? (_random.NextFloat() < expected ? 1 : 0)
+            : Math.Clamp((int)(expected + _random.NextFloat()), 0, MaxSplashDropletsPerHit);
+        float speed = SplashSpeed * MathF.Sqrt(MathF.Max(vy / scale, 0f)) * scale;
+        for (int n = 0; n < droplets && _splashes < MaxSplashes; n++)
+        {
+            SpawnSplashDroplet(x, row, home, scale, speed, vx, upward: false);
+        }
+
+        // Worthington jet: a large drop into standing water throws one droplet straight up.
+        if (d > JetDiameter && wet && droplets > 0 && _splashes < MaxSplashes)
+        {
+            SpawnSplashDroplet(x, row, home, scale, speed * 0.5f, vx: 0f, upward: true);
+            droplets++;
+        }
+
+        LastStepSplashDroplets += droplets;
 
         if (_ripples < MaxRipples)
         {
             int r = _ripples++;
+            float rippleScale = wet ? 1.6f : 0.6f;
             _rippleX[r] = x;
             _rippleY[r] = row - scale;
             _rippleAge[r] = 0f;
-            _rippleSize[r] = (3f + (4f * z)) * scale;
+            _rippleSize[r] = (3f + (4f * z)) * scale * rippleScale;
             _rippleHome[r] = home;
         }
+    }
 
-        if (segment.Key.Edge == SurfaceEdge.Top)
+    /// <summary>Crown lobe left/right, or a vertical Worthington jet when <paramref name="upward"/>.</summary>
+    private void SpawnSplashDroplet(float x, int row, long home, float scale, float speed, float vx, bool upward)
+    {
+        int s = _splashes++;
+        float life = _random.NextFloat(0.15f, 0.35f);
+        _splashX[s] = x;
+        _splashY[s] = row - scale;
+        _splashFloor[s] = row - scale;
+        _splashLife[s] = life;
+        _splashStartLife[s] = life;
+        _splashHome[s] = home;
+
+        if (upward)
         {
-            WaterField field = FieldFor(segment.Key.OwnerId, context);
-            field.Add(x - segment.Origin, WaterPerHit * (0.5f + z));
+            _splashVx[s] = 0.25f * vx;
+            _splashVy[s] = -speed * _random.NextFloat(0.6f, 1f);
+            return;
         }
+
+        // Two lobes left/right of the vertical: 20°–65° from the horizontal, upward.
+        float side = _random.NextFloat() < 0.5f ? -1f : 1f;
+        float fromHorizontal = _random.NextFloat(20f, 65f) * (MathF.PI / 180f);
+        float v = speed * _random.NextFloat(0.6f, 1f);
+        _splashVx[s] = (side * MathF.Cos(fromHorizontal) * v) + (0.25f * vx);
+        _splashVy[s] = -MathF.Sin(fromHorizontal) * v;
     }
 
     private WaterField FieldFor(long windowId, SimulationContext context)
@@ -382,11 +581,13 @@ public sealed class RainEffect : IEffectSystem
 
     private void SimulateSplashes(float dt)
     {
+        float drag = MathF.Max(0f, 1f - (1.5f * dt));
         int i = 0;
         while (i < _splashes)
         {
             _splashLife[i] -= dt;
-            _splashVy[i] += Gravity * _scale * dt;
+            _splashVx[i] *= drag;
+            _splashVy[i] = (_splashVy[i] * drag) + (Gravity * _scale * dt);
             _splashX[i] += _splashVx[i] * dt;
             _splashY[i] += _splashVy[i] * dt;
 
@@ -399,6 +600,7 @@ public sealed class RainEffect : IEffectSystem
                 _splashVx[i] = _splashVx[last];
                 _splashVy[i] = _splashVy[last];
                 _splashLife[i] = _splashLife[last];
+                _splashStartLife[i] = _splashStartLife[last];
                 _splashFloor[i] = _splashFloor[last];
                 _splashHome[i] = _splashHome[last];
                 continue;
@@ -506,6 +708,7 @@ public sealed class RainEffect : IEffectSystem
         for (int n = 0; n < count && _drops < MaxDrops; n++)
         {
             int i = _drops++;
+            AssignDropSize(i, MeanSpawnDiameter);
             _dropX[i] = column + 0.5f + (outward * _random.NextFloat(0f, 1.5f));
             _dropY[i] = y + 1f;
             _dropVx[i] = 0f;
@@ -524,6 +727,18 @@ public sealed class RainEffect : IEffectSystem
     /// <param name="top">Row the drip starts at.</param>
     private void SpawnDrip(long owner, int column, int outward, int top)
     {
+        // Feed an existing drip still hanging near this corner instead of starting a parallel rivulet.
+        float mergeLimit = top + (DripMergeDistance * _scale);
+        for (int existing = 0; existing < _drips; existing++)
+        {
+            if (_dripOwner[existing] == owner && _dripColumn[existing] == column && _dripY[existing] <= mergeLimit)
+            {
+                _dripMass[existing] += WaterPerDrip;
+                _dripIdle[existing] = 0f;
+                return;
+            }
+        }
+
         if (_drips >= MaxDrips)
         {
             return;
@@ -533,8 +748,11 @@ public sealed class RainEffect : IEffectSystem
         _dripOutward[i] = outward;
         _dripX[i] = column + 0.5f + (outward * DripRadius * _scale * 0.5f);
         _dripY[i] = top;
-        _dripVy[i] = 10f * _scale;
+        _dripVy[i] = 0f;
         _dripPhase[i] = _random.NextFloat(0f, 100f);
+        _dripMass[i] = WaterPerDrip;
+        _dripIdle[i] = 0f;
+        _dripWasSliding[i] = false;
         _dripOwner[i] = owner;
         _dripColumn[i] = column;
         _trailCount[i] = 0;
@@ -542,19 +760,56 @@ public sealed class RainEffect : IEffectSystem
 
     private void SimulateDrips(float dt, SimulationContext context)
     {
+        float time = (float)context.Time;
         int i = 0;
         while (i < _drips)
         {
             int index = context.Windows.IndexOf(_dripOwner[i]);
             if (index < 0)
             {
-                ReleaseDrip(i);
+                DiscardDrip(i);
                 continue;
             }
 
             PixelRect bounds = context.Windows[index].Bounds;
-            _dripVy[i] = MathF.Min(_dripVy[i] + (220f * _scale * dt), DripMaxSpeed * _scale);
+            // Stick-slip: roughness along the frame pins light drips until enough mass builds up.
+            float roughness = 0.5f + (0.5f * Noise1D.Sample((_dripY[i] / _scale) * 0.05f, 31));
+            float friction = PinMass * (0.7f + (0.6f * roughness));
+            float targetV = MathF.Max(0f, _dripMass[i] - friction) * DripSpeedPerMass * _scale;
+            targetV = MathF.Min(targetV, DripMaxSpeed * _scale);
+            bool sliding = targetV > 1f * _scale;
+            if (_dripWasSliding[i] && !sliding && _dripY[i] > bounds.Top + (20f * _scale) && _dripY[i] < bounds.Bottom - (10f * _scale))
+            {
+                DripStickEvents++;
+            }
+
+            _dripWasSliding[i] = sliding;
+            _dripVy[i] += (targetV - _dripVy[i]) * MathF.Min(1f, 8f * dt);
+            if (_dripVy[i] > 0f)
+            {
+                _dripMass[i] -= TrailLoss * _dripVy[i] * dt / _scale;
+                if (_dripMass[i] < 0f)
+                {
+                    _dripMass[i] = 0f;
+                }
+            }
+
             _dripY[i] += _dripVy[i] * dt;
+
+            if (_dripVy[i] < 1f * _scale)
+            {
+                _dripIdle[i] += dt;
+                _dripMass[i] = MathF.Max(0f, _dripMass[i] - (DripIdleEvaporation * dt));
+                if (_dripMass[i] < MinMass && _dripIdle[i] > DripEvaporateAfter)
+                {
+                    DiscardDrip(i);
+                    continue;
+                }
+            }
+            else
+            {
+                _dripIdle[i] = 0f;
+            }
 
             // Meander: the drip wobbles a little around the side column as it runs down.
             _dripPhase[i] += dt * 1.7f;
@@ -570,6 +825,7 @@ public sealed class RainEffect : IEffectSystem
                 int slot = count % TrailLength;
                 _trailX[trail + slot] = _dripX[i];
                 _trailY[trail + slot] = _dripY[i];
+                _trailTime[trail + slot] = time;
                 _trailCount[i] = count + 1;
             }
 
@@ -590,25 +846,38 @@ public sealed class RainEffect : IEffectSystem
         if (_drops < MaxDrops)
         {
             int d = _drops++;
+            AssignDropSize(d, Math.Clamp(1.5f + _dripMass[i], 1.5f, 4f));
             _dropX[d] = _dripX[i];
             _dropY[d] = _dripY[i];
             _dropVx[d] = 0f;
-            _dropVy[d] = _dripVy[i];
+            _dropVy[d] = MathF.Max(_dripVy[i], 40f * _scale);
             _dropZ[d] = 0.98f;
             _dropHome[d] = _dripOwner[i];
         }
 
+        SwapRemoveDrip(i);
+    }
+
+    /// <summary>Removes a drip without shedding a falling drop (evaporation or a vanished window).</summary>
+    private void DiscardDrip(int i) => SwapRemoveDrip(i);
+
+    private void SwapRemoveDrip(int i)
+    {
         int last = --_drips;
         _dripX[i] = _dripX[last];
         _dripY[i] = _dripY[last];
         _dripVy[i] = _dripVy[last];
         _dripPhase[i] = _dripPhase[last];
+        _dripMass[i] = _dripMass[last];
+        _dripIdle[i] = _dripIdle[last];
+        _dripWasSliding[i] = _dripWasSliding[last];
         _dripOwner[i] = _dripOwner[last];
         _dripColumn[i] = _dripColumn[last];
         _dripOutward[i] = _dripOutward[last];
         _trailCount[i] = _trailCount[last];
         Array.Copy(_trailX, last * TrailLength, _trailX, i * TrailLength, TrailLength);
         Array.Copy(_trailY, last * TrailLength, _trailY, i * TrailLength, TrailLength);
+        Array.Copy(_trailTime, last * TrailLength, _trailTime, i * TrailLength, TrailLength);
     }
 
     private void ReleaseDrips(long owner)
@@ -664,6 +933,7 @@ public sealed class RainEffect : IEffectSystem
             }
 
             int i = _drops++;
+            AssignDropSize(i, MeanSpawnDiameter);
             _dropX[i] = bounds.Left + ((b + 0.5f) * field.BinWidth);
             _dropY[i] = bounds.Top + 2f;
             _dropVx[i] = _random.NextFloat(-30f, 30f) * _scale;
@@ -675,6 +945,14 @@ public sealed class RainEffect : IEffectSystem
         field.Drain();
     }
 
+    private void AssignDropSize(int i, float diameterMm)
+    {
+        float d = Math.Clamp(diameterMm, MinDiameter, MaxDiameter);
+        _dropSize[i] = d;
+        _dropVt[i] = TerminalVelocity(d);
+        _dropDrag[i] = DragRate / d;
+    }
+
     private void RemoveDrop(int i)
     {
         int last = --_drops;
@@ -683,6 +961,9 @@ public sealed class RainEffect : IEffectSystem
         _dropVx[i] = _dropVx[last];
         _dropVy[i] = _dropVy[last];
         _dropZ[i] = _dropZ[last];
+        _dropSize[i] = _dropSize[last];
+        _dropDrag[i] = _dropDrag[last];
+        _dropVt[i] = _dropVt[last];
         _dropHome[i] = _dropHome[last];
     }
 
@@ -702,7 +983,8 @@ public sealed class RainEffect : IEffectSystem
             for (int b = first; b <= last; b++)
             {
                 float water = bins[b];
-                if (water < 0.02f)
+                // Emit thin bridging bins too so light rain does not leave a dashed 4 px film (D6).
+                if (water < 0.01f)
                 {
                     continue;
                 }
@@ -715,21 +997,24 @@ public sealed class RainEffect : IEffectSystem
                     continue;
                 }
 
-                // A thin film, thicker where more water stands, shimmering slowly.
-                float height = (1f + (2.5f * water)) * _scale;
+                float leftWater = b > 0 ? 0.5f * (field.DisplayHeight(b - 1) + field.DisplayHeight(b)) : field.DisplayHeight(b);
+                float rightWater = b < bins.Length - 1 ? 0.5f * (field.DisplayHeight(b) + field.DisplayHeight(b + 1)) : field.DisplayHeight(b);
+                float hL = (1f + (2.5f * leftWater)) * _scale;
+                float hR = (1f + (2.5f * rightWater)) * _scale;
+                float height = MathF.Max(hL, hR) + _scale;
                 float shimmer = 0.85f + (0.15f * Noise1D.Sample((time * 1.3f) + (b * 0.37f), 5));
                 float alpha = MathF.Min(1f, (0.25f + (0.45f * water)) * shimmer * brightness);
                 var center = new Vector2((left + right) / 2f, segment.Position - (height / 2f));
-                frame.Add(new Sprite(center, new Vector2((right - left) / 2f, height / 2f), 0f, SpriteShape.Rectangle, Sprite.Premultiply(color, alpha)));
-
-                // Highlight along the water surface.
-                var highlight = new Vector2(center.X, segment.Position - height);
-                frame.Add(new Sprite(highlight, new Vector2((right - left) / 2f, 0.5f * _scale), 0f, SpriteShape.Rectangle, Sprite.Premultiply(Vector3.One, MathF.Min(1f, 0.35f * water * shimmer * brightness))));
+                frame.Add(new Sprite(center, new Vector2((right - left) / 2f, height / 2f), 0f, SpriteShape.WaterFilm, Sprite.Premultiply(color, alpha))
+                {
+                    Variant = hL,
+                    Param = hR,
+                });
             }
         }
     }
 
-    private void EmitDrips(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
+    private void EmitDrips(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness, float time)
     {
         for (int i = 0; i < _drips; i++)
         {
@@ -743,34 +1028,51 @@ public sealed class RainEffect : IEffectSystem
             int count = Math.Min(_trailCount[i], TrailLength);
             int newest = _trailCount[i] - 1;
 
-            // Trail: segments between remembered points, fading towards the oldest.
+            // Trail only while the drip is moving: pinned beads should not draw a beaded rail.
             Vector2 previous = new(_dripX[i], _dripY[i]);
-            for (int n = 0; n < count; n++)
+            if (_dripVy[i] > 2f * _scale)
             {
-                int slot = (newest - n) % TrailLength;
-                if (slot < 0)
+                for (int n = 0; n < count; n++)
                 {
-                    slot += TrailLength;
-                }
+                    int slot = (newest - n) % TrailLength;
+                    if (slot < 0)
+                    {
+                        slot += TrailLength;
+                    }
 
-                var point = new Vector2(_trailX[trail + slot], _trailY[trail + slot]);
-                Vector2 delta = previous - point;
-                float length = delta.Length();
-                if (length > 0.5f && !WindowOcclusion.HidesAttached(windows, point.X, point.Y, _dripOwner[i]))
-                {
-                    float alpha = 0.45f * (1f - (n / (float)TrailLength)) * brightness;
-                    frame.Add(new Sprite(
-                        (previous + point) / 2f,
-                        new Vector2((length / 2f) + (0.8f * _scale), 0.8f * _scale),
-                        MathF.Atan2(delta.Y, delta.X),
-                        SpriteShape.Streak,
-                        Sprite.Premultiply(color, MathF.Min(1f, alpha))));
-                }
+                    var point = new Vector2(_trailX[trail + slot], _trailY[trail + slot]);
+                    Vector2 delta = previous - point;
+                    float length = delta.Length();
+                    float age = time - _trailTime[trail + slot];
+                    if (length > 0.5f && age < TrailLifetime && !WindowOcclusion.HidesAttached(windows, point.X, point.Y, _dripOwner[i]))
+                    {
+                        float alpha = 0.4f * (1f - (age / TrailLifetime)) * brightness;
+                        float halfWidth = (1.0f - (0.45f * (n / (float)Math.Max(count - 1, 1)))) * _scale;
+                        frame.Add(new Sprite(
+                            (previous + point) / 2f,
+                            new Vector2((length / 2f) + halfWidth, halfWidth),
+                            MathF.Atan2(delta.Y, delta.X),
+                            SpriteShape.Streak,
+                            Sprite.Premultiply(color, MathF.Min(1f, alpha))));
+                    }
 
-                previous = point;
+                    previous = point;
+                }
             }
 
-            frame.Add(new Sprite(new Vector2(_dripX[i], _dripY[i]), new Vector2(DripRadius, 2.2f) * _scale, 0f, SpriteShape.Disc, Sprite.Premultiply(color, MathF.Min(1f, 0.85f * brightness))));
+            float mass = _dripMass[i];
+            float radius = DripRadius * (0.8f + (0.4f * MathF.Sqrt(MathF.Max(mass, 0f)))) * _scale;
+            float halfLength = 1.5f * radius;
+            // Head points down the frame (+π/2 with +x = head for Raindrop).
+            frame.Add(new Sprite(
+                new Vector2(_dripX[i], _dripY[i]),
+                new Vector2(halfLength, radius),
+                MathF.PI / 2f,
+                SpriteShape.Raindrop,
+                Sprite.Premultiply(color, MathF.Min(1f, 0.85f * brightness)))
+            {
+                Param = 0.7f,
+            });
         }
     }
 
@@ -786,7 +1088,11 @@ public sealed class RainEffect : IEffectSystem
             float t = _rippleAge[i] / 0.3f;
             float size = _rippleSize[i] * (0.4f + (0.6f * t));
             float alpha = MathF.Min(1f, 0.6f * (1f - t) * brightness);
-            frame.Add(new Sprite(new Vector2(_rippleX[i], _rippleY[i]), new Vector2(size, size * 0.3f), 0f, SpriteShape.Ring, Sprite.Premultiply(color, alpha)));
+            float thickness = 1f - (0.6f * t); // 1.0 px → 0.4 px half-thickness via Param
+            frame.Add(new Sprite(new Vector2(_rippleX[i], _rippleY[i]), new Vector2(size, size * 0.3f), 0f, SpriteShape.Ring, Sprite.Premultiply(color, alpha))
+            {
+                Param = thickness,
+            });
         }
     }
 
@@ -800,13 +1106,30 @@ public sealed class RainEffect : IEffectSystem
                 continue;
             }
 
-            float alpha = MathF.Min(1f, MathF.Min(1f, _splashLife[i] / 0.15f) * 0.7f * brightness);
-            frame.Add(new Sprite(new Vector2(_splashX[i], _splashY[i]), new Vector2(1.1f, 1.1f) * _scale, 0f, SpriteShape.Disc, Sprite.Premultiply(color, alpha)));
+            var velocity = new Vector2(_splashVx[i], _splashVy[i]);
+            float speed = velocity.Length();
+            float lifeFade = _splashStartLife[i] > 0f ? Math.Clamp(_splashLife[i] / _splashStartLife[i], 0f, 1f) : 0f;
+            float alpha = MathF.Min(1f, lifeFade * 0.65f * brightness);
+            float radius = (0.85f + (0.25f * lifeFade)) * _scale;
+            // Short crown lobes: stretch with speed but never into long needles that paint a bright edge band.
+            float halfLength = MathF.Min(radius * 1.8f, MathF.Max(radius, speed * SplashStretchPerSpeed));
+            Vector2 direction = speed > 0.001f ? velocity / speed : -Vector2.UnitY;
+            frame.Add(new Sprite(
+                new Vector2(_splashX[i], _splashY[i]) - (direction * halfLength * 0.25f),
+                new Vector2(halfLength, radius),
+                MathF.Atan2(_splashVy[i], _splashVx[i]),
+                SpriteShape.Raindrop,
+                Sprite.Premultiply(color, alpha))
+            {
+                Param = 0.45f,
+                Variant = 1f, // marks splash droplets for tests / occlusion sampling
+            });
         }
     }
 
     private void EmitDrops(RenderFrame frame, ReadOnlySpan<TrackedWindow> windows, Vector3 color, float brightness)
     {
+        bool customColor = Settings.Color.HasValue;
         for (int i = 0; i < _drops; i++)
         {
             float z = _dropZ[i];
@@ -821,19 +1144,32 @@ public sealed class RainEffect : IEffectSystem
 
             var velocity = new Vector2(_dropVx[i], _dropVy[i]);
             float speed = velocity.Length();
+            float d = _dropSize[i];
 
-            // Motion-stretched: length grows with speed and nearness, width and opacity with nearness.
-            float radius = (0.5f + (0.9f * z)) * _scale;
+            float radius = (0.35f + (0.3f * d)) * (0.45f + (0.55f * z)) * _scale;
+            float minRadius = 0.65f * _scale;
+            float alphaScale = 1f;
+            if (radius < minRadius)
+            {
+                alphaScale = radius / minRadius;
+                radius = minRadius;
+            }
+
             float halfLength = MathF.Max(radius, speed * 0.009f * (0.6f + (0.4f * z)));
-            float alpha = MathF.Min(1f, (0.16f + (0.42f * z)) * brightness);
-            // The drop's position is the tip of the streak; the tail trails behind along the flight direction.
+            float alpha = MathF.Min(1f, (0.2f + (0.45f * z)) * brightness * alphaScale);
+            Vector3 tint = customColor ? color : Vector3.Lerp(s_farTint, color, z);
+            // Stronger rim on mid/near drops so they stay readable on light window chrome (D2).
+            float rim = Smoothstep(0.25f, 0.85f, z);
             Vector2 direction = speed > 0.001f ? velocity / speed : Vector2.UnitY;
             frame.Add(new Sprite(
                 new Vector2(_dropX[i], _dropY[i]) - (direction * halfLength),
                 new Vector2(halfLength, radius),
                 MathF.Atan2(_dropVy[i], _dropVx[i]),
-                SpriteShape.Streak,
-                Sprite.Premultiply(color, alpha)));
+                SpriteShape.Raindrop,
+                Sprite.Premultiply(tint, alpha))
+            {
+                Param = rim,
+            });
         }
     }
 }

@@ -5,6 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sillfall.Core</RootNamespace>
     <IsAotCompatible>true</IsAotCompatible>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
