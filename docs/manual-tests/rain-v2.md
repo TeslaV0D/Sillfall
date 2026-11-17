@@ -2,9 +2,8 @@
 
 Shapes and physics from ADR-0006 amendment 2026-11 (rain v2). Automated: Core rain/water-field tests (sizes, Atlas
 fall speed, gust drag, splash energy, stick-slip drips, puddle sprite count, sprite budget, 0 allocations, sim
-budget). Render SpriteTests for Raindrop/WaterFilm (Windows CI). Goldens for `rain-*`, `grass-rain-*`, and the new
-`rain-gusty` scene are deleted in this change — CI will publish candidates under the `previews` artifact
-(`render/golden-actual-*.png`, `framedump/`). **Do not commit new goldens until the images below are signed off.**
+budget). Render SpriteTests for Raindrop/WaterFilm (Windows CI). Goldens for `rain-*`, `grass-rain-*`, and `rain-gusty` were regenerated after the splash-lobe fix
+(short crowns, no needle comb) from CI `previews` on commit `5f90433`.
 
 ## Start
 
@@ -58,6 +57,6 @@ Test pattern off. Compare against a build from before rain v2 when noting Task M
 
 ## 8. Goldens (after visual review)
 
-- [ ] Accept or reject each `golden-actual-rain-*.png` / `grass-rain-*.png` / `rain-gusty-*.png` from the CI
+- [x] Accept or reject each `golden-actual-rain-*.png` / `grass-rain-*.png` / `rain-gusty-*.png` from the CI
       `previews` artifact.
-- [ ] Only then copy approved images into `tests/Sillfall.Render.Tests/Goldens/` and push.
+- [x] Only then copy approved images into `tests/Sillfall.Render.Tests/Goldens/` and push.
