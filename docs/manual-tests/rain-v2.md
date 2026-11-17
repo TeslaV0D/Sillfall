@@ -34,7 +34,7 @@ Test pattern off. Compare against a build from before rain v2 when noting Task M
 
 ## 4. Splashes and edges
 
-- [ ] Heavy rain: no noisy band of dots along every top edge (crown splashes, not 3–6 discs per hit).
+- [ ] Heavy rain: no noisy band of needles/dots along every top edge (sparse short crown lobes, not a comb).
 - [ ] Splashes leave the edge and fall back into it; nothing rains into window content.
 - [ ] Ripples start thicker and thin out.
 

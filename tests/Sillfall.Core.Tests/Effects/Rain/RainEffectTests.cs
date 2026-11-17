@@ -563,7 +563,7 @@ public class RainEffectTests
         }
 
         hits.Should().BeGreaterThan(200);
-        (droplets / (double)hits).Should().BeLessThanOrEqualTo(1.2);
+        (droplets / (double)hits).Should().BeLessThanOrEqualTo(0.9);
     }
 
     [Fact]
@@ -647,7 +647,7 @@ public class RainEffectTests
         (SimulationEngine engine, RainEffect rain) = Create(intensity: 1f);
         Run(engine, seconds: 3);
         WaterField field = rain.PuddleOf(s_window.Id)!;
-        int wetBins = field.Bins.ToArray().Count(w => w >= 0.02f);
+        int wetBins = field.Bins.ToArray().Count(w => w >= 0.01f);
         wetBins.Should().BePositive();
         engine.Frame.Sprites.ToArray().Count(s => s.Shape == SpriteShape.WaterFilm).Should().Be(wetBins);
     }
