@@ -23,3 +23,6 @@ Thumbs.db
 
 # Python (asset generator)
 __pycache__/
+
+# HLSL bytecode is compiled into obj/ on Windows; never commit next to sources
+src/Sillfall.Render/Shaders/*.cso

@@ -3,7 +3,8 @@
 Shapes and physics from ADR-0006 amendment 2026-11 (rain v2). Automated: Core rain/water-field tests (sizes, Atlas
 fall speed, gust drag, splash energy, stick-slip drips, puddle sprite count, sprite budget, 0 allocations, sim
 budget). Render SpriteTests for Raindrop/WaterFilm (Windows CI). Goldens for `rain-*`, `grass-rain-*`, and `rain-gusty` were regenerated after the splash-lobe fix
-(short crowns, no needle comb) from CI `previews` on commit `5f90433`.
+(short crowns, no needle comb) from CI `previews` on commit `5f90433`. After merge to `main`, Render CI
+failed when a stale checked-in `Sprite.ps.cso` was embedded instead of recompiling (ADR-0019); fixed in 0.1.2.
 
 ## Start
 

@@ -12,6 +12,11 @@
     uses). The inline task below calls it directly, so building needs only the .NET SDK, not the Windows SDK.
     Flags match "fxc /O3 /WX /Qstrip_reflect /Qstrip_debug". On other systems the step is skipped: the assembly
     still compiles (useful for fast feedback on Linux) but cannot render.
+
+    Compiled .cso files go under $(IntermediateOutputPath), never next to the .hlsl sources. A previous bug
+    snapshotted IntermediateOutputPath too early (it was empty), so outputs landed in Shaders\ and a stale
+    checked-in .cso with a checkout mtime >= the .hlsl made MSBuild skip compilation — Raindrop/WaterFilm
+    then fell through to solid rectangles on some CI runs.
   -->
 
   <ItemGroup>
@@ -21,7 +26,6 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <ShaderOutputDirectory>$(IntermediateOutputPath)Shaders\</ShaderOutputDirectory>
     <CanCompileShaders Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</CanCompileShaders>
   </PropertyGroup>
 
@@ -166,11 +170,18 @@ public class CompileHlsl : Task
     </Task>
   </UsingTask>
 
+  <!--
+    IntermediateOutputPath is read when the target runs, not when this file is imported. Snapshotting it
+    into a property at import time left ShaderOutputDirectory as "Shaders\" (empty prefix) and broke rain v2.
+  -->
   <Target Name="CompileShaders"
           Condition="'$(CanCompileShaders)' == 'true'"
           Inputs="@(ShaderSource);@(ShaderInclude);$(MSBuildThisFileFullPath)"
-          Outputs="@(ShaderSource->'$(ShaderOutputDirectory)%(Filename).cso')">
-    <CompileHlsl Sources="@(ShaderSource)" OutputDirectory="$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(ShaderOutputDirectory)'))" />
+          Outputs="@(ShaderSource->'$(IntermediateOutputPath)Shaders\%(Filename).cso')">
+    <PropertyGroup>
+      <_ShaderOutputDirectory>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)Shaders'))</_ShaderOutputDirectory>
+    </PropertyGroup>
+    <CompileHlsl Sources="@(ShaderSource)" OutputDirectory="$(_ShaderOutputDirectory)" />
   </Target>
 
   <Target Name="EmbedShaders"
@@ -178,11 +189,11 @@ public class CompileHlsl : Task
           DependsOnTargets="CompileShaders"
           Condition="'$(CanCompileShaders)' == 'true'">
     <ItemGroup>
-      <EmbeddedResource Include="$(ShaderOutputDirectory)%(ShaderSource.Filename).cso"
+      <EmbeddedResource Include="$(IntermediateOutputPath)Shaders\%(ShaderSource.Filename).cso"
                         LogicalName="Shaders/%(ShaderSource.Filename).cso"
                         Type="Non-Resx"
                         WithCulture="false" />
-      <FileWrites Include="$(ShaderOutputDirectory)%(ShaderSource.Filename).cso" />
+      <FileWrites Include="$(IntermediateOutputPath)Shaders\%(ShaderSource.Filename).cso" />
     </ItemGroup>
   </Target>
 
