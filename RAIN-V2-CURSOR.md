@@ -40,8 +40,9 @@ Deshalb:
   oder `Emit*` ändert, pushen und den CI-Lauf abwarten (`gh run watch`, Logs mit `gh run view --log-failed`).
   HLSL besonders sorgfältig schreiben: Warnungen sind Fehler (`/WX`), z. B. implizite Verkürzung
   `float4 → float3` oder nicht initialisierte Variablen.
-- Die `.cso`-Dateien in `src/Sillfall.Render/Shaders/` **nicht** anfassen; der Windows-Build kompiliert die
-  Shader selbst aus den `.hlsl`.
+- Keine `.cso` neben den `.hlsl` committen (ADR-0019). Der Windows-Build schreibt Bytecode nach `obj/` und
+  bettet ihn ein. Veraltete `.cso` im Quellbaum haben CI schon einmal still mit altem Raindrop/WaterFilm
+  Bytecode rot gemacht.
 - „In der Sandbox feinjustieren“ heißt remote: Werte ändern, pushen, das CI-Artefakt **`previews`** laden
   (`gh run download <run-id> -n previews`) und die FrameDump-Bilder (`framedump/`) ansehen.
 - Neue Goldens (Phase 4): Nach dem Löschen der alten schlägt `Test Sillfall.Render` in CI fehl, das ist erwartet.
